@@ -1,8 +1,10 @@
 name := "fk-connekt"
 
-version := "1.0"
+version := BuildCommons.appVersion
 
-scalaVersion := "2.11.7"
+scalaVersion := BuildCommons.scalaVersion
+
+crossPaths := BuildCommons.crossPaths
 
 lazy val busybees = project.in(file("busybees"))
 
