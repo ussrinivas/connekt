@@ -4,7 +4,7 @@ version := BuildCommons.appVersion
 
 scalaVersion := BuildCommons.scalaVersion
 
-crossPaths := BuildCommons.crossPaths
+crossPaths in Scope.GlobalScope := BuildCommons.crossPaths
 
 lazy val busybees = project.in(file("busybees"))
 
