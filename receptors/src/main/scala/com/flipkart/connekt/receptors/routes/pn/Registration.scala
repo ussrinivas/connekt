@@ -4,7 +4,7 @@ import akka.http.scaladsl.model.{HttpHeader, StatusCodes}
 import akka.stream.ActorMaterializer
 import com.flipkart.connekt.commons.dao.DaoFactory
 import com.flipkart.connekt.commons.entities.DeviceDetails
-import com.flipkart.connekt.commons.iomodels.GenericResponse
+import com.flipkart.connekt.commons.iomodels.{Response, GenericResponse}
 import com.flipkart.connekt.receptors.routes.BaseHandler
 
 import scala.collection.immutable.Seq
@@ -32,12 +32,12 @@ class Registration (implicit _am: ActorMaterializer) extends BaseHandler {
                   case Success(t) =>
                     complete(respond[GenericResponse](
                       StatusCodes.Created, Seq.empty[HttpHeader],
-                      GenericResponse("DeviceDetails registered for %s".format(d.deviceId), null, null, StatusCodes.Created.intValue)
+                      GenericResponse(StatusCodes.Created.intValue, null, Response("DeviceDetails registered for %s".format(d.deviceId), null))
                     ))
                   case Failure(e) =>
                     complete(respond[GenericResponse](
                       StatusCodes.InternalServerError, Seq.empty[HttpHeader],
-                      GenericResponse("DeviceDetails registration failed for %s".format(d.deviceId), e.getMessage, null , StatusCodes.InternalServerError.intValue)
+                      GenericResponse(StatusCodes.InternalServerError.intValue, null, Response("DeviceDetails registration failed for %s".format(d.deviceId), null))
                     ))
                 }
               }
@@ -53,19 +53,18 @@ class Registration (implicit _am: ActorMaterializer) extends BaseHandler {
                         case Some(deviceDetails) =>
                           complete(respond[GenericResponse](
                             StatusCodes.OK, Seq.empty[HttpHeader],
-                            GenericResponse("DeviceDetails fetched for app: %s %s".format(appName, deviceId), null, deviceDetails, StatusCodes.OK.intValue)
+                            GenericResponse(StatusCodes.OK.intValue, null, Response("DeviceDetails fetched for app: %s %s".format(appName, deviceId), Map[String, Any]("deviceDetails" -> deviceDetails)))
                           ))
                         case None =>
                           complete(respond[GenericResponse](
                             StatusCodes.OK, Seq.empty[HttpHeader],
-                            GenericResponse("No DeviceDetails found for app:%s %s".format(appName, deviceId), null, null, StatusCodes.OK.intValue)
+                            GenericResponse(StatusCodes.OK.intValue, null, Response("No DeviceDetails found for app:%s %s".format(appName, deviceId), null))
                           ))
-
                       }
                     case Failure(error) =>
                       complete(respond[GenericResponse](
                         StatusCodes.InternalServerError, Seq.empty[HttpHeader],
-                        GenericResponse("Fetching DeviceDetails failed for app:%s %s".format(appName, deviceId), error.getMessage, null, StatusCodes.InternalServerError.intValue)
+                        GenericResponse(StatusCodes.InternalServerError.intValue, null, Response("Fetching DeviceDetails failed for app:%s %s".format(appName, deviceId), null))
                       ))
                   }
                 }
@@ -74,4 +73,3 @@ class Registration (implicit _am: ActorMaterializer) extends BaseHandler {
       }
     }
 }
-

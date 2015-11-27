@@ -26,7 +26,7 @@ class DeviceDetailsDao(tableName: String, hTableFactory: HTableFactory) extends 
       val deviceRegInfoCfProps = Map[String, Array[Byte]](
         "deviceId" -> deviceDetails.deviceId.getUtf8Bytes,
         "userId" -> deviceDetails.userId.getUtf8Bytes,
-        "c2dmId" -> deviceDetails.c2dmId.getUtf8Bytes,
+        "token" -> deviceDetails.token.getUtf8Bytes,
         "osName" -> deviceDetails.osName.getUtf8Bytes,
         "osVersion" -> deviceDetails.osVersion.getUtf8Bytes,
         "appName" -> deviceDetails.appName.getUtf8Bytes,
@@ -71,7 +71,7 @@ class DeviceDetailsDao(tableName: String, hTableFactory: HTableFactory) extends 
         DeviceDetails(
           deviceId = get("deviceId"),
           userId = get("userId"),
-          c2dmId = get("c2dmId"),
+          token = get("token"),
           osName = get("osName"),
           osVersion = get("osVersion"),
           appName = get("appName"),
