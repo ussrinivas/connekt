@@ -3,6 +3,7 @@ package com.flipkart.connekt.commons.tests.services
 import java.util.Properties
 
 import com.flipkart.connekt.commons.helpers.KafkaConnectionHelper
+import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.tests.ConnektUTSpec
 import com.typesafe.config.ConfigFactory
 import kafka.consumer.ConsumerConnector
@@ -23,7 +24,7 @@ class KafkaConnectionHelperTest extends ConnektUTSpec with KafkaConnectionHelper
 
   def createKafkaConsumerFactory = {
     val consumerConnProps = new Properties()
-    consumerConnProps.setProperty("zookeeper.connect", "127.0.0.1:2181/kafka/preprod6" )
+    consumerConnProps.setProperty("zookeeper.connect", ConnektConfig.getString("receptors.connections.kafka.consumerConnProps.zookeeper.connect").getOrElse("127.0.0.1:2181/kafka/preprod6")  )
     consumerConnProps.setProperty("group.id", "1")
     consumerConnProps.setProperty("zookeeper.session.timeout.ms", "5000")
     consumerConnProps.setProperty("zookeeper.sync.time.ms", "200")
@@ -35,7 +36,7 @@ class KafkaConnectionHelperTest extends ConnektUTSpec with KafkaConnectionHelper
 
   def createKafkaProducerFactory = {
     val producerConnProps = new Properties()
-    producerConnProps.setProperty("metadata.broker.list", "127.0.0.1:9092")
+    producerConnProps.setProperty("metadata.broker.list",ConnektConfig.getString("receptors.connections.kafka.producerConnProps.metadata.broker.list").getOrElse( "127.0.0.1:9092"))
     producerConnProps.setProperty("serializer.class", "kafka.serializer.StringEncoder")
     producerConnProps.setProperty("request.required.acks", "0")
 
