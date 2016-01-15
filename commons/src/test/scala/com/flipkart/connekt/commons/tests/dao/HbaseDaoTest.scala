@@ -28,7 +28,7 @@ class HbaseDaoTest extends ConnektUTSpec with HbaseDao {
 
   def getHBaseConnHelper = {
     val hConfProps = new Properties()
-    hConfProps.setProperty("hbase.zookeeper.quorum", ConnektConfig.getString("hbase.zookeeper.quorum").getOrElse("hadoop1.stage.ch.flipkart.com") )
+    hConfProps.setProperty("hbase.zookeeper.quorum", ConnektConfig.getString("hbase.zookeeper.quorum").getOrElse("127.0.0.1") )
     hConfProps.setProperty("hbase.zookeeper.property.clientPort", "2181")
 
     val hConfig = ConfigFactory.parseProperties(hConfProps)
