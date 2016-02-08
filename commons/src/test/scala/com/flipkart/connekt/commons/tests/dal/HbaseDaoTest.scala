@@ -16,7 +16,7 @@ import org.apache.commons.codec.CharEncoding
  * @author durga.s
  * @version 11/18/15
  */
-class HbaseDaoTest extends ConnektUTSpec with HbaseDao {
+class HbaseDaoTest extends ConnektUTSpec with HbaseDao  {
 
   var hConnectionHelper = getHBaseConnHelper
   val tblName = "fk-connekt-proto"
@@ -28,7 +28,8 @@ class HbaseDaoTest extends ConnektUTSpec with HbaseDao {
   }
 
   def getHBaseConnHelper = {
-    ConnektConfig(configHost = "config-service.nm.flipkart.com", configPort = 80, configAppVersion = 1)()
+
+    ConnektConfig(configHost = "config-service.nm.flipkart.com", configPort = 80)()
     val hConfProps = new Properties()
     hConfProps.setProperty("hbase.zookeeper.quorum", ConnektConfig.getString("hbase.zookeeper.quorum").getOrElse("127.0.0.1") )
     hConfProps.setProperty("hbase.zookeeper.property.clientPort", "2181")
