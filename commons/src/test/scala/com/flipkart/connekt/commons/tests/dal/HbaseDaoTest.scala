@@ -37,7 +37,7 @@ class HbaseDaoTest extends ConnektUTSpec with HbaseDao {
 
     ConnektConfig(configServiceHost, configServicePort)(Seq("fk-connekt-root", "fk-connekt-nm", "fk-connekt-receptors", "fk-connekt-busybees", "fk-connekt-busybees-akka"))
     val hConfProps = new Properties()
-    hConfProps.setProperty("hbase.zookeeper.quorum", "fk-connekt-hbase-jn-firestorm-397105,fk-connekt-hbase-jn-firestorm-397106,fk-connekt-hbase-jn-firestorm-397107")
+    hConfProps.setProperty("hbase.zookeeper.quorum", "127.0.0.1,127.0.0.1,127.0.0.1")
     hConfProps.setProperty("hbase.zookeeper.property.clientPort", "2181")
     hConfProps.setProperty("zookeeper.znode.parent", "/hbase-unsecure")
 
