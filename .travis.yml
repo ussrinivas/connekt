@@ -1,0 +1,15 @@
+language: scala
+scala:
+   - 2.11.7
+   
+cache:
+  directories:
+  - "$HOME/.ivy2"
+  - "$HOME/.sbt"
+  - "$HOME/downloads"
+
+notifications:
+  email:
+    recipients:
+      - connekt-dev@flipkart.com
+      - kinshuk.bairagi@flipkart.com
