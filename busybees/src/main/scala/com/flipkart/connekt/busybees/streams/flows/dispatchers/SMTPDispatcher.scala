@@ -17,7 +17,7 @@ import javax.mail._
 import javax.mail.internet.{MimeBodyPart, MimeMessage, MimeMultipart}
 
 import akka.stream.scaladsl.Flow
-import com.flipkart.connekt.busybees.models.EmailRequestTracker
+import com.flipkart.connekt.busybees.models.{EmailRequestTracker, EmailResponse}
 import com.flipkart.connekt.commons.entities.SimpleCredential
 import com.flipkart.connekt.commons.iomodels.EmailPayloadEnvelope
 
@@ -30,7 +30,7 @@ class SMTPDispatcher(host: String, credentials: SimpleCredential, parallelism: I
 
     Flow[(EmailPayloadEnvelope, EmailRequestTracker)].mapAsyncUnordered(parallelism) {
       case (request, userContext) ⇒
-        val result = Promise[(Try[Any], EmailRequestTracker)]()
+        val result = Promise[(Try[EmailResponse], EmailRequestTracker)]()
 
         Future {
           val props = new Properties()
@@ -68,6 +68,8 @@ class SMTPDispatcher(host: String, credentials: SimpleCredential, parallelism: I
           msg.setContent(multiPart)
 
           Transport.send(msg)
+
+          EmailResponse(msg.getMessageID, 0)
 
         }(ec).onComplete(responseTry ⇒ result.success(responseTry -> userContext))(ec)
 

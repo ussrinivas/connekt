@@ -62,7 +62,7 @@ class SMTPEmailTopologyTest extends TopologyUTSpec {
       .via(new EmailChannelFormatter(64)(system.dispatchers.lookup("akka.actor.io-dispatcher")).flow)
       .via(new SMTPDispatcher("10.33.102.104",credentials,10).flow)
       //      .via(new GCMResponseHandler().flow)
-      .runWith(Sink.ignore)
+      .runWith(Sink.foreach(println))
 
     val response = Await.result(result, 80.seconds)
 
