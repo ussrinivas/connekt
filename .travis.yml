@@ -13,3 +13,15 @@ notifications:
     recipients:
       - connekt-dev@flipkart.com
       - kinshuk.bairagi@flipkart.com
+env:
+  global:
+    - REPO="Flipkart/connekt"
+    - CI_HOME=`pwd`
+    - PROJECT_HOME=`pwd`/$REPO
+
+before_install:
+  - cd $CI_HOME
+  - git clone --depth=10 --branch=hbase1.2 https://github.com/kingster/chronosq chronosq
+  - cd chronosq
+  - mvn install -DskipTests=true -B -V
+  - cd $PROJECT_HOME
