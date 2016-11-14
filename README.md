@@ -1,5 +1,6 @@
-Connekt Platform
-========================
+
+Connekt Platform [![Build Status](https://travis-ci.org/Flipkart/connekt.svg?branch=master)](https://travis-ci.org/Flipkart/connekt.svg?branch=master)
+=========
 
 Communications Platform
 
