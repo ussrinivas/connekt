@@ -12,12 +12,11 @@
  */
 package com.flipkart.connekt.commons.tests.sync
 
-import java.util.concurrent.{TimeUnit, CountDownLatch}
+import java.util.concurrent.{CountDownLatch, TimeUnit}
 
-import com.flipkart.connekt.commons.factories.{LogFile, ConnektLogger}
-import com.flipkart.connekt.commons.sync.SyncType
+import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.sync.SyncType.SyncType
-import com.flipkart.connekt.commons.sync.{SyncMessage, SyncManager, SyncType, SyncDelegate}
+import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncMessage, SyncType}
 import com.flipkart.connekt.commons.tests.ConnektUTSpec
 
 class SyncManagerTest extends ConnektUTSpec with SyncDelegate {
