@@ -19,6 +19,7 @@ import com.flipkart.connekt.commons.dao.HbaseDao
 import com.flipkart.connekt.commons.factories.HTableFactory
 import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.tests.ConnektUTSpec
+import com.flipkart.connekt.commons.utils.ConfigUtils
 import com.typesafe.config.ConfigFactory
 import org.apache.commons.codec.CharEncoding
 
@@ -35,9 +36,10 @@ class HbaseDaoTest extends ConnektUTSpec with HbaseDao {
 
   def getHBaseConnHelper = {
 
-    ConnektConfig(configServiceHost, configServicePort)(Seq("fk-connekt-root", "fk-connekt-nm", "fk-connekt-receptors", "fk-connekt-busybees", "fk-connekt-busybees-akka"))
+    val applicationConfigFile = ConfigUtils.getSystemProperty("receptors.appConfigurationFile").getOrElse("receptors-config.yaml")
+    ConnektConfig(configServiceHost, configServicePort, apiVersion)(Seq("fk-connekt-root", "fk-connekt-nm", "fk-connekt-receptors", "fk-connekt-busybees", "fk-connekt-busybees-akka"))(applicationConfigFile)
     val hConfProps = new Properties()
-    hConfProps.setProperty("hbase.zookeeper.quorum", "127.0.0.1,127.0.0.1,127.0.0.1")
+    hConfProps.setProperty("hbase.zookeeper.quorum", "127.0.0.1")
     hConfProps.setProperty("hbase.zookeeper.property.clientPort", "2181")
     hConfProps.setProperty("zookeeper.znode.parent", "/hbase-unsecure")
 
