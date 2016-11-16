@@ -13,12 +13,16 @@
 package com.flipkart.connekt.busybees.streams.flows
 
 import com.flipkart.connekt.commons.iomodels.{EmailPayloadEnvelope, ProviderEnvelope}
+import com.flipkart.connekt.commons.services.ConnektConfig
 
+import scala.collection.JavaConverters._
 import scala.util.Random
 
 class ChooseProvider(channel: String) extends MapFlowStage[ProviderEnvelope, ProviderEnvelope] {
 
-  lazy val availableProviders = Map("gupshup" -> 60, "sinfini" -> 20, "unicel" -> 10)
+  lazy val availableProviders = ConnektConfig.getList[java.util.HashMap[String, String]](s"$channel.providers.share").map(_.asScala).map(p => {
+    p("name").toString -> p("value").toString.toInt
+  }).toMap
 
   override val map: (ProviderEnvelope) => List[ProviderEnvelope] = payload => {
 
