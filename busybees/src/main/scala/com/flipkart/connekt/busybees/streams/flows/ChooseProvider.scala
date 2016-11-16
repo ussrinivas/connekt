@@ -13,41 +13,43 @@
 package com.flipkart.connekt.busybees.streams.flows
 
 import com.flipkart.connekt.commons.iomodels.{EmailPayloadEnvelope, ProviderEnvelope}
-import com.flipkart.connekt.commons.services.ConnektConfig
 
-import scala.collection.JavaConverters._
 import scala.util.Random
 
-class ChooseProvider(channel:String) extends  MapFlowStage[ProviderEnvelope,ProviderEnvelope] {
+class ChooseProvider(channel: String) extends MapFlowStage[ProviderEnvelope, ProviderEnvelope] {
+
+  lazy val availableProviders = Map("gupshup" -> 60, "sinfini" -> 20, "unicel" -> 10)
+
   override val map: (ProviderEnvelope) => List[ProviderEnvelope] = payload => {
 
-    val selectedProvider = s"$channel:dummy"
+    val selectedProvider = pickProvider(payload.provider.toList)
 
     val out = payload match {
-      case email:EmailPayloadEnvelope =>
-        email.copy( provider = email.provider :+ selectedProvider)
-      case sms : _ =>
+      case email: EmailPayloadEnvelope =>
+        email.copy(provider = email.provider :+ selectedProvider)
+      case sms: _ =>
         payload
     }
 
     List(out)
+
   }
 
-  def chooseSmsProvider(platform: String): String = {
+  def pickProvider(alreadyTriedProviders: List[String]): String = {
 
-    val smsProviders = ConnektConfig.getList[java.util.HashMap[String, String]]("sms.providers.share").map(_.asScala).map(p => {
-      p("name").toString -> p("value").toString.toInt
-    }).toMap
+    val remainingProviders = availableProviders.filterKeys(!alreadyTriedProviders.contains(_))
 
-    val maxValue = smsProviders.foldLeft(0)(_ + _._2)
+    val maxValue = remainingProviders.foldLeft(0)(_ + _._2)
     val randomGenerator = new Random()
     val randomNumber = randomGenerator.nextInt(maxValue)
     var counter = 0
 
-    smsProviders.keySet.toList.sorted.map(key => {
-      val compareValue = smsProviders(key) + counter
-      counter += smsProviders(key)
+    remainingProviders.keySet.toList.sorted.map(key => {
+      val compareValue = remainingProviders(key) + counter
+      counter += remainingProviders(key)
       key -> compareValue
-    }).find(_._2 > randomNumber).getOrElse(smsProviders.head)._1
+    }).find(_._2 > randomNumber).getOrElse(remainingProviders.head)._1
+
   }
+
 }
