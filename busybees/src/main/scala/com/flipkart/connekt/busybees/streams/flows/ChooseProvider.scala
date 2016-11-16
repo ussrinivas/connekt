@@ -21,13 +21,13 @@ import com.flipkart.connekt.commons.utils.StringUtils
 import scala.collection.JavaConverters._
 import scala.util.Random
 
-class ChooseProvider(channel: Channel) extends MapFlowStage[ProviderEnvelope, ProviderEnvelope] {
+class ChooseProvider[T <: ProviderEnvelope](channel: Channel) extends MapFlowStage[T, T] {
 
   lazy val availableProviders = ConnektConfig.getList[java.util.HashMap[String, String]](s"$channel.providers.share").map(_.asScala).map(p => {
     p("name").toString -> p("value").toString.toInt
   }).toMap
 
-  override val map: (ProviderEnvelope) => List[ProviderEnvelope] = payload => {
+  override val map: (T) => List[T] = payload => {
     val selectedProvider = pickProvider(payload.provider.toList, channel, payload.clientId)
     val out = payload match {
       case email: EmailPayloadEnvelope =>
@@ -35,7 +35,7 @@ class ChooseProvider(channel: Channel) extends MapFlowStage[ProviderEnvelope, Pr
       case _ =>
         payload
     }
-    List(out)
+    List(out.asInstanceOf[T])
   }
 
   def pickProvider(alreadyTriedProviders: List[String], channel: Channel, clientId: String): String = {

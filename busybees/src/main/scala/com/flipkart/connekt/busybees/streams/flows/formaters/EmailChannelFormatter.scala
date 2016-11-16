@@ -26,9 +26,9 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
 
-class EmailChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecutor) extends NIOFlow[ConnektRequest, (EmailPayloadEnvelope,EmailRequestTracker)](parallelism)(ec) {
+class EmailChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecutor) extends NIOFlow[ConnektRequest, EmailPayloadEnvelope](parallelism)(ec) {
 
-  override def map: ConnektRequest => List[(EmailPayloadEnvelope,EmailRequestTracker)] = message => {
+  override def map: ConnektRequest => List[EmailPayloadEnvelope] = message => {
 
     try {
       ConnektLogger(LogFile.PROCESSORS).info(s"EmailChannelFormatter received message: ${message.id}")
@@ -50,8 +50,7 @@ class EmailChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecu
           from = EmailAddress("Connekt", "connekt@flipkart.com"),
           replyTo = EmailAddress("Connekt", "connekt@flipkart.com")
         )
-        List(EmailPayloadEnvelope( messageId = message.id, appName = emailInfo.appName, contextId = message.contextId.orEmpty, clientId = message.clientId, payload = payload, meta = message.meta) ->
-          EmailRequestTracker ( messageId = message.id , clientId = message.clientId, to= emailInfo.to.map(_.address), cc = cc.map(_.address), appName =  emailInfo.appName, contextId = message.contextId.orEmpty, meta = message.meta) )
+        List(EmailPayloadEnvelope( messageId = message.id, appName = emailInfo.appName, contextId = message.contextId.orEmpty, clientId = message.clientId, payload = payload, meta = message.meta) )
       } else if (emailInfo.to.nonEmpty) {
         ConnektLogger(LogFile.PROCESSORS).warn(s"EmailChannelFormatter dropping ttl-expired message: ${message.id}")
         //TODO: Fix PNCallbackEvent
