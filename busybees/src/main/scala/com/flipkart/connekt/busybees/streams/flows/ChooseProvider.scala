@@ -1,14 +1,26 @@
+/*
+ *         -╥⌐⌐⌐⌐            -⌐⌐⌐⌐-
+ *      ≡╢░░░░⌐\░░░φ     ╓╝░░░░⌐░░░░╪╕
+ *     ╣╬░░`    `░░░╢┘ φ▒╣╬╝╜     ░░╢╣Q
+ *    ║╣╬░⌐        ` ╤▒▒▒Å`        ║╢╬╣
+ *    ╚╣╬░⌐        ╔▒▒▒▒`«╕        ╢╢╣▒
+ *     ╫╬░░╖    .░ ╙╨╨  ╣╣╬░φ    ╓φ░╢╢Å
+ *      ╙╢░░░░⌐"░░░╜     ╙Å░░░░⌐░░░░╝`
+ *        ``˚¬ ⌐              ˚˚⌐´
+ *
+ *      Copyright © 2016 Flipkart.com
+ */
 package com.flipkart.connekt.busybees.streams.flows
 
-import com.flipkart.connekt.commons.iomodels.PayloadEnvelope
+import com.flipkart.connekt.commons.iomodels.ProviderEnvelope
 import com.flipkart.connekt.commons.services.ConnektConfig
 
 import collection.JavaConverters._
 import collection.JavaConverters._
 import scala.util.Random
 
-class ChooseProvider(channel:String) extends  MapFlowStage[PayloadEnvelope,PayloadEnvelope] {
-  override val map: (PayloadEnvelope) => List[PayloadEnvelope] = payload => {
+class ChooseProvider(channel:String) extends  MapFlowStage[ProviderEnvelope,ProviderEnvelope] {
+  override val map: (ProviderEnvelope) => List[ProviderEnvelope] = payload => {
 
     val selectedProvider = s"$channel:dummy"
     payload.provider += selectedProvider

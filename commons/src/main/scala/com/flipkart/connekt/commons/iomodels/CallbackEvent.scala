@@ -24,6 +24,7 @@ import com.flipkart.connekt.commons.entities.bigfoot.PublishSupport
 )
 @JsonSubTypes(Array(
   new Type(value = classOf[PNCallbackEvent], name = "PN"),
+  new Type(value = classOf[EmailCallbackEvent], name = "EMAIL"),
   new Type(value = classOf[DeviceCallbackEvent], name = "DEVICE")
 ))
 abstract class CallbackEvent extends PublishSupport {

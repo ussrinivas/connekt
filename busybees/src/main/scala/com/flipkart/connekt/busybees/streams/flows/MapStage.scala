@@ -31,6 +31,7 @@ private[busybees] abstract class MapFlowStage[In, Out] {
   val map: In => List[Out]
 
   def flow = Flow[In].mapConcat(map).named(stageName)
+
 }
 
 private[busybees] abstract class MapAsyncFlowStage[In, Out](parallelism: Int) {
