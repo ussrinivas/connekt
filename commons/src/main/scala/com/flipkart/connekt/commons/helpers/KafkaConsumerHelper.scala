@@ -102,7 +102,7 @@ class KafkaConsumerHelper(val consumerFactoryConf: Config, globalContextConf: Co
         val ownerPath = s"${topicDirs.consumerOwnerDir}/$partitionId"
         val owner = ZkUtils.readDataMaybeNull(zkClient, ownerPath)._1.getOrElse("No owner")
         val checkPoint = ZkUtils.readDataMaybeNull(zkClient, zkPath)._1.map(_.toLong).getOrElse(0L)
-        partitionId -> (checkPoint, owner)
+        partitionId -> Tuple2(checkPoint, owner)
       })
     }).toMap
   }
