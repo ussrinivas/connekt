@@ -63,7 +63,7 @@ class ClientTopology(topic: String, retryLimit: Int, kafkaConsumerConnConf: Conf
 
     eventFilterStencil match {
       case None => true
-      case Some(stencil) => stencilService.materialize(stencil, data.getJson.getObj[ObjectNode]).asInstanceOf[Boolean]
+      case Some(stencil) => stencilService.materialize(stencil, data.getJsonNode).asInstanceOf[Boolean]
     }
   }
 
@@ -71,10 +71,10 @@ class ClientTopology(topic: String, retryLimit: Int, kafkaConsumerConnConf: Conf
 
     SubscriptionEvent(header = eventHeaderTransformer match {
       case None => null
-      case Some(stencil) => stencilService.materialize(stencil, event.getJson.getObj[ObjectNode]).asInstanceOf[java.util.HashMap[String, String]].asScala.toMap
+      case Some(stencil) => stencilService.materialize(stencil, event.getJsonNode).asInstanceOf[java.util.HashMap[String, String]].asScala.toMap
     }, payload = eventPayloadTransformer match {
       case None => event.getJson
-      case Some(stencil) => stencilService.materialize(stencil, event.getJson.getObj[ObjectNode])
+      case Some(stencil) => stencilService.materialize(stencil, event.getJsonNode)
     })
   }
 }
