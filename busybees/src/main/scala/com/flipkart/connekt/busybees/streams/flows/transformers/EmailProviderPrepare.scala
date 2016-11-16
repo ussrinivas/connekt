@@ -20,6 +20,11 @@ import com.flipkart.connekt.commons.iomodels.EmailPayloadEnvelope
 
 class EmailProviderPrepare extends MapFlowStage[EmailPayloadEnvelope, (HttpRequest, EmailRequestTracker)] {
   override val map: (EmailPayloadEnvelope) => List[(HttpRequest, EmailRequestTracker)] = emailPayloadEnvelope => {
-   List.empty
+
+    val selectedProvider = emailPayloadEnvelope.provider.last
+
+
+
+    List.empty
   }
 }

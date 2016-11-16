@@ -12,21 +12,25 @@
  */
 package com.flipkart.connekt.busybees.streams.flows
 
-import com.flipkart.connekt.commons.iomodels.ProviderEnvelope
+import com.flipkart.connekt.commons.iomodels.{EmailPayloadEnvelope, ProviderEnvelope}
 import com.flipkart.connekt.commons.services.ConnektConfig
 
-import collection.JavaConverters._
-import collection.JavaConverters._
+import scala.collection.JavaConverters._
 import scala.util.Random
 
 class ChooseProvider(channel:String) extends  MapFlowStage[ProviderEnvelope,ProviderEnvelope] {
   override val map: (ProviderEnvelope) => List[ProviderEnvelope] = payload => {
 
     val selectedProvider = s"$channel:dummy"
-    payload.provider += selectedProvider
 
+    val out = payload match {
+      case email:EmailPayloadEnvelope =>
+        email.copy( provider = email.provider :+ selectedProvider)
+      case sms : _ =>
+        payload
+    }
 
-    List(payload)
+    List(out)
   }
 
   def chooseSmsProvider(platform: String): String = {
