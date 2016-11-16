@@ -18,6 +18,10 @@ notifications:
 env:
   global:
     - CI_HOME=`pwd`
+  
+branches:
+  only:
+    - master
 
 before_install:
   - csq=`mktemp -d -t csq.XXX` 
