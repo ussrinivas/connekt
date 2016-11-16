@@ -15,7 +15,6 @@ package com.flipkart.connekt.commons.dao
 import com.couchbase.client.java.Bucket
 import com.flipkart.connekt.commons.connections.TConnectionProvider
 import com.flipkart.connekt.commons.factories.{HTableFactory, MySQLFactory, THTableFactory, TMySQLFactory}
-import com.flipkart.phantom.client.sockets.{PhantomClientSocket, PhantomSocketFactory}
 import com.typesafe.config.Config
 
 object DaoFactory {
