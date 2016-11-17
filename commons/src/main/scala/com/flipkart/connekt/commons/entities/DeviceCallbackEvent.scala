@@ -24,6 +24,8 @@ sealed case class DeviceCallbackEvent(deviceId: String, userId: String, osName: 
 
   override def messageId: String = throw new RuntimeException(s"`messageId` undefined for DeviceCallbackEvent")
 
+  override def eventType: String = throw new RuntimeException(s"`eventType` undefined for DeviceCallbackEvent")
+
   override def eventId: String = throw new RuntimeException(s"`eventId` undefined for DeviceCallbackEvent")
 
   override def namespace: String = "fkint/mp/connekt/DeviceDetails"

@@ -15,14 +15,14 @@ package com.flipkart.connekt.commons.helpers
 import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.ServiceFactory
-import com.flipkart.connekt.commons.iomodels.PNCallbackEvent
+import com.flipkart.connekt.commons.iomodels.CallbackEvent
 import com.flipkart.connekt.commons.metrics.Instrumented
 
 object CallbackRecorder extends Instrumented {
 
-  implicit def callbackRecorder(event: PNCallbackEvent): PNListCallbackRecorder = new PNListCallbackRecorder(List(event))
+  implicit def callbackRecorder(event: CallbackEvent): ListCallbackRecorder = new ListCallbackRecorder(List(event))
 
-  implicit class PNListCallbackRecorder(val events: Iterable[PNCallbackEvent]) {
+  implicit class ListCallbackRecorder(val events: Iterable[CallbackEvent]) {
 
     def persist = Try_ {
 

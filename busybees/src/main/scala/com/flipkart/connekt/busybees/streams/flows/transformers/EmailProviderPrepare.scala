@@ -72,14 +72,14 @@ class EmailProviderPrepare extends MapFlowStage[EmailPayloadEnvelope, (HttpReque
         |       mail_one['to'].push([email: eId.get('address').asText(), name: eId.get('name').asText()])
         |    }
         |
-        |    if(data.get('cc')){
+        |    if(data.get('cc').size() > 0){
         |       mail_one['cc'] = []
         |       data.get('cc').each { eId ->
-        |           mail_one['cc'].push([email: eId.get('address'), name: eId.get('name')])
+        |           mail_one['cc'].push([email: eId.get('address').asText(), name: eId.get('name').asText()])
         |       }
         |    }
         |
-        |    if(data.get('bcc')){
+        |    if(data.get('bcc').size() > 0){
         |       mail_one['bcc'] = []
         |       data.get('bcc').each { eId ->
         |           mail_one['bcc'].push([email: eId.get('address').asText(), name: eId.get('name').asText()])

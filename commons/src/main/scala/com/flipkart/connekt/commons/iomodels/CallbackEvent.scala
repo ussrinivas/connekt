@@ -33,4 +33,6 @@ abstract class CallbackEvent extends PublishSupport {
   def messageId: String
 
   def eventId: String
+
+  def eventType:String
 }

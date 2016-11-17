@@ -42,12 +42,12 @@ class EmailProviderTopologyTest extends TopologyUTSpec {
                       |		"subject": "Hello Kinshuk. GoodLuck!",
                       |		"text": "Text",
                       |    "html" : "<b>html</b>"
-                      |
                       |	},
                       |	"channelInfo" : {
                       |	    "type" : "EMAIL",
                       |     "appName" : "phonepe",
-                      |     "to" : [{ "name": "Kinshuk", "address": "kinshuk1989@gmail.com" }]
+                      |     "to" : [{ "name": "Kinshuk", "address": "kinshuk1989@gmail.com" }],
+                      |     "cc" : [{ "name": "Aman", "address": "aman.shrivastava@flipkart.com" }]
                       |	},
                       |  "clientId" : "123456",
                       |	"meta": {}
