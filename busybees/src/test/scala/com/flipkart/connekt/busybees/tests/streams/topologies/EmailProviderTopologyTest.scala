@@ -16,6 +16,7 @@ import akka.http.scaladsl.Http
 import akka.stream.scaladsl.{Sink, Source}
 import com.flipkart.connekt.busybees.models.EmailRequestTracker
 import com.flipkart.connekt.busybees.streams.flows.formaters.EmailChannelFormatter
+import com.flipkart.connekt.busybees.streams.flows.reponsehandlers.EmailResponseHandler
 import com.flipkart.connekt.busybees.streams.flows.transformers.{EmailProviderPrepare, EmailProviderResponseFormatter}
 import com.flipkart.connekt.busybees.streams.flows.{ChooseProvider, RenderFlow}
 import com.flipkart.connekt.busybees.tests.streams.TopologyUTSpec
@@ -46,7 +47,7 @@ class EmailProviderTopologyTest extends TopologyUTSpec {
                       |	"channelInfo" : {
                       |	    "type" : "EMAIL",
                       |     "appName" : "phonepe",
-                      |     "to" : [{ "name": "Kinshuk", "address": "kinshuk1989@gmail.com" }],
+                      |     "to" : [{ "name": "Kinshuk", "address": "kinshuk1989@gmail.com" }, { "name": "Kinshuk", "address": "kinshuk.bairagi@gmail.com" }],
                       |     "cc" : [{ "name": "Aman", "address": "aman.shrivastava@flipkart.com" }]
                       |	},
                       |  "clientId" : "123456",
@@ -62,6 +63,7 @@ class EmailProviderTopologyTest extends TopologyUTSpec {
       .via(new EmailProviderPrepare().flow)
       .via(poolClientFlow)
       .via(new EmailProviderResponseFormatter().flow)
+      .via(new EmailResponseHandler().flow)
       .runWith(Sink.foreach(println))
 
     val response = Await.result(result, 80.seconds)

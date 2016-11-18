@@ -68,7 +68,7 @@ class CommonsBaseTest extends ConnektUTSpec {
     DaoFactory.initReportingDao(DaoFactory.getCouchbaseBucket("StatsReporting"))
 
     ServiceFactory.initPNMessageService(DaoFactory.getPNRequestDao, DaoFactory.getUserConfigurationDao, getKafkaProducerHelper, getKafkaConsumerConf,null)
-    ServiceFactory.initCallbackService(null, DaoFactory.getPNCallbackDao, DaoFactory.getPNRequestDao, null,getKafkaProducerHelper)
+    ServiceFactory.initCallbackService(emailCallbackDao = DaoFactory.getEmailCallbackDao, pnCallbackDao = DaoFactory.getPNCallbackDao, pnRequestInfoDao = DaoFactory.getPNRequestDao, emailRequestDao = DaoFactory.getEmailRequestDao, queueProducerHelper = getKafkaProducerHelper)
 
     ServiceFactory.initAuthorisationService(DaoFactory.getPrivDao, DaoFactory.getUserInfoDao)
     ServiceFactory.initStorageService(DaoFactory.getKeyChainDao)

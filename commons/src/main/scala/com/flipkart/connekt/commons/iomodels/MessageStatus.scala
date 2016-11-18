@@ -61,6 +61,16 @@ object MessageStatus {
     val InvalidToken = Value("openweb_invalid_token")
   }
 
+  object EmailResponseStatus extends Enumeration {
+    type EmailResponseStatus = Value
+
+    val Received = Value("email_received")
+    val Error = Value("email_error")
+    val InternalError = Value("email_server_error")
+    val AuthError = Value("email_auth_error")
+  }
+
+
   object InternalStatus extends Enumeration {
     type InternalStatus = Value
 

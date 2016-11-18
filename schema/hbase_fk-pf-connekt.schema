@@ -5,6 +5,7 @@ hbase org.apache.hadoop.hbase.util.RegionSplitter 'connekt-registry' HexStringSp
 hbase org.apache.hadoop.hbase.util.RegionSplitter 'connekt-registry-user-index' HexStringSplit -c 32 -f d
 hbase org.apache.hadoop.hbase.util.RegionSplitter 'connekt-registry-token-index' HexStringSplit -c 32 -f d
 hbase org.apache.hadoop.hbase.util.RegionSplitter 'fk-connekt-events' HexStringSplit -c 64 -f e
+hbase org.apache.hadoop.hbase.util.RegionSplitter 'fk-connekt-email-events' HexStringSplit -c 64 -f e
 hbase org.apache.hadoop.hbase.util.RegionSplitter 'fk-connekt-pn-info' HexStringSplit -c 64 -f r:t:c
 
 $> hbase shell

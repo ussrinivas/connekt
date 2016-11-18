@@ -81,8 +81,7 @@ object BusyBeesBoot extends BaseApp {
       val kafkaProducerConnConf = ConnektConfig.getConfig("connections.kafka.producerConnProps").getOrElse(ConfigFactory.empty())
       val kafkaProducerPoolConf = ConnektConfig.getConfig("connections.kafka.producerPool").getOrElse(ConfigFactory.empty())
       val kafkaProducerHelper = KafkaProducerHelper.init(kafkaProducerConnConf, kafkaProducerPoolConf)
-      ServiceFactory.initCallbackService(null, DaoFactory.getPNCallbackDao, DaoFactory.getPNRequestDao, null,kafkaProducerHelper)
-
+      ServiceFactory.initCallbackService(emailCallbackDao = DaoFactory.getEmailCallbackDao, pnCallbackDao = DaoFactory.getPNCallbackDao, pnRequestInfoDao = DaoFactory.getPNRequestDao, emailRequestDao = DaoFactory.getEmailRequestDao, queueProducerHelper = kafkaProducerHelper)
       ServiceFactory.initPNMessageService(DaoFactory.getPNRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf, null)
 
       ServiceFactory.initStatsReportingService(DaoFactory.getStatsReportingDao)

@@ -38,7 +38,9 @@ object DaoFactory {
 
     daoMap += DaoType.DEVICE_DETAILS -> DeviceDetailsDao("connekt-registry", hTableFactory)
     daoMap += DaoType.PN_REQUEST_INFO -> PNRequestDao(tableName = "fk-connekt-pn-info", hTableFactory = hTableFactory)
+    daoMap += DaoType.EMAIL_REQUEST_INFO -> new EmailRequestDao(tableName = "fk-connekt-email-info", hTableFactory = hTableFactory)
     daoMap += DaoType.CALLBACK_PN -> PNCallbackDao("fk-connekt-events", hTableFactory)
+    daoMap += DaoType.CALLBACK_EMAIL -> new EmailCallbackDao("fk-connekt-email-events", hTableFactory)
   }
 
   def getHTableFactory = hTableFactory
@@ -98,6 +100,8 @@ object DaoFactory {
 
   def getEmailCallbackDao: EmailCallbackDao = daoMap(DaoType.CALLBACK_EMAIL).asInstanceOf[EmailCallbackDao]
 
+  def getEmailRequestDao: EmailRequestDao = daoMap(DaoType.EMAIL_REQUEST_INFO).asInstanceOf[EmailRequestDao]
+
   def getPrivDao: PrivDao = daoMap(DaoType.PRIVILEGE).asInstanceOf[PrivDao]
 
   def getUserInfoDao: TUserInfo = daoMap(DaoType.USER_INFO).asInstanceOf[UserInfoDao]
@@ -117,6 +121,7 @@ object DaoType extends Enumeration {
   val DEVICE_DETAILS,
   REQUEST_META,
   PN_REQUEST_INFO,
+  EMAIL_REQUEST_INFO,
   CALLBACK_EMAIL,
   CALLBACK_PN,
   PRIVILEGE,
