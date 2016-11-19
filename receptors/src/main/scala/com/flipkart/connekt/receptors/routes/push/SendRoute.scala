@@ -119,7 +119,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                           Future {
                             profile(s"sendUserPush.$appPlatform.$appName") {
                               val request = r.copy(clientId = user.userId, channel = "push", meta = {
-                                Option(r.meta).getOrElse(Map.empty[String,String]) ++ headers
+                                Option(r.meta).getOrElse(Map.empty[String, String]) ++ headers
                               })
                               request.validate
 
@@ -171,7 +171,61 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                   }
                 }
             }
-          }
+          } ~
+            pathPrefix("send" / "sms") {
+              authorize(user, "SEND_SMS") {
+                post {
+                  getXHeaders { headers =>
+                    entity(as[ConnektRequest]) { r =>
+                      complete {
+                        Future {
+                          profile("sms") {
+                            val request = r.copy(clientId = user.userId, channel = "sms", meta = {
+                              Option(r.meta).getOrElse(Map.empty[String, String]) ++ headers
+                            })
+                            request.validate
+
+                            ConnektLogger(LogFile.SERVICE).debug(s"Received PN request with payload: ${request.toString}")
+
+                            val smsRequestInfo = request.channelInfo.asInstanceOf[SmsRequestInfo]
+
+                            if (smsRequestInfo.receivers != null && smsRequestInfo.receivers.nonEmpty) {
+
+                              val groupedPlatformRequests = ListBuffer[ConnektRequest]()
+                              groupedPlatformRequests += request.copy(channelInfo = smsRequestInfo)
+
+                              val success = scala.collection.mutable.Map[String, Set[String]]()
+                              val failure = ListBuffer[String]()
+
+                              if (groupedPlatformRequests.nonEmpty) {
+                                val queueName = ServiceFactory.getSMSMessageService.getRequestBucket(request, user)
+                                groupedPlatformRequests.foreach { p =>
+                                  /* enqueue multiple requests into kafka */
+                                  ServiceFactory.getSMSMessageService.saveRequest(p, queueName, isCrucial = true) match {
+                                    case Success(id) =>
+                                      val deviceIds = p.channelInfo.asInstanceOf[SmsRequestInfo].receivers
+                                      success += id -> deviceIds
+                                    case Failure(t) =>
+                                      val deviceIds = p.channelInfo.asInstanceOf[SmsRequestInfo].receivers
+                                      failure ++= deviceIds
+                                  }
+                                }
+                                GenericResponse(StatusCodes.Created.intValue, null, SendResponse("PN Send Request Received", success.toMap, failure.toList)).respond
+                              } else {
+                                GenericResponse(StatusCodes.BadRequest.intValue, null, SendResponse("No valid devices found", success.toMap, failure.toList)).respond
+                              }
+                            } else {
+                              ConnektLogger(LogFile.SERVICE).error(s"Request Validation Failed, $request ")
+                              GenericResponse(StatusCodes.BadRequest.intValue, null, Response("Request Validation Failed, Please ensure mandatory field values.", null)).respond
+                            }
+                          }
+                        }(ioDispatcher)
+                      }
+                    }
+                  }
+                }
+              }
+            }
         }
     }
 }

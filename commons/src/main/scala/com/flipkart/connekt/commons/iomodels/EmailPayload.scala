@@ -18,6 +18,8 @@ abstract class ProviderEnvelope {
   def provider: Iterable[String]
 
   def clientId: String
+
+  def appName : String
 }
 
 case class EmailPayloadEnvelope(messageId: String, appName: String, contextId: String, clientId: String, payload: EmailPayload, meta: Map[String, Any], provider: Seq[String] = Seq()) extends ProviderEnvelope

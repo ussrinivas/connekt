@@ -30,6 +30,10 @@ object ServiceFactory {
     serviceCache += ServiceType.CALLBACK -> new CallbackService(pnCallbackDao, emailCallbackDao, pnRequestInfoDao, emailRequestDao,queueProducerHelper)
   }
 
+  def initSMSMessageService(requestDao: SmsRequestDao, userConfiguration: TUserConfiguration, queueProducerHelper: KafkaProducerHelper, kafkaConsumerConfig: Config, schedulerService: SchedulerService) = {
+    serviceCache += ServiceType.SMS -> new MessageService(requestDao, userConfiguration, queueProducerHelper, kafkaConsumerConfig, schedulerService)
+  }
+
   def initAuthorisationService(priv: PrivDao, userInfo: TUserInfo) = {
     serviceCache += ServiceType.AUTHORISATION -> new AuthorisationService(priv, userInfo)
     serviceCache += ServiceType.USER_INFO -> new UserInfoService(userInfo)
@@ -52,15 +56,21 @@ object ServiceFactory {
 
   def initStencilService(dao: TStencilDao) = serviceCache += ServiceType.STENCIL -> new StencilService(dao)
 
+  def initAppLevelConfigService(dao: TAppLevelConfiguration) = serviceCache += ServiceType.APP_LEVEL_CONFIG -> new AppLevelConfigService(dao)
+
   def getSchedulerService = serviceCache(ServiceType.SCHEDULER).asInstanceOf[SchedulerService]
 
   def getPNMessageService = serviceCache(ServiceType.PN_MESSAGE).asInstanceOf[TMessageService]
+
+  def getSMSMessageService = serviceCache(ServiceType.SMS).asInstanceOf[TMessageService]
 
   def getCallbackService = serviceCache(ServiceType.CALLBACK).asInstanceOf[TCallbackService]
 
   def getAuthorisationService = serviceCache(ServiceType.AUTHORISATION).asInstanceOf[TAuthorisationService]
 
-  def getUserInfoService  = serviceCache(ServiceType.USER_INFO).asInstanceOf[UserInfoService]
+  def getAppLevelConfigService = serviceCache(ServiceType.APP_LEVEL_CONFIG).asInstanceOf[TAppLevelConfigService]
+
+  def getUserInfoService = serviceCache(ServiceType.USER_INFO).asInstanceOf[UserInfoService]
 
   def getKeyChainService = serviceCache(ServiceType.KEY_CHAIN).asInstanceOf[TStorageService]
 
@@ -71,5 +81,5 @@ object ServiceFactory {
 }
 
 object ServiceType extends Enumeration {
-  val PN_MESSAGE, TEMPLATE, CALLBACK, USER_INFO, AUTHORISATION, KEY_CHAIN, STATS_REPORTING, SCHEDULER , STENCIL = Value
+  val PN_MESSAGE, TEMPLATE, CALLBACK, USER_INFO, AUTHORISATION, KEY_CHAIN, STATS_REPORTING, SCHEDULER, STENCIL, APP_LEVEL_CONFIG, SMS = Value
 }

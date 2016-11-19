@@ -12,16 +12,15 @@
  */
 package com.flipkart.connekt.busybees.streams.flows.formaters
 
-import com.flipkart.connekt.busybees.models.EmailRequestTracker
 import com.flipkart.connekt.busybees.streams.errors.ConnektPNStageException
 import com.flipkart.connekt.busybees.streams.flows.NIOFlow
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
-import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.utils.StringUtils._
+import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._

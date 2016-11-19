@@ -54,6 +54,8 @@ case class ConnektRequest(@JsonProperty(required = false) id: String,
         case Channel.PUSH =>
           val pushType = if (channelData != null) channelData.asInstanceOf[PNRequestData].pushType else null
           PNRequestData(pushType = pushType, data = stencilService.materialize(stencil.head, channelDataModel).asInstanceOf[String].getObj[ObjectNode])
+        case Channel.SMS =>
+          SmsRequestData(body = stencilService.materialize(stencil.head, channelDataModel).asInstanceOf[String])
         case unsupportedChannel =>
           throw new Exception(s"`channelData` compute undefined for $unsupportedChannel")
       }

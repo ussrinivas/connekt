@@ -64,12 +64,15 @@ object ReceptorsBoot extends BaseApp {
 
       ServiceFactory.initSchedulerService(DaoFactory.getHTableFactory.getConnection)
       ServiceFactory.initPNMessageService(DaoFactory.getPNRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf, ServiceFactory.getSchedulerService)
+      ServiceFactory.initSMSMessageService(DaoFactory.getSmsRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf, null)
+
       ServiceFactory.initCallbackService(null, DaoFactory.getPNCallbackDao, DaoFactory.getPNRequestDao, null,kafkaProducerHelper)
 
       ServiceFactory.initAuthorisationService(DaoFactory.getPrivDao, DaoFactory.getUserInfoDao)
       ServiceFactory.initStorageService(DaoFactory.getKeyChainDao)
       ServiceFactory.initStatsReportingService(DaoFactory.getStatsReportingDao)
       ServiceFactory.initStencilService(DaoFactory.getStencilDao)
+      ServiceFactory.initAppLevelConfigService(DaoFactory.getAppLevelConfigurationDao)
 
       //Start up the receptors
       ReceptorsServer(ConnektConfig.getConfig("react").get)

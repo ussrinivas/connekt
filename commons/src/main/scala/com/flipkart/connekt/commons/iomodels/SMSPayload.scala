@@ -12,18 +12,6 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
-import com.fasterxml.jackson.annotation.JsonSubTypes.Type
-import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
+case class SmsPayload(receivers: String, messageBody: SmsRequestData, messageType: String, senderMask: String, dvt: String, isIntl: String)
 
-@JsonTypeInfo(
-use = JsonTypeInfo.Id.NAME,
-include = JsonTypeInfo.As.PROPERTY,
-property = "type"
-)
-@JsonSubTypes(Array(
-new Type(value = classOf[PNRequestData], name = "PN"),
-new Type(value = classOf[GCardRequestData], name = "GCard"),
-new Type(value = classOf[EmailRequestData], name="EMAIL"),
-new Type(value = classOf[SmsRequestData], name="SMS")
-))
-abstract class ChannelRequestData
+case class SmsPayloadEnvelope(messageId: String, clientId: String, templateId: String, appName: String, contextId: String, payload: SmsPayload, meta: Map[String, Any], headers: Map[String, String] = Map.empty[String, String], provider: Seq[String] = Seq()) extends ProviderEnvelope

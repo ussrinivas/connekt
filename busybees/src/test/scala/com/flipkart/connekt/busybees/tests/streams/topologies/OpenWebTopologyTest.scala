@@ -41,9 +41,9 @@ class OpenWebTopologyTest extends TopologyUTSpec {
       DeviceDetails(
         deviceId = deviceId1,
         userId = "",
-        token = "https://android.googleapis.com/gcm/send/dU1sgI55n50:APA91bHCZ-zzthdB-Z2XkksXyCgVkHk6Hg0uxNeUfiakvJCzmbkINL6WmOSFtc7lSOIUmnW2kEH5yWCrC8ZqJY8mq6swV7HNn4Q_SiHWeunEczzfNLKtd325JPOjAkUuQ-n9a0C5G6Vz",
+        token = "https://android.googleapis.com/gcm/send/eZa-9n7zepc:APA91bGuUxtUAR67d3woSNE9HqasFs_6NrOtv5kxlm6S_2pbWh58cdbu-k8zEekgUGSnIGtZYa8cij5LHVlpgBqARFVJf3FgiYfIIBuKzf01XVbzB8qB39GThAUFVue820zkunO7ccSY",
         osName = "openweb", osVersion = "6.0.1", appName, appVersion = "UT", brand = "UT", model = "",
-        keys = Map("auth" -> "5XaVQhrOCRxOBsOqbRG2lw==", "p256dh" -> "BNKAlTkQk3aFxohWP0maxNoN1lwmQa7qu0ztqYFLhVboz5Nu6JRwL7V1zbx7HoHqrHlSXqQi23jNjAVoKStkVlk=")
+        keys = Map("auth" -> "7NOAT1SnQH_GHXnhl2fffA==", "p256dh" -> "BBqvI-jmUWxwtGAKWJWyiC5x1K3PQMfZdjcgJv-Y4SA9ctrWDszn9C5DGB4HS9hwAzotJaWTSqAoYM7DzE_3QhY=")
       )
     )
 
@@ -51,9 +51,9 @@ class OpenWebTopologyTest extends TopologyUTSpec {
       DeviceDetails(
         deviceId = deviceId2,
         userId = "",
-        token = "https://updates.push.services.mozilla.com/push/v1/gAAAAABXOvMWgkCNeTlt45ka7aax6zP929q_pIdBLQG7FMhPfTOdxSGNcEALzcai1NszuF1hZoRYBbxWSMC0lFNs6Z2b2PNQVp_YZriAUcZJUZHluwrBPTtYwu41fXwzpbxSfPR8KKUv",
+        token = "https://updates.push.services.mozilla.com/wpush/v1/gAAAAABYGwbC68AGXw3dUJl5Heoo56ZNllKFYoQSSylqowsCGrUH1FffS_z7eEr3PFQ7uzADzK36sDn61Ic0W81H_89OWl_Wmie4wutsW7ilzBqMz-avWLbt1XjAHrFf5IPURRHVQ5r7",
         osName = "openweb", osVersion = "6.0.1", appName, appVersion = "UT", brand = "UT", model = "",
-        keys = Map("auth" -> "51VXF3Q7hUepYjvQTxfJEw", "p256dh" -> "BOZneqTrDtUmom4n9cVsuKaBOsc0U7Ueim5gfS0KfF9xg8KOqUrUCTtVIyioC0h54mpBfYQxglt3nfjbx92OCyE")
+        keys = Map("auth" -> "l5CvA1vJhjV-Rxw-v50jyw", "p256dh" -> "BOhm3sh40fNM-JGBN1tQUN99Q8kWUNR1GeN8pYbDRYdvFTN9ZawTRMbFiK8xjc64mw5V9safeh_edsWwG7Otj28")
       )
     )
 
@@ -71,6 +71,7 @@ class OpenWebTopologyTest extends TopologyUTSpec {
                       |{
                       |	"channel": "PN",
                       |	"sla": "H",
+                      | "clientId" : "connekt-insomnia",
                       |	"channelData": {
                       |		"type": "PN",
                       |		"data": {
@@ -84,7 +85,7 @@ class OpenWebTopologyTest extends TopologyUTSpec {
                       |		"type": "PN",
                       |		"ackRequired": true,
                       |		"delayWhileIdle": true,
-                      |		"deviceIds": ["$deviceId3" , "$deviceId1" , "$deviceId2"]
+                      |		"deviceIds": [ "$deviceId1"]
                       |	},
                       |	"meta": {
                       |	}
@@ -93,7 +94,7 @@ class OpenWebTopologyTest extends TopologyUTSpec {
 
     val openWebPoolClientFlow = Http().superPool[OpenWebRequestTracker]()
 
-    val result = Source.repeat(cRequest)
+    val result = Source.single(cRequest)
       .via(new RenderFlow().flow)
       .via(new OpenWebChannelFormatter(64)(system.dispatchers.lookup("akka.actor.io-dispatcher")).flow)
       .via(new OpenWebDispatcherPrepare().flow)

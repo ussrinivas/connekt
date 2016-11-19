@@ -62,6 +62,7 @@ object DaoFactory {
     )
 
     daoMap += DaoType.USER_INFO -> UserInfoDao("USER_INFO", mysqlFactoryWrapper)
+    daoMap += DaoType.APP_LEVEL_CONFIG -> AppLevelConfigurationDao("APP_LEVEL_CONFIG", mysqlFactoryWrapper)
     daoMap += DaoType.USER_CONFIG -> UserConfigurationDao("USER_CONFIG", mysqlFactoryWrapper)
     daoMap += DaoType.PRIVILEGE -> PrivDao("RESOURCE_PRIV", mysqlFactoryWrapper)
     daoMap += DaoType.SUBSCRIPTION -> SubscriptionDao("SUBSCRIPTIONS", mysqlFactoryWrapper)
@@ -96,6 +97,8 @@ object DaoFactory {
 
   def getPNRequestDao: PNRequestDao = daoMap(DaoType.PN_REQUEST_INFO).asInstanceOf[PNRequestDao]
 
+  def getSmsRequestDao: SmsRequestDao = daoMap(DaoType.SMS_REQUEST_INFO).asInstanceOf[SmsRequestDao]
+
   def getPNCallbackDao: PNCallbackDao = daoMap(DaoType.CALLBACK_PN).asInstanceOf[PNCallbackDao]
 
   def getEmailCallbackDao: EmailCallbackDao = daoMap(DaoType.CALLBACK_EMAIL).asInstanceOf[EmailCallbackDao]
@@ -110,6 +113,8 @@ object DaoFactory {
 
   def getUserConfigurationDao: TUserConfiguration = daoMap(DaoType.USER_CONFIG).asInstanceOf[UserConfigurationDao]
 
+  def getAppLevelConfigurationDao: TAppLevelConfiguration = daoMap(DaoType.APP_LEVEL_CONFIG).asInstanceOf[AppLevelConfigurationDao]
+
   def getStencilDao: TStencilDao = daoMap(DaoType.STENCIL).asInstanceOf[StencilDao]
 
   def getStatsReportingDao: StatsReportingDao = daoMap(DaoType.STATS_REPORTING).asInstanceOf[StatsReportingDao]
@@ -122,11 +127,13 @@ object DaoType extends Enumeration {
   REQUEST_META,
   PN_REQUEST_INFO,
   EMAIL_REQUEST_INFO,
+  SMS_REQUEST_INFO,
   CALLBACK_EMAIL,
   CALLBACK_PN,
   PRIVILEGE,
   USER_INFO,
   USER_CONFIG,
+  APP_LEVEL_CONFIG,
   STENCIL,
   STATS_REPORTING,
   SUBSCRIPTION,

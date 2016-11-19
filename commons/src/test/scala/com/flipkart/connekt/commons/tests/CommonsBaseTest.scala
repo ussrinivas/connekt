@@ -74,6 +74,7 @@ class CommonsBaseTest extends ConnektUTSpec {
     ServiceFactory.initStorageService(DaoFactory.getKeyChainDao)
     ServiceFactory.initStatsReportingService(DaoFactory.getStatsReportingDao)
     ServiceFactory.initStencilService(DaoFactory.getStencilDao)
+    ServiceFactory.initAppLevelConfigService(DaoFactory.getAppLevelConfigurationDao)
 
     ConnektLogger(LogFile.SERVICE).info("BaseReceptorsTest bootstrapped.")
 

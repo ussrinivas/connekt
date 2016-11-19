@@ -10,20 +10,11 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.commons.iomodels
+package com.flipkart.connekt.busybees.streams.flows.diverger
 
-import com.fasterxml.jackson.annotation.JsonSubTypes.Type
-import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
+/**
+  * Created by ayush.agarwal on 15/11/16.
+  */
+class SmsDiverger {
 
-@JsonTypeInfo(
-use = JsonTypeInfo.Id.NAME,
-include = JsonTypeInfo.As.PROPERTY,
-property = "type"
-)
-@JsonSubTypes(Array(
-new Type(value = classOf[PNRequestData], name = "PN"),
-new Type(value = classOf[GCardRequestData], name = "GCard"),
-new Type(value = classOf[EmailRequestData], name="EMAIL"),
-new Type(value = classOf[SmsRequestData], name="SMS")
-))
-abstract class ChannelRequestData
+}

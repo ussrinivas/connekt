@@ -10,20 +10,12 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.commons.iomodels
+package fkint.mp.connekt
 
-import com.fasterxml.jackson.annotation.JsonSubTypes.Type
-import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
+import com.flipkart.concord.publisher.TPublishRequest
 
-@JsonTypeInfo(
-use = JsonTypeInfo.Id.NAME,
-include = JsonTypeInfo.As.PROPERTY,
-property = "type"
-)
-@JsonSubTypes(Array(
-new Type(value = classOf[PNRequestData], name = "PN"),
-new Type(value = classOf[GCardRequestData], name = "GCard"),
-new Type(value = classOf[EmailRequestData], name="EMAIL"),
-new Type(value = classOf[SmsRequestData], name="SMS")
-))
-abstract class ChannelRequestData
+case class SMSCallbackEvent(messageId: String, appName: String, contextId: String, eventType: String, cargo: String, receiver: String, provider: String, timestamp: String) extends TPublishRequest {
+  override def validate(): Boolean = true
+
+  override def schemaVersion(): String = "1.0"
+}
