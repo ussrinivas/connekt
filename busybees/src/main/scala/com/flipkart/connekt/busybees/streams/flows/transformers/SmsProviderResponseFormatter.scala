@@ -47,24 +47,21 @@ class SmsProviderResponseFormatter(implicit m: Materializer, ec: ExecutionContex
         |import com.flipkart.connekt.busybees.models.SmsResponse
         |
         |
-        |public class SendgridV3ResponseGroovy implements GroovyFabric , EngineFabric  {
+        |public class GupshupResponseGroovy implements GroovyFabric , EngineFabric  {
         |
         |  public Object compute(String id, ObjectNode context) {
         |
         |    def response = context.get("body").asText().split("\\|")
-        |
-        |    return new SmsResponse( response[0], response[1], response[2])
+        |    return new SmsResponse( response[0].trim(), response[1].trim(), response[2].trim(), context.get("messageLength").asInt(), context.get("statusCode").asInt(), "")
         |
         |  }
         |}
       """.stripMargin)
 
-
-
-    val smsResponse = responseTrackerPair._1.flatMap(hR => Try_{
+    val smsResponse = responseTrackerPair._1.flatMap(hR => Try_ {
       val httpResponse = Await.result(hR.toStrict(30.seconds), 5.seconds)
 
-      val result = stencilService.materialize(providerResponseHandlerStencil,Map("statusCode" -> httpResponse._1.intValue(), "headers" -> httpResponse.headers, "body" -> httpResponse._3.getString).getJsonNode).asInstanceOf[SmsResponse]
+      val result = stencilService.materialize(providerResponseHandlerStencil, Map("statusCode" -> httpResponse._1.intValue(), "messageLength" -> httpResponse.entity.getContentLengthOption().getAsLong, "headers" -> httpResponse.headers, "body" -> httpResponse._3.getString).getJsonNode).asInstanceOf[SmsResponse]
 
       assert(result != null, "Provider Parser Failed, NULL Returned")
 

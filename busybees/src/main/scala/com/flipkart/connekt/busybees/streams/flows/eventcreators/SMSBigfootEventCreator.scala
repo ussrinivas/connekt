@@ -15,12 +15,12 @@ package com.flipkart.connekt.busybees.streams.flows.eventcreators
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
-import com.flipkart.connekt.commons.iomodels.SMSCallbackEvent
+import com.flipkart.connekt.commons.iomodels.SmsCallbackEvent
 
-class SMSBigfootEventCreator extends GraphStage[FlowShape[SMSCallbackEvent, fkint.mp.connekt.SMSCallbackEvent]] {
+class SMSBigfootEventCreator extends GraphStage[FlowShape[SmsCallbackEvent, fkint.mp.connekt.SmsCallbackEvent]] {
 
-  val in = Inlet[SMSCallbackEvent]("SMSBigfootEventCreator.In")
-  val out = Outlet[fkint.mp.connekt.SMSCallbackEvent]("SMSBigfootEventCreator.Out")
+  val in = Inlet[SmsCallbackEvent]("SMSBigfootEventCreator.In")
+  val out = Outlet[fkint.mp.connekt.SmsCallbackEvent]("SMSBigfootEventCreator.Out")
 
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
 

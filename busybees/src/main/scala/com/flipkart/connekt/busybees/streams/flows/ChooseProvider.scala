@@ -25,7 +25,7 @@ import scala.util.Random
 
 class ChooseProvider[T <: ProviderEnvelope](channel: Channel) extends MapFlowStage[T, T] {
 
-  val appLevelConfigService = ServiceFactory.getAppLevelConfigService
+  lazy val appLevelConfigService = ServiceFactory.getAppLevelConfigService
 
   override val map: (T) => List[T] = payload => {
     val selectedProvider = pickProvider(payload.provider.toList, channel, payload.appName)
@@ -40,7 +40,7 @@ class ChooseProvider[T <: ProviderEnvelope](channel: Channel) extends MapFlowSta
 
   def pickProvider(alreadyTriedProviders: List[String], channel: Channel, appName: String): String = {
 
-    val appLevelConfig = appLevelConfigService.get(appName, Channel.SMS).getOrElse(List.empty[AppLevelConfig]).find(_.config.equalsIgnoreCase(AppLevelConfigType.providerShare)).get
+    val appLevelConfig = appLevelConfigService.getAppLevelConfig(appName, Channel.SMS).getOrElse(List.empty[AppLevelConfig]).find(_.config.equalsIgnoreCase(AppLevelConfigType.providerShare)).get
 
     val selectedProvider = appLevelConfig.format match {
       case ConfigFormat.JSON =>

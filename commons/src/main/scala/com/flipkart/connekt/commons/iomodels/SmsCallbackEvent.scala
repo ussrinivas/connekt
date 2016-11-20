@@ -12,17 +12,16 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
-import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.utils.DateTimeUtils
 import org.apache.commons.lang.RandomStringUtils
 
-case class SMSCallbackEvent(messageId: String,
+case class SmsCallbackEvent(messageId: String,
                             eventType: String,
                             receiver: String,
                             clientId: String,
                             provider: String,
                             appName: String,
-                            channel: Channel,
+                            channel: String,
                             contextId: String,
                             cargo: String = null,
                             timestamp: Long = System.currentTimeMillis(),
@@ -30,10 +29,10 @@ case class SMSCallbackEvent(messageId: String,
 
   override def contactId: String = s"${appName.toLowerCase}$receiver"
 
-  override def toPublishFormat: fkint.mp.connekt.SMSCallbackEvent = {
-    fkint.mp.connekt.SMSCallbackEvent(messageId = messageId, appName = appName, contextId = contextId, eventType = eventType, cargo = cargo, receiver = receiver, provider = provider, timestamp = DateTimeUtils.getStandardFormatted(timestamp))
+  override def toPublishFormat: fkint.mp.connekt.SmsCallbackEvent = {
+    fkint.mp.connekt.SmsCallbackEvent(messageId = messageId, appName = appName, contextId = contextId, eventType = eventType, cargo = cargo, receiver = receiver, provider = provider, timestamp = DateTimeUtils.getStandardFormatted(timestamp))
   }
 
-  override def namespace: String = "fkint/mp/connekt/SMSCallbackEvent"
+  override def namespace: String = "fkint/mp/connekt/SmsCallbackEvent"
 
 }

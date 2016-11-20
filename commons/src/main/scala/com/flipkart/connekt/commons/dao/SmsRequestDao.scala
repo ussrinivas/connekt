@@ -24,7 +24,7 @@ class SmsRequestDao(tableName: String, hTableFactory: THTableFactory) extends Re
     val m = scala.collection.mutable.Map[String, Array[Byte]]()
 
     smsRequestInfo.sender.foreach(m += "sender" -> _.toString.getUtf8Bytes)
-    smsRequestInfo.receivers.foreach(m += "recievers" -> _.toString.getUtf8Bytes)
+    smsRequestInfo.receivers.foreach(m += "receivers" -> _.toString.getUtf8Bytes)
     smsRequestInfo.appName.foreach(m += "appName" -> _.toString.getUtf8Bytes)
 
     m.toMap
@@ -33,7 +33,7 @@ class SmsRequestDao(tableName: String, hTableFactory: THTableFactory) extends Re
   override protected def getChannelRequestInfo(reqInfoProps: Map[String, Array[Byte]]): ChannelRequestInfo = SmsRequestInfo(
     appName = reqInfoProps.getS("appName"),
     sender = reqInfoProps.getS("sender"),
-    receivers = reqInfoProps.getS("recievers").split(",").toSet
+    receivers = reqInfoProps.getS("receivers").split(",").toSet
   )
 
   override protected def channelRequestDataMap(channelRequestData: ChannelRequestData): Map[String, Array[Byte]] = {
@@ -48,8 +48,8 @@ class SmsRequestDao(tableName: String, hTableFactory: THTableFactory) extends Re
     SmsRequestData(body = body)
   }
 
-  def fetchPNRequestInfo(id: String): Option[PNRequestInfo] = {
-    fetchRequestInfo(id).map(_.asInstanceOf[PNRequestInfo])
+  def fetchSmsRequestInfo(id: String): Option[SmsRequestInfo] = {
+    fetchRequestInfo(id).map(_.asInstanceOf[SmsRequestInfo])
   }
 }
 

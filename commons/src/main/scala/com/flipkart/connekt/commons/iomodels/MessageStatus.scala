@@ -70,6 +70,15 @@ object MessageStatus {
     val AuthError = Value("email_auth_error")
   }
 
+  object SmsResponseStatus extends Enumeration {
+    type SmsResponseStatus = Value
+
+    val Received = Value("sms_received")
+    val Error = Value("sms_error")
+    val InternalError = Value("sms_server_error")
+    val AuthError = Value("sms_auth_error")
+  }
+
 
   object InternalStatus extends Enumeration {
     type InternalStatus = Value

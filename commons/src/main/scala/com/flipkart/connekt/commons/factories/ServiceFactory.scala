@@ -26,8 +26,8 @@ object ServiceFactory {
     serviceCache += ServiceType.PN_MESSAGE -> new MessageService(requestDao, userConfiguration, queueProducerHelper, kafkaConsumerConfig, schedulerService)
   }
 
-  def initCallbackService(emailCallbackDao: EmailCallbackDao, pnCallbackDao: PNCallbackDao, pnRequestInfoDao: PNRequestDao, emailRequestDao: EmailRequestDao, queueProducerHelper: KafkaProducerHelper) = {
-    serviceCache += ServiceType.CALLBACK -> new CallbackService(pnCallbackDao, emailCallbackDao, pnRequestInfoDao, emailRequestDao,queueProducerHelper)
+  def initCallbackService(emailCallbackDao: EmailCallbackDao, smsCallbackDao: SmsCallbackDao, smsRequestDao: SmsRequestDao, pnCallbackDao: PNCallbackDao, pnRequestInfoDao: PNRequestDao, emailRequestDao: EmailRequestDao, queueProducerHelper: KafkaProducerHelper) = {
+    serviceCache += ServiceType.CALLBACK -> new CallbackService(pnCallbackDao, emailCallbackDao, smsCallbackDao, smsRequestDao, pnRequestInfoDao, emailRequestDao, queueProducerHelper)
   }
 
   def initSMSMessageService(requestDao: SmsRequestDao, userConfiguration: TUserConfiguration, queueProducerHelper: KafkaProducerHelper, kafkaConsumerConfig: Config, schedulerService: SchedulerService) = {
@@ -43,13 +43,13 @@ object ServiceFactory {
     serviceCache += ServiceType.KEY_CHAIN -> new KeyChainService(dao)
   }
 
-  def initStatsReportingService(dao : StatsReportingDao): Unit ={
+  def initStatsReportingService(dao: StatsReportingDao): Unit = {
     val instance = new ReportingService(dao)
     instance.init()
     serviceCache += ServiceType.STATS_REPORTING -> instance
   }
 
-  def initSchedulerService(hConnection: Connection): Unit ={
+  def initSchedulerService(hConnection: Connection): Unit = {
     val instance = new SchedulerService(hConnection)
     serviceCache += ServiceType.SCHEDULER -> instance
   }

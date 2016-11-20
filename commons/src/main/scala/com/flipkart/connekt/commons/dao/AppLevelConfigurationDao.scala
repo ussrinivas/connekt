@@ -15,8 +15,8 @@ package com.flipkart.connekt.commons.dao
 import com.flipkart.connekt.commons.entities.AppLevelConfig
 import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, TMySQLFactory}
-import org.springframework.dao.{DataAccessException, IncorrectResultSizeDataAccessException}
 import com.flipkart.connekt.commons.utils.StringUtils._
+import org.springframework.dao.{DataAccessException, IncorrectResultSizeDataAccessException}
 
 class AppLevelConfigurationDao(table: String, mysqlFactory: TMySQLFactory) extends TAppLevelConfiguration with MySQLDao {
 
@@ -39,7 +39,7 @@ class AppLevelConfigurationDao(table: String, mysqlFactory: TMySQLFactory) exten
     }
   }
 
-  override def getAllAppLevelConfiguration(appName: String, channel : Channel): List[AppLevelConfig] = {
+  override def getAllAppLevelConfiguration(appName: String, channel: Channel): List[AppLevelConfig] = {
     implicit val j = mysqlHelper.getJDBCInterface
     val q =
       s"""
@@ -51,6 +51,22 @@ class AppLevelConfigurationDao(table: String, mysqlFactory: TMySQLFactory) exten
     } catch {
       case e@(_: IncorrectResultSizeDataAccessException | _: DataAccessException) =>
         ConnektLogger(LogFile.DAO).error(s"Error fetching allUserChannelConfiguration for appName [$appName] and channel [$channel] info: ${e.getMessage}", e)
+        throw e
+    }
+  }
+
+  override def getAllChannelLevelConfiguration(channel: Channel): List[AppLevelConfig] = {
+    implicit val j = mysqlHelper.getJDBCInterface
+    val q =
+      s"""
+         |SELECT * FROM $table WHERE channel = ?
+      """.stripMargin
+
+    try {
+      queryForList[AppLevelConfig](q, channel.toString)
+    } catch {
+      case e@(_: IncorrectResultSizeDataAccessException | _: DataAccessException) =>
+        ConnektLogger(LogFile.DAO).error(s"Error fetching allUserChannelConfiguration for channel [$channel] info: ${e.getMessage}", e)
         throw e
     }
   }

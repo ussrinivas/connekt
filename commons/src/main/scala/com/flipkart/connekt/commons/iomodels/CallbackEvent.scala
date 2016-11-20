@@ -26,7 +26,7 @@ import com.flipkart.connekt.commons.entities.bigfoot.PublishSupport
   new Type(value = classOf[PNCallbackEvent], name = "PN"),
   new Type(value = classOf[EmailCallbackEvent], name = "EMAIL"),
   new Type(value = classOf[DeviceCallbackEvent], name = "DEVICE"),
-  new Type(value = classOf[SMSCallbackEvent], name = "SMS")
+  new Type(value = classOf[SmsCallbackEvent], name = "SMS")
 ))
 abstract class CallbackEvent extends PublishSupport {
   def contactId: String

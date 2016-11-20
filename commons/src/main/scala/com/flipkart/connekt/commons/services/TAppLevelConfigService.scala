@@ -21,6 +21,7 @@ trait TAppLevelConfigService extends TService {
 
   def add(config: AppLevelConfig): Try[Unit]
 
-  def get(appName: String, channel: Channel): Try[List[AppLevelConfig]]
+  def getAppLevelConfig(appName: String, channel: Channel): Try[List[AppLevelConfig]]
 
+  def getChannelLevelConfig( channel: Channel): Try[List[AppLevelConfig]]
 }

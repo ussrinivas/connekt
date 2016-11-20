@@ -12,4 +12,6 @@
  */
 package com.flipkart.connekt.busybees.models
 
-case class SmsResponse(status: String, receiver: String, providerMessageId: String)
+import org.apache.commons.lang.StringUtils
+
+case class SmsResponse(status: String, receiver: String, providerMessageId: String, messageLength: Int, responseCode: Int, message: String = StringUtils.EMPTY)

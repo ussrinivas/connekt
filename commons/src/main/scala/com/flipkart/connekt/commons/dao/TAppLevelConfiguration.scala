@@ -18,7 +18,9 @@ import com.flipkart.connekt.commons.entities.Channel.Channel
 
 trait TAppLevelConfiguration {
 
-  def getAllAppLevelConfiguration(appName: String , channel : Channel): List[AppLevelConfig]
+  def getAllAppLevelConfiguration(appName: String, channel: Channel): List[AppLevelConfig]
+
+  def getAllChannelLevelConfiguration(channel: Channel): List[AppLevelConfig]
 
   def addAppLevelConfiguration(config: AppLevelConfig)
 

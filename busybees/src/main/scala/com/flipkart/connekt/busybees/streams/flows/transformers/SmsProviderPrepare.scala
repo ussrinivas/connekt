@@ -16,7 +16,7 @@ import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.headers.RawHeader
 import com.flipkart.connekt.busybees.models.SmsRequestTracker
 import com.flipkart.connekt.busybees.streams.flows.MapFlowStage
-import com.flipkart.connekt.commons.entities.{Stencil, StencilEngine}
+import com.flipkart.connekt.commons.entities.{Channel, Stencil, StencilEngine}
 import com.flipkart.connekt.commons.factories.ServiceFactory
 import com.flipkart.connekt.commons.iomodels.SmsPayloadEnvelope
 import com.flipkart.connekt.commons.services.KeyChainManager
@@ -30,18 +30,19 @@ class SmsProviderPrepare extends MapFlowStage[SmsPayloadEnvelope, (HttpRequest, 
   override val map: (SmsPayloadEnvelope) => List[(HttpRequest, SmsRequestTracker)] = smsPayloadEnvelope => {
 
     val selectedProvider = smsPayloadEnvelope.provider.last
-    val credentials = KeyChainManager.getSimpleCredential(s"Flipkart-SMS.$selectedProvider").get
+    val credentials = KeyChainManager.getSimpleCredential(s"${smsPayloadEnvelope.appName}-${Channel.SMS}.$selectedProvider").get
 
     val headers: Map[String, String] = Map("X-MID" -> "123234", "X-CNAME" -> smsPayloadEnvelope.clientId, "X-TID" -> smsPayloadEnvelope.templateId)
 
     val tracker = SmsRequestTracker(messageId = smsPayloadEnvelope.messageId,
       clientId = smsPayloadEnvelope.clientId,
       receivers = smsPayloadEnvelope.payload.receivers.split(",").toSet,
+      provider = selectedProvider,
       appName = smsPayloadEnvelope.appName,
       contextId = smsPayloadEnvelope.contextId,
       meta = smsPayloadEnvelope.meta)
 
-//    val providerStencil = stencilService.getStencilsByName(s"${smsPayloadEnvelope.appName.toLowerCase}-sms-$selectedProvider").find(_.component.equalsIgnoreCase("prepare")).get
+    //    val providerStencil = stencilService.getStencilsByName(s"${smsPayloadEnvelope.appName.toLowerCase}-sms-$selectedProvider").find(_.component.equalsIgnoreCase("prepare")).get
     val providerStencil = new Stencil("lorem-ipsum", StencilEngine.GROOVY,
       """
         |package com.flipkart.connekt.busybees.streams.flows.transformers

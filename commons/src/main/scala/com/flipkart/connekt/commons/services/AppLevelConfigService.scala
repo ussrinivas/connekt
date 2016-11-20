@@ -14,7 +14,7 @@ package com.flipkart.connekt.commons.services
 
 import com.flipkart.connekt.commons.cache.{LocalCacheManager, LocalCacheType}
 import com.flipkart.connekt.commons.core.Wrappers._
-import com.flipkart.connekt.commons.dao.{DaoFactory, TAppLevelConfiguration, TUserInfo}
+import com.flipkart.connekt.commons.dao.TAppLevelConfiguration
 import com.flipkart.connekt.commons.entities.AppLevelConfig
 import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.metrics.Instrumented
@@ -29,8 +29,8 @@ class AppLevelConfigService(appLevelConfig: TAppLevelConfiguration) extends Inst
     appLevelConfig.addAppLevelConfiguration(config)
   }
 
-  @Timed("get")
-  def get(appName: String, channel: Channel): Try[List[AppLevelConfig]] = Try_ {
+  @Timed("getAppLevelConfig")
+  def getAppLevelConfig(appName: String, channel: Channel): Try[List[AppLevelConfig]] = Try_ {
     val cacheKey = s"$appName-${channel.toString}".toLowerCase
     LocalCacheManager.getCache(LocalCacheType.AppLevelConfig).get[List[AppLevelConfig]](cacheKey).getOrElse {
       val data = appLevelConfig.getAllAppLevelConfiguration(appName, channel)
@@ -39,4 +39,13 @@ class AppLevelConfigService(appLevelConfig: TAppLevelConfiguration) extends Inst
     }
   }
 
+  @Timed("getChannelLevelConfig")
+  override def getChannelLevelConfig(channel: Channel): Try[List[AppLevelConfig]] = Try_ {
+    val cacheKey = s"${channel.toString}".toLowerCase
+    LocalCacheManager.getCache(LocalCacheType.AppLevelConfig).get[List[AppLevelConfig]](cacheKey).getOrElse {
+      val data = appLevelConfig.getAllChannelLevelConfiguration(channel)
+      LocalCacheManager.getCache(LocalCacheType.AppLevelConfig).put[List[AppLevelConfig]](cacheKey.toLowerCase, data)
+      data
+    }
+  }
 }
