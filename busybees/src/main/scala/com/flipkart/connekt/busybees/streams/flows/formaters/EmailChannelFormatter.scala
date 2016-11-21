@@ -64,7 +64,7 @@ class EmailChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecu
       case e: Exception =>
         //TODO: Fix PNCallbackEvent
         ConnektLogger(LogFile.PROCESSORS).error(s"EmailChannelFormatter error for ${message.id}", e)
-        throw new ConnektPNStageException(message.id, message.clientId, message.deviceId, InternalStatus.StageError, message.appName, message.platform, message.contextId.orEmpty, message.meta, "AndroidChannelFormatter::".concat(e.getMessage), e)
+        throw new ConnektPNStageException(message.id, message.clientId, message.destinations, InternalStatus.StageError, message.appName, message.platform, message.contextId.orEmpty, message.meta, "AndroidChannelFormatter::".concat(e.getMessage), e)
     }
   }
 }

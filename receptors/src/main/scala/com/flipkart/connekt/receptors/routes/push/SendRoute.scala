@@ -74,7 +74,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                     groupedPlatformRequests += request.copy(channelInfo = pnRequestInfo.copy(platform = appPlatform))
                                 }
 
-                                val failure = ListBuffer(pnRequestInfo.deviceIds.toList.diff(groupedPlatformRequests.flatMap(_.deviceId)): _ *)
+                                val failure = ListBuffer(pnRequestInfo.deviceIds.toList.diff(groupedPlatformRequests.flatMap(_.destinations)): _ *)
                                 ServiceFactory.getReportingService.recordPushStatsDelta(user.userId, request.contextId, request.stencilId, Option(appPlatform), appName, InternalStatus.Rejected, failure.size)
 
                                 val success = scala.collection.mutable.Map[String, Set[String]]()
