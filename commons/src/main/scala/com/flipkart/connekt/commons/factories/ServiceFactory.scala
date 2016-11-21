@@ -26,6 +26,10 @@ object ServiceFactory {
     serviceCache += ServiceType.PN_MESSAGE -> new MessageService(requestDao, userConfiguration, queueProducerHelper, kafkaConsumerConfig, schedulerService)
   }
 
+  def initEmailMessageService(requestDao: EmailRequestDao,userConfiguration: TUserConfiguration, queueProducerHelper: KafkaProducerHelper, kafkaConsumerConfig: Config ): Unit ={
+    serviceCache += ServiceType.EMAIL_MESSAGE -> new MessageService(requestDao, userConfiguration, queueProducerHelper, kafkaConsumerConfig, null)
+  }
+
   def initCallbackService(emailCallbackDao: EmailCallbackDao, pnCallbackDao: PNCallbackDao, pnRequestInfoDao: PNRequestDao, emailRequestDao: EmailRequestDao, queueProducerHelper: KafkaProducerHelper) = {
     serviceCache += ServiceType.CALLBACK -> new CallbackService(pnCallbackDao, emailCallbackDao, pnRequestInfoDao, emailRequestDao,queueProducerHelper)
   }
@@ -55,6 +59,7 @@ object ServiceFactory {
   def getSchedulerService = serviceCache(ServiceType.SCHEDULER).asInstanceOf[SchedulerService]
 
   def getPNMessageService = serviceCache(ServiceType.PN_MESSAGE).asInstanceOf[TMessageService]
+  def getEmailMessageService = serviceCache(ServiceType.EMAIL_MESSAGE).asInstanceOf[TMessageService]
 
   def getCallbackService = serviceCache(ServiceType.CALLBACK).asInstanceOf[TCallbackService]
 
@@ -71,5 +76,5 @@ object ServiceFactory {
 }
 
 object ServiceType extends Enumeration {
-  val PN_MESSAGE, TEMPLATE, CALLBACK, USER_INFO, AUTHORISATION, KEY_CHAIN, STATS_REPORTING, SCHEDULER , STENCIL = Value
+  val PN_MESSAGE, EMAIL_MESSAGE, TEMPLATE, CALLBACK, USER_INFO, AUTHORISATION, KEY_CHAIN, STATS_REPORTING, SCHEDULER , STENCIL = Value
 }

@@ -64,7 +64,8 @@ object ReceptorsBoot extends BaseApp {
 
       ServiceFactory.initSchedulerService(DaoFactory.getHTableFactory.getConnection)
       ServiceFactory.initPNMessageService(DaoFactory.getPNRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf, ServiceFactory.getSchedulerService)
-      ServiceFactory.initCallbackService(null, DaoFactory.getPNCallbackDao, DaoFactory.getPNRequestDao, null,kafkaProducerHelper)
+      ServiceFactory.initEmailMessageService(DaoFactory.getEmailRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf)
+      ServiceFactory.initCallbackService(emailCallbackDao = DaoFactory.getEmailCallbackDao, pnCallbackDao = DaoFactory.getPNCallbackDao, pnRequestInfoDao = DaoFactory.getPNRequestDao, emailRequestDao = DaoFactory.getEmailRequestDao, queueProducerHelper = kafkaProducerHelper)
 
       ServiceFactory.initAuthorisationService(DaoFactory.getPrivDao, DaoFactory.getUserInfoDao)
       ServiceFactory.initStorageService(DaoFactory.getKeyChainDao)

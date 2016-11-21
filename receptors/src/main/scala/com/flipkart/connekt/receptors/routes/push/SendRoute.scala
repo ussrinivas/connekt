@@ -119,7 +119,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                           Future {
                             profile(s"sendUserPush.$appPlatform.$appName") {
                               val request = r.copy(clientId = user.userId, channel = "push", meta = {
-                                Option(r.meta).getOrElse(Map.empty[String,String]) ++ headers
+                                Option(r.meta).getOrElse(Map.empty[String, String]) ++ headers
                               })
                               request.validate
 
@@ -170,6 +170,53 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                     }
                   }
                 }
+            }
+          } ~ pathPrefix("send" / "email") {
+            path(Segment) { appName: String =>
+              authorize(user,"SEND_EMAIL", s"SEND_EMAIL_$appName") {
+                post {
+                  getXHeaders { headers =>
+                    entity(as[ConnektRequest]) { r =>
+                      complete {
+                        Future {
+                          profile("email") {
+                            val request = r.copy(clientId = user.userId, channel = "email", meta = {
+                              Option(r.meta).getOrElse(Map.empty[String, String]) ++ headers
+                            })
+                            request.validate
+
+                            ConnektLogger(LogFile.SERVICE).debug(s"Received EMAIL request with payload: ${request.toString}")
+
+                            val emailRequestInfo = request.channelInfo.asInstanceOf[EmailRequestInfo].copy(appName = appName.toLowerCase)
+
+                            if (emailRequestInfo.to != null && emailRequestInfo.to.nonEmpty) {
+
+                              val success = scala.collection.mutable.Map[String, Set[String]]()
+                              val failure = ListBuffer[String]()
+
+                              val queueName = ServiceFactory.getEmailMessageService.getRequestBucket(request, user)
+                              val recipients = emailRequestInfo.to.map(_.address) ++ emailRequestInfo.cc.map(_.address) ++ emailRequestInfo.bcc.map(_.address)
+
+                              /* enqueue multiple requests into kafka */
+                              ServiceFactory.getEmailMessageService.saveRequest(request.copy(channelInfo = emailRequestInfo), queueName, isCrucial = true) match {
+                                case Success(id) =>
+                                  success += id -> recipients
+                                case Failure(t) =>
+                                  failure ++= recipients
+                              }
+
+                              GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse("Email Send Request Received", success.toMap, failure.toList)).respond
+                            } else {
+                              ConnektLogger(LogFile.SERVICE).error(s"Request Validation Failed, $request ")
+                              GenericResponse(StatusCodes.BadRequest.intValue, null, Response("Request Validation Failed, Please ensure mandatory field values.", null)).respond
+                            }
+                          }
+                        }(ioDispatcher)
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
         }

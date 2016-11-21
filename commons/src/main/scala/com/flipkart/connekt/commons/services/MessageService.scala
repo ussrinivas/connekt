@@ -43,7 +43,7 @@ class MessageService(requestDao: TRequestDao, userConfigurationDao: TUserConfigu
       messageDao.saveRequest(reqWithId.id, reqWithId)
 
       request.scheduleTs match {
-        case Some(scheduleTime) if scheduleTime > System.currentTimeMillis() + 2.minutes.toMillis =>
+        case Some(scheduleTime) if scheduleTime > System.currentTimeMillis() + 2.minutes.toMillis  =>
           schedulerService.client.add(ScheduledRequest(reqWithId, requestBucket), scheduleTime)
           ConnektLogger(LogFile.SERVICE).info(s"Scheduled request ${reqWithId.id} at $scheduleTime to $requestBucket")
         case _ =>

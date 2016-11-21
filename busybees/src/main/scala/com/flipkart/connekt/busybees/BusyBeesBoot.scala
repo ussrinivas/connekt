@@ -18,7 +18,7 @@ import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings}
 import com.flipkart.connekt.busybees.streams.flows.StageSupervision
 import com.flipkart.connekt.busybees.streams.flows.dispatchers.HttpDispatcher
-import com.flipkart.connekt.busybees.streams.topologies.PushTopology
+import com.flipkart.connekt.busybees.streams.topologies.{EmailTopology, PushTopology}
 import com.flipkart.connekt.commons.connections.ConnectionProvider
 import com.flipkart.connekt.commons.core.BaseApp
 import com.flipkart.connekt.commons.dao.DaoFactory
@@ -44,6 +44,7 @@ object BusyBeesBoot extends BaseApp {
   lazy val ioMat = ActorMaterializer(settings.withDispatcher("akka.actor.io-dispatcher"))
 
   var pushTopology: PushTopology = _
+  var emailTopology: EmailTopology = _
 
   def start() {
 
@@ -83,6 +84,7 @@ object BusyBeesBoot extends BaseApp {
       val kafkaProducerHelper = KafkaProducerHelper.init(kafkaProducerConnConf, kafkaProducerPoolConf)
       ServiceFactory.initCallbackService(emailCallbackDao = DaoFactory.getEmailCallbackDao, pnCallbackDao = DaoFactory.getPNCallbackDao, pnRequestInfoDao = DaoFactory.getPNRequestDao, emailRequestDao = DaoFactory.getEmailRequestDao, queueProducerHelper = kafkaProducerHelper)
       ServiceFactory.initPNMessageService(DaoFactory.getPNRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf, null)
+      ServiceFactory.initEmailMessageService(DaoFactory.getEmailRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf)
 
       ServiceFactory.initStatsReportingService(DaoFactory.getStatsReportingDao)
       ServiceFactory.initStencilService(DaoFactory.getStencilDao)
@@ -91,7 +93,10 @@ object BusyBeesBoot extends BaseApp {
 
       HttpDispatcher.init(ConnektConfig.getConfig("react").get)
       pushTopology = new PushTopology(kafkaConnConf)
-      pushTopology.run
+      //pushTopology.run
+
+      emailTopology = new EmailTopology(kafkaConnConf)
+      emailTopology.run
 
       ConnektLogger(LogFile.SERVICE).info("Started `Busybees` app")
     }
@@ -102,6 +107,7 @@ object BusyBeesBoot extends BaseApp {
     if (initialized.get()) {
       DaoFactory.shutdownHTableDaoFactory()
       Option(pushTopology).foreach(_.shutdown())
+      Option(emailTopology).foreach(_.shutdown())
 
       ConnektLogger.shutdown()
     }
