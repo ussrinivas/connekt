@@ -187,7 +187,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
                             ConnektLogger(LogFile.SERVICE).debug(s"Received EMAIL request with payload: ${request.toString}")
 
-                            val emailRequestInfo = request.channelInfo.asInstanceOf[EmailRequestInfo].toStrict
+                            val emailRequestInfo = request.channelInfo.asInstanceOf[EmailRequestInfo].copy(appName = appName.toLowerCase).toStrict
 
                             if (emailRequestInfo.to != null && emailRequestInfo.to.nonEmpty) {
 
