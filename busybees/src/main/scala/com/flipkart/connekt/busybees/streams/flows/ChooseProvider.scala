@@ -47,9 +47,6 @@ class ChooseProvider[T <: ProviderEnvelope](channel: Channel) extends MapFlowSta
 
   def pickProvider(alreadyTriedProviders: List[String], channel: Channel, appName: String): String = {
 
-    println(s"share-${channel.toString}")
-    appLevelConfigService.getProjectConfiguration(appName, s"share-${channel.toString}").get
-    appLevelConfigService.getProjectConfiguration(appName, s"share-${channel.toString}").get.get
     val appProviderShareConfig = appLevelConfigService.getProjectConfiguration(appName, s"share-${channel.toString}").get.get //this must be a success
     assert(appProviderShareConfig.format == ConfigFormat.JSON ,"Provider Config Must be JSON Format")
     //TODO : get out of this restriction. If not defined do auto share
