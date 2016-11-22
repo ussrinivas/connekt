@@ -63,6 +63,7 @@ object DaoFactory {
 
     daoMap += DaoType.USER_INFO -> UserInfoDao("USER_INFO", mysqlFactoryWrapper)
     daoMap += DaoType.USER_CONFIG -> UserConfigurationDao("USER_CONFIG", mysqlFactoryWrapper)
+    daoMap += DaoType.APP_CONFIG -> UserProjectConfigDao("APP_CONFIG", mysqlFactoryWrapper)
     daoMap += DaoType.PRIVILEGE -> PrivDao("RESOURCE_PRIV", mysqlFactoryWrapper)
     daoMap += DaoType.SUBSCRIPTION -> SubscriptionDao("SUBSCRIPTIONS", mysqlFactoryWrapper)
     daoMap += DaoType.STENCIL -> StencilDao("STENCIL_STORE", "STENCIL_HISTORY_STORE", "STENCILS_ENSEMBLE", "BUCKET_REGISTRY", mysqlFactoryWrapper)
@@ -110,6 +111,8 @@ object DaoFactory {
 
   def getUserConfigurationDao: TUserConfiguration = daoMap(DaoType.USER_CONFIG).asInstanceOf[UserConfigurationDao]
 
+  def getUserProjectConfigDao:UserProjectConfigDao = daoMap(DaoType.APP_CONFIG).asInstanceOf[UserProjectConfigDao]
+
   def getStencilDao: TStencilDao = daoMap(DaoType.STENCIL).asInstanceOf[StencilDao]
 
   def getStatsReportingDao: StatsReportingDao = daoMap(DaoType.STATS_REPORTING).asInstanceOf[StatsReportingDao]
@@ -127,6 +130,7 @@ object DaoType extends Enumeration {
   PRIVILEGE,
   USER_INFO,
   USER_CONFIG,
+  APP_CONFIG,
   STENCIL,
   STATS_REPORTING,
   SUBSCRIPTION,

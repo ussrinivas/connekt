@@ -43,6 +43,10 @@ object ServiceFactory {
     serviceCache += ServiceType.KEY_CHAIN -> new KeyChainService(dao)
   }
 
+  def initProjectConfigService(dao:UserProjectConfigDao): Unit ={
+    serviceCache += ServiceType.APP_CONFIG -> new UserProjectConfigService(dao)
+  }
+
   def initStatsReportingService(dao : StatsReportingDao): Unit ={
     val instance = new ReportingService(dao)
     instance.init()
@@ -73,8 +77,10 @@ object ServiceFactory {
 
   def getStencilService = serviceCache(ServiceType.STENCIL).asInstanceOf[TStencilService]
 
+  def getUserProjectConfigService = serviceCache(ServiceType.APP_CONFIG).asInstanceOf[UserProjectConfigService]
+
 }
 
 object ServiceType extends Enumeration {
-  val PN_MESSAGE, EMAIL_MESSAGE, TEMPLATE, CALLBACK, USER_INFO, AUTHORISATION, KEY_CHAIN, STATS_REPORTING, SCHEDULER , STENCIL = Value
+  val PN_MESSAGE, EMAIL_MESSAGE, TEMPLATE, CALLBACK, USER_INFO, APP_CONFIG, AUTHORISATION, KEY_CHAIN, STATS_REPORTING, SCHEDULER , STENCIL = Value
 }

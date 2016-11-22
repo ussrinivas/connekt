@@ -69,6 +69,7 @@ object ReceptorsBoot extends BaseApp {
 
       ServiceFactory.initAuthorisationService(DaoFactory.getPrivDao, DaoFactory.getUserInfoDao)
       ServiceFactory.initStorageService(DaoFactory.getKeyChainDao)
+      ServiceFactory.initProjectConfigService(DaoFactory.getUserProjectConfigDao)
       ServiceFactory.initStatsReportingService(DaoFactory.getStatsReportingDao)
       ServiceFactory.initStencilService(DaoFactory.getStencilDao)
 

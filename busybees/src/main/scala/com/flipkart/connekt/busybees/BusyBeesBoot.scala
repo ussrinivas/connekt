@@ -75,6 +75,8 @@ object BusyBeesBoot extends BaseApp {
       DaoFactory.initReportingDao(DaoFactory.getCouchbaseBucket("StatsReporting"))
 
       ServiceFactory.initStorageService(DaoFactory.getKeyChainDao)
+      ServiceFactory.initProjectConfigService(DaoFactory.getUserProjectConfigDao)
+
 
       val kafkaConnConf = ConnektConfig.getConfig("connections.kafka.consumerConnProps").getOrElse(ConfigFactory.empty())
       ConnektLogger(LogFile.SERVICE).info(s"Kafka Conf: ${kafkaConnConf.toString}")
@@ -93,7 +95,7 @@ object BusyBeesBoot extends BaseApp {
 
       HttpDispatcher.init(ConnektConfig.getConfig("react").get)
       pushTopology = new PushTopology(kafkaConnConf)
-      //pushTopology.run
+      pushTopology.run
 
       emailTopology = new EmailTopology(kafkaConnConf)
       emailTopology.run

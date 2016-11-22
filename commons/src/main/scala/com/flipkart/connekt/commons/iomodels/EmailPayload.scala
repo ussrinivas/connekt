@@ -18,6 +18,19 @@ abstract class ProviderEnvelope {
   def provider: Iterable[String]
 
   def clientId: String
+
+  def messageId:String
+
+  def appName:String
+
+  def contextId:String
+
+  def meta: Map[String, Any]
+
+  def destinations:Set[String]
+
 }
 
-case class EmailPayloadEnvelope(messageId: String, appName: String, contextId: String, clientId: String, payload: EmailPayload, meta: Map[String, Any], provider: Seq[String] = Seq()) extends ProviderEnvelope
+case class EmailPayloadEnvelope(messageId: String, appName: String, contextId: String, clientId: String, payload: EmailPayload, meta: Map[String, Any], provider: Seq[String] = Seq()) extends ProviderEnvelope {
+  override def destinations: Set[String] = payload.to.map(_.address) ++ payload.cc.map(_.address) ++ payload.bcc.map(_.address)
+}

@@ -50,3 +50,15 @@ CREATE TABLE `SUBSCRIPTIONS` (
   `active` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+CREATE TABLE `APP_CONFIG` (
+  `appName` varchar(100) NOT NULL DEFAULT '',
+  `name` varchar(100) NOT NULL DEFAULT '',
+  `value` text NOT NULL,
+  `format` enum('STRING','JSON') NOT NULL DEFAULT 'STRING',
+  `creationTS` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `lastUpdatedTS` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `updatedBy` varchar(100) NOT NULL DEFAULT '',
+  `createdBy` varchar(100) NOT NULL DEFAULT '',
+  UNIQUE KEY `id` (`appName`,`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
