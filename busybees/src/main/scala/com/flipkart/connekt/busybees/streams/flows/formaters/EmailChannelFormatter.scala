@@ -28,6 +28,8 @@ import scala.concurrent.duration._
 
 class EmailChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecutor) extends NIOFlow[ConnektRequest, EmailPayloadEnvelope](parallelism)(ec) {
 
+  lazy val projectConfigService = ServiceFactory.getUserProjectConfigService
+
   override def map: ConnektRequest => List[EmailPayloadEnvelope] = message => {
 
     try {
@@ -47,8 +49,12 @@ class EmailChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecu
           cc = cc,
           bcc = bcc,
           data = message.channelData.asInstanceOf[EmailRequestData],
-          from = EmailAddress("Connekt", "connekt@flipkart.com"),
-          replyTo = EmailAddress("Connekt", "connekt@flipkart.com")
+          from = {
+            Option(emailInfo.from).getOrElse(projectConfigService.getProjectConfiguration(emailInfo.appName,"default-from-email").get.get.value.getObj[EmailAddress])
+          },
+          replyTo = {
+            Option(emailInfo.replyTo).getOrElse(projectConfigService.getProjectConfiguration(emailInfo.appName,"default-replyTo-email").get.get.value.getObj[EmailAddress])
+          }
         )
         List(EmailPayloadEnvelope( messageId = message.id, appName = emailInfo.appName, contextId = message.contextId.orEmpty, clientId = message.clientId, payload = payload, meta = message.meta) )
       } else if (emailInfo.to.nonEmpty) {

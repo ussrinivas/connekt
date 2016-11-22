@@ -25,6 +25,7 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 
 class EmailProviderPrepare extends MapFlowStage[EmailPayloadEnvelope, (HttpRequest, EmailRequestTracker)] {
 
+
   lazy implicit val stencilService = ServiceFactory.getStencilService
 
   override val map: (EmailPayloadEnvelope) => List[(HttpRequest, EmailRequestTracker)] = emailPayloadEnvelope => {

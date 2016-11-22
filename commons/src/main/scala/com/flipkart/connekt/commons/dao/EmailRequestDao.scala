@@ -31,6 +31,8 @@ class EmailRequestDao(tableName: String, hTableFactory: THTableFactory) extends 
       m += "cc" -> requestInfo.cc.getJson.getUtf8Bytes
     if(requestInfo.bcc != null && requestInfo.bcc.nonEmpty)
       m += "bcc" -> requestInfo.to.getJson.getUtf8Bytes
+    Option(requestInfo.from).foreach(m += "from" -> _.getJson.getUtf8Bytes )
+    Option(requestInfo.replyTo).foreach(m += "replyTo" -> _.getJson.getUtf8Bytes )
 
     m.toMap
   }
@@ -39,7 +41,9 @@ class EmailRequestDao(tableName: String, hTableFactory: THTableFactory) extends 
     appName = reqInfoProps.getS("appName"),
     cc = Option(reqInfoProps.getS("cc")).map(_.getObj[Set[EmailAddress]]).getOrElse(Set.empty),
     bcc = Option(reqInfoProps.getS("bcc")).map(_.getObj[Set[EmailAddress]]).getOrElse(Set.empty),
-    to = reqInfoProps.getS("to").getObj[Set[EmailAddress]]
+    to = reqInfoProps.getS("to").getObj[Set[EmailAddress]],
+    from = Option(reqInfoProps.getS("from")).map(_.getObj[EmailAddress]).orNull,
+    replyTo = Option(reqInfoProps.getS("replyTo")).map(_.getObj[EmailAddress]).orNull
   )
 
   override protected def channelRequestDataMap(channelRequestData: ChannelRequestData): Map[String, Array[Byte]] = {
