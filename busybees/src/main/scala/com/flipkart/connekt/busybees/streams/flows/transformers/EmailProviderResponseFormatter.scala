@@ -62,7 +62,7 @@ class EmailProviderResponseFormatter(implicit m: Materializer, ec: ExecutionCont
         |    def statusCode = context.get('statusCode').asInt()
         |
         |
-        |    return new EmailResponse(messageId,statusCode, "")
+        |    return new EmailResponse("sendgrid", messageId,statusCode, "")
         |
         |  }
         |}
