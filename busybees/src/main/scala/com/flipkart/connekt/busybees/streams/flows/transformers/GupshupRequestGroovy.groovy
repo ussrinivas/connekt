@@ -2,12 +2,13 @@ package com.flipkart.connekt.busybees.streams.flows.transformers
 
 import akka.http.scaladsl.model.*
 import akka.http.scaladsl.model.headers.RawHeader
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import groovy.json.JsonBuilder
 import org.codehaus.jettison.json.JSONObject
 
-public class GupshupRequestGroovy {
+class GupshupRequestGroovy {
 
   static compute(String id, ObjectNode context) {
     def data = context.get('data').get('payload')
@@ -24,7 +25,12 @@ public class GupshupRequestGroovy {
     output['msg_type'] = data.get("messageType").asText()
     output['dvt'] = data.get("dvt").asText()
     output['isIntl'] = data.get("isIntl").asText()
-    output['send_to'] = data.get("receiver").asText()
+    def receivers = data.get("receivers").elements()
+    String numbers = ""
+    receivers.eachWithIndex { JsonNode entry, int i ->
+      numbers += entry.asText() + ","
+    }
+    output['send_to'] = numbers
     output['mask'] = data.get("senderMask").asText()
     output['msg'] = URLEncoder.encode(data.get("messageBody").get("body").asText(), "UTF-8")
 
@@ -72,7 +78,7 @@ public class GupshupRequestGroovy {
       "        \"appName\": \"phonepe\",\n" +
       "        \"contextId\": \"\",\n" +
       "        \"payload\": {\n" +
-      "            \"receiver\": \"7760947385\",\n" +
+      "            \"receivers\": [\"7760947385\",\"adsfafd\"],\n" +
       "            \"messageBody\": {\n" +
       "                \"type\": \"SMS\",\n" +
       "                \"body\": \"sending sms using gupshup\"\n" +

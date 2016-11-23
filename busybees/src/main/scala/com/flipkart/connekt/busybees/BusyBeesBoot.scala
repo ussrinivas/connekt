@@ -79,7 +79,6 @@ object BusyBeesBoot extends BaseApp {
       ServiceFactory.initStorageService(DaoFactory.getKeyChainDao)
       ServiceFactory.initProjectConfigService(DaoFactory.getUserProjectConfigDao)
 
-
       val kafkaConnConf = ConnektConfig.getConfig("connections.kafka.consumerConnProps").getOrElse(ConfigFactory.empty())
       ConnektLogger(LogFile.SERVICE).info(s"Kafka Conf: ${kafkaConnConf.toString}")
 
@@ -97,7 +96,6 @@ object BusyBeesBoot extends BaseApp {
 
       ServiceFactory.initStatsReportingService(DaoFactory.getStatsReportingDao)
       ServiceFactory.initStencilService(DaoFactory.getStencilDao)
-      ServiceFactory.initAppLevelConfigService(DaoFactory.getAppLevelConfigurationDao)
 
       DeviceDetailsService.bootstrap()
 

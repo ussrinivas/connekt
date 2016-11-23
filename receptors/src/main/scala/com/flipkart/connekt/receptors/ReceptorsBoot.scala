@@ -68,14 +68,14 @@ object ReceptorsBoot extends BaseApp {
 
       ServiceFactory.initCallbackService(null, DaoFactory.getSmsCallbackDao, DaoFactory.getSmsRequestDao, DaoFactory.getPNCallbackDao, DaoFactory.getPNRequestDao, null,kafkaProducerHelper)
       ServiceFactory.initEmailMessageService(DaoFactory.getEmailRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf)
-      ServiceFactory.initCallbackService(emailCallbackDao = DaoFactory.getEmailCallbackDao, pnCallbackDao = DaoFactory.getPNCallbackDao, pnRequestInfoDao = DaoFactory.getPNRequestDao, emailRequestDao = DaoFactory.getEmailRequestDao, queueProducerHelper = kafkaProducerHelper)
-
+      ServiceFactory.initCallbackService(emailCallbackDao = DaoFactory.getEmailCallbackDao,smsCallbackDao = DaoFactory.getSmsCallbackDao,
+        smsRequestDao = DaoFactory.getSmsRequestDao, pnCallbackDao = DaoFactory.getPNCallbackDao, pnRequestInfoDao = DaoFactory.getPNRequestDao,
+        emailRequestDao = DaoFactory.getEmailRequestDao, queueProducerHelper = kafkaProducerHelper)
       ServiceFactory.initAuthorisationService(DaoFactory.getPrivDao, DaoFactory.getUserInfoDao)
       ServiceFactory.initStorageService(DaoFactory.getKeyChainDao)
       ServiceFactory.initProjectConfigService(DaoFactory.getUserProjectConfigDao)
       ServiceFactory.initStatsReportingService(DaoFactory.getStatsReportingDao)
       ServiceFactory.initStencilService(DaoFactory.getStencilDao)
-      ServiceFactory.initAppLevelConfigService(DaoFactory.getAppLevelConfigurationDao)
 
       //Start up the receptors
       ReceptorsServer(ConnektConfig.getConfig("react").get)

@@ -64,12 +64,12 @@ object DaoFactory {
     )
 
     daoMap += DaoType.USER_INFO -> UserInfoDao("USER_INFO", mysqlFactoryWrapper)
-    daoMap += DaoType.APP_LEVEL_CONFIG -> AppLevelConfigurationDao("APP_LEVEL_CONFIG", mysqlFactoryWrapper)
     daoMap += DaoType.USER_CONFIG -> UserConfigurationDao("USER_CONFIG", mysqlFactoryWrapper)
     daoMap += DaoType.PRIVILEGE -> PrivDao("RESOURCE_PRIV", mysqlFactoryWrapper)
     daoMap += DaoType.SUBSCRIPTION -> SubscriptionDao("SUBSCRIPTIONS", mysqlFactoryWrapper)
     daoMap += DaoType.STENCIL -> StencilDao("STENCIL_STORE", "STENCIL_HISTORY_STORE", "STENCILS_ENSEMBLE", "BUCKET_REGISTRY", mysqlFactoryWrapper)
     daoMap += DaoType.KEY_CHAIN -> KeyChainDao("DATA_STORE", mysqlFactoryWrapper)
+    daoMap += DaoType.APP_CONFIG -> UserProjectConfigDao("APP_CONFIG", mysqlFactoryWrapper)
   }
 
   def initCouchbaseCluster(config: Config) {
@@ -117,8 +117,6 @@ object DaoFactory {
 
   def getUserConfigurationDao: TUserConfiguration = daoMap(DaoType.USER_CONFIG).asInstanceOf[UserConfigurationDao]
 
-  def getAppLevelConfigurationDao: TAppLevelConfiguration = daoMap(DaoType.APP_LEVEL_CONFIG).asInstanceOf[AppLevelConfigurationDao]
-
   def getUserProjectConfigDao:UserProjectConfigDao = daoMap(DaoType.APP_CONFIG).asInstanceOf[UserProjectConfigDao]
 
   def getStencilDao: TStencilDao = daoMap(DaoType.STENCIL).asInstanceOf[StencilDao]
@@ -141,7 +139,6 @@ object DaoType extends Enumeration {
   USER_INFO,
   USER_CONFIG,
   APP_CONFIG,
-  APP_LEVEL_CONFIG,
   STENCIL,
   STATS_REPORTING,
   SUBSCRIPTION,

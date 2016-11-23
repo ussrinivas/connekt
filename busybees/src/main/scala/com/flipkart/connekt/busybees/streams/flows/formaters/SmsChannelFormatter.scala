@@ -39,7 +39,7 @@ class SmsChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecuto
       val ttl = message.expiryTs.map(expiry => (expiry - System.currentTimeMillis) / 1000).getOrElse(6.hour.toSeconds)
 
       if (smsInfo.receivers.nonEmpty && ttl > 0) {
-        val payload = SmsPayload(smsInfo.receivers.mkString(","), message.channelData.asInstanceOf[SmsRequestData], "Text", "FLPKRT", "1", "0")
+        val payload = SmsPayload(smsInfo.receivers, message.channelData.asInstanceOf[SmsRequestData], "Text", "FLPKRT", "1", "0")
         List(SmsPayloadEnvelope(message.id, message.clientId, message.stencilId.orEmpty, smsInfo.appName, message.contextId.orEmpty, payload, message.meta))
       } else if (smsInfo.receivers.nonEmpty) {
         ConnektLogger(LogFile.PROCESSORS).warn(s"SMSChannelFormatter dropping ttl-expired message: ${message.id}")
@@ -51,7 +51,7 @@ class SmsChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecuto
     } catch {
       case e: Exception =>
         ConnektLogger(LogFile.PROCESSORS).error(s"SMSChannelFormatter error for ${message.id}", e)
-        throw ConnektPNStageException(message.id, message.clientId, message.deviceId, InternalStatus.StageError, message.appName, message.platform, message.contextId.orEmpty, message.meta, "SMSChannelFormatter::".concat(e.getMessage), e)
+        throw ConnektPNStageException(message.id, message.clientId, message.destinations, InternalStatus.StageError, message.appName, message.platform, message.contextId.orEmpty, message.meta, "SMSChannelFormatter::".concat(e.getMessage), e)
     }
   }
 }

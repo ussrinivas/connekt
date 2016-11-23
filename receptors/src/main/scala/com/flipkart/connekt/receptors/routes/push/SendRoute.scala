@@ -74,7 +74,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                     groupedPlatformRequests += request.copy(channelInfo = pnRequestInfo.copy(platform = appPlatform))
                                 }
 
-                                val failure = ListBuffer(pnRequestInfo.deviceIds.toList.diff(groupedPlatformRequests.flatMap(_.deviceId)): _ *)
+                                val failure = ListBuffer(pnRequestInfo.deviceIds.toList.diff(groupedPlatformRequests.flatMap(_.destinations)): _ *)
                                 ServiceFactory.getReportingService.recordPushStatsDelta(user.userId, request.contextId, request.stencilId, Option(appPlatform), appName, InternalStatus.Rejected, failure.size)
 
                                 val success = scala.collection.mutable.Map[String, Set[String]]()
@@ -119,7 +119,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                           Future {
                             profile(s"sendUserPush.$appPlatform.$appName") {
                               val request = r.copy(clientId = user.userId, channel = "push", meta = {
-                                Option(r.meta).getOrElse(Map.empty[String,String]) ++ headers
+                                Option(r.meta).getOrElse(Map.empty[String, String]) ++ headers
                               })
                               request.validate
 
@@ -173,7 +173,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
             }
           } ~ pathPrefix("send" / "email") {
             path(Segment) { appName: String =>
-              authorize(user,"SEND_EMAIL", s"SEND_EMAIL_$appName") {
+              authorize(user, "SEND_EMAIL", s"SEND_EMAIL_$appName") {
                 post {
                   getXHeaders { headers =>
                     entity(as[ConnektRequest]) { r =>
@@ -218,56 +218,56 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                 }
               }
             }
-          }          ~ pathPrefix("send" / "sms") {
-              path(Segment) {
-                (appName: String) =>
-                  authorize(user, "SEND_" + appName) {
-                    post {
-                      getXHeaders { headers =>
-                        entity(as[ConnektRequest]) { r =>
-                          complete {
-                            Future {
-                              profile(s"sendSms.$appName") {
-                                val request = r.copy(clientId = user.userId, channel = Channel.SMS.toString, meta = {
-                                  Option(r.meta).getOrElse(Map.empty[String, String]) ++ headers
-                                })
-                                request.validate
+          } ~ pathPrefix("send" / "sms") {
+            path(Segment) {
+              (appName: String) =>
+                authorize(user, "SEND_" + appName) {
+                  post {
+                    getXHeaders { headers =>
+                      entity(as[ConnektRequest]) { r =>
+                        complete {
+                          Future {
+                            profile(s"sendSms.$appName") {
+                              val request = r.copy(clientId = user.userId, channel = Channel.SMS.toString, meta = {
+                                Option(r.meta).getOrElse(Map.empty[String, String]) ++ headers
+                              })
+                              request.validate
 
-                                ConnektLogger(LogFile.SERVICE).debug(s"Received SMS request with payload: ${request.toString}")
+                              ConnektLogger(LogFile.SERVICE).debug(s"Received SMS request with payload: ${request.toString}")
 
-                                val smsRequestInfo = request.channelInfo.asInstanceOf[SmsRequestInfo].copy(appName = appName.toLowerCase)
+                              val smsRequestInfo = request.channelInfo.asInstanceOf[SmsRequestInfo].copy(appName = appName.toLowerCase)
 
-                                val smsRequest = request.copy(channelInfo = smsRequestInfo)
+                              val smsRequest = request.copy(channelInfo = smsRequestInfo)
 
-                                if (smsRequestInfo.receivers != null && smsRequestInfo.receivers.nonEmpty) {
+                              if (smsRequestInfo.receivers != null && smsRequestInfo.receivers.nonEmpty) {
 
-                                  val success = scala.collection.mutable.Map[String, Set[String]]()
-                                  val failure = ListBuffer[String]()
+                                val success = scala.collection.mutable.Map[String, Set[String]]()
+                                val failure = ListBuffer[String]()
 
-                                  val queueName = ServiceFactory.getSMSMessageService.getRequestBucket(request, user)
-                                  /* enqueue multiple requests into kafka */
-                                  ServiceFactory.getSMSMessageService.saveRequest(smsRequest, queueName, isCrucial = true) match {
-                                    case Success(id) =>
-                                      val receivers = smsRequest.channelInfo.asInstanceOf[SmsRequestInfo].receivers
-                                      success += id -> receivers
-                                    case Failure(t) =>
-                                      val receivers = smsRequest.channelInfo.asInstanceOf[SmsRequestInfo].receivers
-                                      failure ++= receivers
-                                  }
-                                  GenericResponse(StatusCodes.Created.intValue, null, SendResponse("SMS Send Request Received", success.toMap, failure.toList)).respond
-                                } else {
-                                  ConnektLogger(LogFile.SERVICE).error(s"Request Validation Failed, $request ")
-                                  GenericResponse(StatusCodes.BadRequest.intValue, null, Response("Request Validation Failed, Please ensure mandatory field values.", null)).respond
+                                val queueName = ServiceFactory.getSMSMessageService.getRequestBucket(request, user)
+                                /* enqueue multiple requests into kafka */
+                                ServiceFactory.getSMSMessageService.saveRequest(smsRequest, queueName, isCrucial = true) match {
+                                  case Success(id) =>
+                                    val receivers = smsRequest.channelInfo.asInstanceOf[SmsRequestInfo].receivers
+                                    success += id -> receivers
+                                  case Failure(t) =>
+                                    val receivers = smsRequest.channelInfo.asInstanceOf[SmsRequestInfo].receivers
+                                    failure ++= receivers
                                 }
+                                GenericResponse(StatusCodes.Created.intValue, null, SendResponse("SMS Send Request Received", success.toMap, failure.toList)).respond
+                              } else {
+                                ConnektLogger(LogFile.SERVICE).error(s"Request Validation Failed, $request ")
+                                GenericResponse(StatusCodes.BadRequest.intValue, null, Response("Request Validation Failed, Please ensure mandatory field values.", null)).respond
                               }
-                            }(ioDispatcher)
-                          }
+                            }
+                          }(ioDispatcher)
                         }
                       }
                     }
                   }
-              }
+                }
             }
+          }
         }
     }
 }

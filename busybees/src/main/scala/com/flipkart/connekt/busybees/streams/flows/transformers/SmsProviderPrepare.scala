@@ -16,7 +16,7 @@ import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.headers.RawHeader
 import com.flipkart.connekt.busybees.models.SmsRequestTracker
 import com.flipkart.connekt.busybees.streams.flows.MapFlowStage
-import com.flipkart.connekt.commons.entities.{Channel, Stencil, StencilEngine}
+import com.flipkart.connekt.commons.entities.{Stencil, StencilEngine}
 import com.flipkart.connekt.commons.factories.ServiceFactory
 import com.flipkart.connekt.commons.iomodels.SmsPayloadEnvelope
 import com.flipkart.connekt.commons.services.KeyChainManager
@@ -30,13 +30,13 @@ class SmsProviderPrepare extends MapFlowStage[SmsPayloadEnvelope, (HttpRequest, 
   override val map: (SmsPayloadEnvelope) => List[(HttpRequest, SmsRequestTracker)] = smsPayloadEnvelope => {
 
     val selectedProvider = smsPayloadEnvelope.provider.last
-    val credentials = KeyChainManager.getSimpleCredential(s"${smsPayloadEnvelope.appName}-${Channel.SMS}.$selectedProvider").get
+    val credentials = KeyChainManager.getSimpleCredential(s"sms.${smsPayloadEnvelope.appName.toLowerCase}.$selectedProvider").get
 
     val headers: Map[String, String] = Map("X-MID" -> "123234", "X-CNAME" -> smsPayloadEnvelope.clientId, "X-TID" -> smsPayloadEnvelope.templateId)
 
     val tracker = SmsRequestTracker(messageId = smsPayloadEnvelope.messageId,
       clientId = smsPayloadEnvelope.clientId,
-      receivers = smsPayloadEnvelope.payload.receivers.split(",").toSet,
+      receivers = smsPayloadEnvelope.payload.receivers,
       provider = selectedProvider,
       appName = smsPayloadEnvelope.appName,
       contextId = smsPayloadEnvelope.contextId,
@@ -51,6 +51,7 @@ class SmsProviderPrepare extends MapFlowStage[SmsPayloadEnvelope, (HttpRequest, 
         |import akka.http.scaladsl.model.*
         |import akka.http.scaladsl.model.headers.RawHeader
         |import com.fasterxml.jackson.databind.node.ObjectNode
+        |import com.fasterxml.jackson.databind.JsonNode
         |import com.flipkart.connekt.commons.entities.fabric.GroovyFabric
         |import groovy.json.JsonBuilder
         |import org.codehaus.jettison.json.JSONObject
@@ -72,7 +73,12 @@ class SmsProviderPrepare extends MapFlowStage[SmsPayloadEnvelope, (HttpRequest, 
         |    output['msg_type'] = data.get("messageType").asText()
         |    output['dvt'] = data.get("dvt").asText()
         |    output['isIntl'] = data.get("isIntl").asText()
-        |    output['send_to'] = data.get("receivers").asText()
+        |    def receivers = data.get("receivers").elements()
+        |    String numbers = ""
+        |    receivers.eachWithIndex { JsonNode entry, int i ->
+        |      numbers += entry.asText() + ","
+        |    }
+        |    output['send_to'] = numbers
         |    output['mask'] = data.get("senderMask").asText()
         |    output['msg'] = URLEncoder.encode(data.get("messageBody").get("body").asText(), "UTF-8")
         |

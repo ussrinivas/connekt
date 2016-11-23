@@ -67,16 +67,18 @@ class CommonsBaseTest extends ConnektUTSpec {
 
     DaoFactory.initReportingDao(DaoFactory.getCouchbaseBucket("StatsReporting"))
 
-    ServiceFactory.initPNMessageService(DaoFactory.getPNRequestDao, DaoFactory.getUserConfigurationDao, getKafkaProducerHelper, getKafkaConsumerConf,null)
+    ServiceFactory.initPNMessageService(DaoFactory.getPNRequestDao, DaoFactory.getUserConfigurationDao, getKafkaProducerHelper, getKafkaConsumerConf, null)
     ServiceFactory.initEmailMessageService(DaoFactory.getEmailRequestDao, DaoFactory.getUserConfigurationDao, getKafkaProducerHelper, getKafkaConsumerConf)
-    ServiceFactory.initCallbackService(emailCallbackDao = DaoFactory.getEmailCallbackDao, pnCallbackDao = DaoFactory.getPNCallbackDao, pnRequestInfoDao = DaoFactory.getPNRequestDao, emailRequestDao = DaoFactory.getEmailRequestDao, queueProducerHelper = getKafkaProducerHelper)
+
+    ServiceFactory.initCallbackService(emailCallbackDao = DaoFactory.getEmailCallbackDao, smsCallbackDao = DaoFactory.getSmsCallbackDao,
+      smsRequestDao = DaoFactory.getSmsRequestDao, pnCallbackDao = DaoFactory.getPNCallbackDao, pnRequestInfoDao = DaoFactory.getPNRequestDao,
+      emailRequestDao = DaoFactory.getEmailRequestDao, queueProducerHelper = kafkaProducerHelper.get)
 
     ServiceFactory.initAuthorisationService(DaoFactory.getPrivDao, DaoFactory.getUserInfoDao)
     ServiceFactory.initStorageService(DaoFactory.getKeyChainDao)
     ServiceFactory.initProjectConfigService(DaoFactory.getUserProjectConfigDao)
     ServiceFactory.initStatsReportingService(DaoFactory.getStatsReportingDao)
     ServiceFactory.initStencilService(DaoFactory.getStencilDao)
-    ServiceFactory.initAppLevelConfigService(DaoFactory.getAppLevelConfigurationDao)
 
     ConnektLogger(LogFile.SERVICE).info("BaseReceptorsTest bootstrapped.")
 

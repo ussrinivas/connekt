@@ -18,7 +18,7 @@ import com.flipkart.connekt.commons.entities.Channel._
 import com.flipkart.connekt.commons.entities.ConfigFormat
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
-import com.flipkart.connekt.commons.iomodels.{EmailPayloadEnvelope, ProviderEnvelope}
+import com.flipkart.connekt.commons.iomodels.{EmailPayloadEnvelope, ProviderEnvelope, SmsPayloadEnvelope}
 import com.flipkart.connekt.commons.utils.StringUtils
 import com.flipkart.connekt.commons.utils.StringUtils._
 
@@ -34,8 +34,8 @@ class ChooseProvider[T <: ProviderEnvelope](channel: Channel) extends MapFlowSta
       val out = payload match {
         case email: EmailPayloadEnvelope =>
           email.copy(provider = email.provider :+ selectedProvider)
-        case _ =>
-          payload
+        case sms: SmsPayloadEnvelope =>
+          sms.copy(provider = sms.provider :+ selectedProvider)
       }
       List(out.asInstanceOf[T])
     } catch {

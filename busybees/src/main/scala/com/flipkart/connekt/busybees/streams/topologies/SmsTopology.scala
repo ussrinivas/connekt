@@ -24,11 +24,11 @@ import com.flipkart.connekt.busybees.streams.flows.eventcreators.SMSBigfootEvent
 import com.flipkart.connekt.busybees.streams.flows.formaters._
 import com.flipkart.connekt.busybees.streams.flows.profilers.TimedFlowOps._
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers._
-import com.flipkart.connekt.busybees.streams.flows.transformers.{AppLevelConfigType, SmsProviderPrepare, SmsProviderResponseFormatter}
+import com.flipkart.connekt.busybees.streams.flows.transformers.{SmsProviderPrepare, SmsProviderResponseFormatter}
 import com.flipkart.connekt.busybees.streams.flows.{ChooseProvider, FlowMetrics, RenderFlow}
 import com.flipkart.connekt.busybees.streams.sources.KafkaSource
 import com.flipkart.connekt.commons.core.Wrappers._
-import com.flipkart.connekt.commons.entities.{AppLevelConfig, Channel}
+import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.services.ConnektConfig
@@ -48,11 +48,6 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
   implicit val ec = BusyBeesBoot.system.dispatcher
   implicit val mat = BusyBeesBoot.mat
   val ioMat = BusyBeesBoot.ioMat
-  lazy val appLevelConfigService = ServiceFactory.getAppLevelConfigService
-
-  lazy val apps = appLevelConfigService.getChannelLevelConfig(Channel.SMS).getOrElse(List.empty[AppLevelConfig])
-    .filter(_.config.equalsIgnoreCase(AppLevelConfigType.senderMask)).map(_.appName).toSet
-
   val ioDispatcher = system.dispatchers.lookup("akka.actor.io-dispatcher")
 
   val sourceSwitches: scala.collection.mutable.ListBuffer[Promise[String]] = ListBuffer()
@@ -76,12 +71,13 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
 
   override def sources: Map[CheckPointGroup, Source[ConnektRequest, NotUsed]] = {
 
-    apps.flatMap { platform =>
-      ServiceFactory.getSMSMessageService.getTopicNames(Channel.SMS, Option(platform)).get match {
-        case platformTopics if platformTopics.nonEmpty => Option(platform.toString -> createMergedSource(platform, platformTopics))
+    List(Channel.SMS).flatMap {value =>
+      ServiceFactory.getSMSMessageService.getTopicNames(Channel.SMS, None).get match {
+        case platformTopics if platformTopics.nonEmpty => Option(value.toString -> createMergedSource(value, platformTopics))
         case _ => None
       }
     }.toMap
+
   }
 
   def smsTransformFlow = Flow.fromGraph(GraphDSL.create() { implicit b =>
@@ -153,6 +149,6 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
   }
 
   override def transformers: Map[CheckPointGroup, Flow[ConnektRequest, SmsCallbackEvent, NotUsed]] = {
-    apps.map(_ -> smsTransformFlow).toMap
+    Map(Channel.SMS.toString -> smsTransformFlow)
   }
 }
