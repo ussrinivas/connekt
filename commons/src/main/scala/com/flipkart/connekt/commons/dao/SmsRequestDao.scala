@@ -23,9 +23,9 @@ class SmsRequestDao(tableName: String, hTableFactory: THTableFactory) extends Re
 
     val m = scala.collection.mutable.Map[String, Array[Byte]]()
 
-    smsRequestInfo.sender.foreach(m += "sender" -> _.toString.getUtf8Bytes)
-    smsRequestInfo.receivers.foreach(m += "receivers" -> _.toString.getUtf8Bytes)
-    smsRequestInfo.appName.foreach(m += "appName" -> _.toString.getUtf8Bytes)
+    Option(smsRequestInfo.sender).foreach(m += "sender" -> _.toString.getUtf8Bytes)
+    Option(smsRequestInfo.receivers).foreach(m += "receivers" -> _.mkString(",").getUtf8Bytes)
+    Option(smsRequestInfo.appName).foreach(m += "appName" -> _.toString.getUtf8Bytes)
 
     m.toMap
   }

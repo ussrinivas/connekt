@@ -14,6 +14,7 @@ package com.flipkart.connekt.busybees.streams.flows.transformers
 
 import akka.http.scaladsl.model.HttpResponse
 import akka.stream.Materializer
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.flipkart.connekt.busybees.models.{SmsRequestTracker, SmsResponse}
 import com.flipkart.connekt.busybees.streams.flows.MapAsyncFlowStage
 import com.flipkart.connekt.commons.core.Wrappers._
@@ -36,32 +37,59 @@ class SmsProviderResponseFormatter(implicit m: Materializer, ec: ExecutionContex
     //val providerResponseHandlerStencil = stencilService.getStencilsByName(s"${smsPayloadEnvelope.appName.toLowerCase}-sms-$selectedProvider").find(_.component.equalsIgnoreCase("parse")).get
     val providerResponseHandlerStencil = new Stencil("handler-gupshup", StencilEngine.GROOVY,
       """
+        |package com.flipkart.connekt.busybees.streams.flows.transformers
         |
-        |package com.flipkart.connekt.commons.entities.fabric;
-        |
-        |import groovy.json.*
-        |import com.fasterxml.jackson.databind.node.ObjectNode;
-        |
-        |import com.flipkart.connekt.commons.entities.fabric.GroovyFabric
-        |import com.flipkart.connekt.commons.entities.fabric.EngineFabric
+        |import com.fasterxml.jackson.databind.ObjectMapper
+        |import com.fasterxml.jackson.databind.node.ObjectNode
+        |import com.flipkart.connekt.busybees.models.ResponsePerReceiver
         |import com.flipkart.connekt.busybees.models.SmsResponse
+        |import scala.collection.immutable.List
+        |import scala.collection.immutable.Nil$
+        |import com.flipkart.connekt.commons.entities.fabric.GroovyFabric
         |
-        |
-        |public class GupshupResponseGroovy implements GroovyFabric , EngineFabric  {
-        |
+        |public class GupshupResponseHandlerGroovy implements GroovyFabric{
         |  public Object compute(String id, ObjectNode context) {
         |
-        |    def response = context.get("body").asText().split("\\|")
-        |    return new SmsResponse( response[0].trim(), response[1].trim(), response[2].trim(), context.get("messageLength").asInt(), context.get("statusCode").asInt(), "")
+        |    def body = context.get('body')
+        |    def statusCode = context.get('statusCode').asInt()
+        |    def messageLength = context.get('messageLength').asInt()
+        |    List<ResponsePerReceiver> list = Nil$.MODULE$;
         |
+        |    if (body.has("data")) {
+        |      def data = body.get("data")
+        |      def responseMessages = data.get("response_messages").elements()
+        |      while (responseMessages.hasNext()) {
+        |        def receiver = responseMessages.next()
+        |        list = list.$colon$colon(new ResponsePerReceiver(receiver.get("status").asText().trim(), receiver.get("phone").asText().trim(),
+        |          receiver.get("id").asText().trim(), receiver.get("details").asText().trim(), getCode(receiver.get("status").asText())))
+        |      }
+        |    } else {
+        |      def response = body.get("response")
+        |      list = list.$colon$colon(new ResponsePerReceiver(response.get("status").asText().trim(), response.get("phone").asText().trim(),
+        |        response.get("id").asText().trim(), response.get("details").asText().trim(), getCode(response.get("status").asText())))
+        |    }
+        |
+        |    new SmsResponse(messageLength, statusCode, "", list)
+        |  }
+        |
+        |  public int getCode(String status) {
+        |    if (status.trim().equalsIgnoreCase("success")) {
+        |      return 200
+        |    } else {
+        |      return 422
+        |    }
         |  }
         |}
+        |
       """.stripMargin)
 
+    val tracker = responseTrackerPair._2
     val smsResponse = responseTrackerPair._1.flatMap(hR => Try_ {
       val httpResponse = Await.result(hR.toStrict(30.seconds), 5.seconds)
 
-      val result = stencilService.materialize(providerResponseHandlerStencil, Map("statusCode" -> httpResponse._1.intValue(), "messageLength" -> httpResponse.entity.getContentLengthOption().getAsLong, "headers" -> httpResponse.headers, "body" -> httpResponse._3.getString).getJsonNode).asInstanceOf[SmsResponse]
+      val result = stencilService.materialize(providerResponseHandlerStencil, Map("statusCode" -> httpResponse._1.intValue(),
+        "messageLength" -> tracker.request.payload.messageBody.body.length,
+        "body" -> httpResponse.entity.getString.getObj[ObjectNode]).getJsonNode).asInstanceOf[SmsResponse]
 
       assert(result != null, "Provider Parser Failed, NULL Returned")
 

@@ -12,4 +12,6 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
-case class SmsRequestData(body: String) extends ChannelRequestData
+import org.apache.commons.lang.StringUtils
+
+case class SmsRequestData(body: String = StringUtils.EMPTY) extends ChannelRequestData

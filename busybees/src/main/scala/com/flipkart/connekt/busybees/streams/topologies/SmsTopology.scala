@@ -17,6 +17,7 @@ import akka.stream._
 import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl._
 import com.flipkart.connekt.busybees.BusyBeesBoot
+import com.flipkart.connekt.busybees.models.SmsRequestTracker
 import com.flipkart.connekt.busybees.streams.ConnektTopology
 import com.flipkart.connekt.busybees.streams.flows.dispatchers._
 import com.flipkart.connekt.busybees.streams.flows.eventcreators.SMSBigfootEventCreator
@@ -86,25 +87,36 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
   def smsTransformFlow = Flow.fromGraph(GraphDSL.create() { implicit b =>
 
     /**
-      * IOS Topology
-      * +---------------+     +----------------+      +------------------+      +-----------------+     +-------------------+      +--..
-      * ConnektRequest ---> |   IOSFilter   | --> |  IOSFormatter  | ---> |APNSRequestPrepare|  --> | APNSDispatcher  | --> |APNSResponseHandler| ---> |Merger
-      * +---------------+     +----------------+      +------------------+      +-----------------+     +-------------------+      +-------
+      * Sms Topology
+      *
+      *                      +---------------+     +-------------------+        +----------+     +-----------------+      +---------------------+     +------------------+     +----------------------------+      +----------------------+     +-------------------------+          +--..
+      *  ConnektRequest ---> | SmsFilter     | --> |SmsChannelFormatter| |----> |  Merger  | --> |ChooseProvider   |  --> |  SmsProviderPrepare | --> |  SmsDispatcher   | --> |SmsProviderResponseFormatter|  --> |  SmsResponseHandler  | --> |Response / Error Splitter| --+----> |Merger
+      *                      +---------------+     +-------------------+ |      +----------+     +-----------------+      +---------------------+     +------------------+     +----------------------------+      +----------------------+     +-------------------------+   |     +-----
+      *                                                                  +---------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------+
       */
 
     val render = b.add(new RenderFlow().flow)
     val fmtSMSParallelism = ConnektConfig.getInt("topology.push.openwebFormatter.parallelism").get
     val smsFilter = b.add(Flow[ConnektRequest].filter(_.channelInfo.isInstanceOf[SmsRequestInfo]))
     val fmtSMS = b.add(new SmsChannelFormatter(fmtSMSParallelism)(ioDispatcher).flow)
+    val smsPayloadMerge = b.add(MergePreferred[SmsPayloadEnvelope](1))
+    val smsRetryMapper = b.add(Flow[SmsRequestTracker].map(_.request) /*.buffer(10, OverflowStrategy.backpressure)*/)
     val chooseProvider = b.add(new ChooseProvider[SmsPayloadEnvelope](Channel.SMS).flow)
     val smsPrepare = b.add(new SmsProviderPrepare().flow)
     val smsHttpPoolFlow = b.add(HttpDispatcher.smsPoolClientFlow.timedAs("smsRTT"))
     val smsResponseFormatter = b.add(new SmsProviderResponseFormatter().flow)
     val smsResponseHandler = b.add(new SmsResponseHandler().flow)
 
-    render.out ~> smsFilter ~> fmtSMS ~> chooseProvider ~> smsPrepare ~> smsHttpPoolFlow ~> smsResponseFormatter ~> smsResponseHandler
+    val smsRetryPartition = b.add(new Partition[Either[SmsRequestTracker, SmsCallbackEvent]](2, {
+      case Right(_) => 0
+      case Left(_) => 1
+    }))
 
-    FlowShape(render.in, smsResponseHandler.out)
+    render.out ~> smsFilter ~> fmtSMS ~> smsPayloadMerge
+    smsPayloadMerge.out ~> chooseProvider ~> smsPrepare ~> smsHttpPoolFlow ~> smsResponseFormatter ~> smsResponseHandler ~> smsRetryPartition.in
+    smsPayloadMerge.preferred <~ smsRetryMapper <~ smsRetryPartition.out(1).map(_.left.get).outlet
+
+    FlowShape(render.in, smsRetryPartition.out(0).map(_.right.get).outlet)
   })
 
 
@@ -119,7 +131,7 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
      */
 
     val evtCreator = b.add(new SMSBigfootEventCreator)
-    val metrics = b.add(new FlowMetrics[fkint.mp.connekt.SmsCallbackEvent](Channel.PUSH, Channel.SMS).flow)
+    val metrics = b.add(new FlowMetrics[fkint.mp.connekt.SmsCallbackEvent](Channel.SMS).flow)
     evtCreator.out ~> metrics ~> Sink.ignore
     val y = SinkShape(evtCreator.in)
     y

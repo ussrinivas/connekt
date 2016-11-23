@@ -21,6 +21,7 @@ class SmsCallbackDao(tableName: String, hTableFactory: THTableFactory) extends C
     val smsCallbackEvent = channelCallbackEvent.asInstanceOf[SmsCallbackEvent]
     Map[String, Array[Byte]](
       "messageId" -> smsCallbackEvent.messageId.getUtf8Bytes,
+      "providerMessageId" -> smsCallbackEvent.providerMessageId.getUtf8Bytes,
       "eventId" -> smsCallbackEvent.eventId.getUtf8Bytes,
       "clientId" -> smsCallbackEvent.clientId.getUtf8Bytes,
       "provider" -> smsCallbackEvent.provider.getUtf8Bytes,
@@ -37,6 +38,7 @@ class SmsCallbackDao(tableName: String, hTableFactory: THTableFactory) extends C
   override def mapToChannelEvent(channelEventPropsMap: Map[String, Array[Byte]]): CallbackEvent = {
     SmsCallbackEvent(
       messageId = channelEventPropsMap.getS("messageId"),
+      providerMessageId = channelEventPropsMap.getS("providerMessageId"),
       eventId = channelEventPropsMap.getS("eventId"),
       receiver = channelEventPropsMap.getS("receiver"),
       eventType = channelEventPropsMap.getS("eventType"),

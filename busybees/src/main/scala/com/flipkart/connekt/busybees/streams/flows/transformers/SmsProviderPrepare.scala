@@ -40,6 +40,7 @@ class SmsProviderPrepare extends MapFlowStage[SmsPayloadEnvelope, (HttpRequest, 
       provider = selectedProvider,
       appName = smsPayloadEnvelope.appName,
       contextId = smsPayloadEnvelope.contextId,
+      request = smsPayloadEnvelope,
       meta = smsPayloadEnvelope.meta)
 
     //    val providerStencil = stencilService.getStencilsByName(s"${smsPayloadEnvelope.appName.toLowerCase}-sms-$selectedProvider").find(_.component.equalsIgnoreCase("prepare")).get
@@ -59,13 +60,13 @@ class SmsProviderPrepare extends MapFlowStage[SmsPayloadEnvelope, (HttpRequest, 
         |  public Object compute(String id, ObjectNode context) {
         |    def data = context.get('data').get('payload')
         |    def credential = context.get('credentials')
-        |    println(context.get('data'))
-        |
+
         |    def output = [:]
         |
         |    output['v'] = "1.1"
         |    output['method'] = "sendMessage"
         |    output['auth_scheme'] = "PLAIN"
+        |    output['format'] = "json"
         |    output['userid'] = credential.get("username").asText()
         |    output['password'] = credential.get("password").asText()
         |    output['msg_type'] = data.get("messageType").asText()

@@ -16,6 +16,7 @@ import com.flipkart.connekt.commons.utils.DateTimeUtils
 import org.apache.commons.lang.RandomStringUtils
 
 case class SmsCallbackEvent(messageId: String,
+                            providerMessageId: String,
                             eventType: String,
                             receiver: String,
                             clientId: String,
