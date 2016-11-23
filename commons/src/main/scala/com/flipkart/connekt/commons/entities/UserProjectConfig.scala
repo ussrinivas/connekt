@@ -18,27 +18,20 @@ import javax.persistence.Column
 import com.fasterxml.jackson.core.{JsonGenerator, JsonParser}
 import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize}
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonSerializer, SerializerProvider}
-import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.entities.ConfigFormat.ConfigFormat
 import com.flipkart.connekt.commons.utils.StringUtils._
 import org.apache.commons.lang.StringUtils
 
-class AppLevelConfig {
+class UserProjectConfig {
 
   @Column(name = "appName")
   var appName: String = _
 
-  @Column(name = "config")
-  var config: String = _
+  @Column(name = "name")
+  var name: String = _
 
   @Column(name = "value")
   var value: String = StringUtils.EMPTY
-
-  @EnumTypeHint(value = "com.flipkart.connekt.commons.entities.Channel")
-  @JsonSerialize(using = classOf[ChannelToStringSerializer])
-  @JsonDeserialize(using = classOf[ChannelToStringDeserializer])
-  @Column(name = "channel")
-  var channel: Channel = _
 
   @EnumTypeHint(value = "com.flipkart.connekt.commons.entities.ConfigFormat")
   @Column(name = "format")
@@ -58,11 +51,12 @@ class AppLevelConfig {
   @Column(name = "createdBy")
   var createdBy: String = StringUtils.EMPTY
 
-  override def toString = s"UserChannelConfig($appName, $config, $value)"
+  override def toString = s"UserApplicationConfig($appName, $name, $value)"
 
   def validate() = {
-    require(config.isDefined, "`config` must be defined.")
-    require(com.flipkart.connekt.commons.utils.StringUtils.isNullOrEmpty(value), "`value` must be defined.")
+    require(name.isDefined, "`name` must be defined.")
+    require(!com.flipkart.connekt.commons.utils.StringUtils.isNullOrEmpty(value), "`value` must be defined.")
+    require(!com.flipkart.connekt.commons.utils.StringUtils.isNullOrEmpty(format), "`format` cannot be null.")
   }
 }
 

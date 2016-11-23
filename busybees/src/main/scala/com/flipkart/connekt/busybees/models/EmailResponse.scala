@@ -14,6 +14,5 @@ package com.flipkart.connekt.busybees.models
 
 import org.apache.commons.lang.StringUtils
 
-
 //TODO: Add more fields as required.
-case class EmailResponse(messageId:String, responseCode:Int, message:String = StringUtils.EMPTY)
+case class EmailResponse(providerName:String, messageId:String, responseCode:Int, message:String = StringUtils.EMPTY)

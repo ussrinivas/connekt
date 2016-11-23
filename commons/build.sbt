@@ -86,7 +86,7 @@ libraryDependencies ++= Seq(
     ExclusionRule(organization = "io.netty")
     ),
   "joda-time" % "joda-time" % "2.3",
-  "com.flipkart" %% "espion" % "1.0.1",
+  "com.flipkart" %% "espion" % "1.0.3",
   "com.flipkart" %% "util-http" % "0.0.6",
   "commons-validator" % "commons-validator" % "1.5.0" excludeAll ExclusionRule("commons-beanutils", "commons-beanutils"),
   "org.bouncycastle" % "bcprov-jdk15on" % "1.54",
@@ -107,7 +107,7 @@ libraryDependencies ++= Seq(
     ExclusionRule(organization = "org.mockito", name = "mockito-all"),
     ExclusionRule(organization = "org.hamcrest", name = "hamcrest-core")
     ),
-   "javax.mail" % "javax.mail-api" % "1.5.6"
+    "javax.mail" % "mail" % "1.5.0-b01"
 )
 
 

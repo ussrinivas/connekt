@@ -42,8 +42,6 @@ class SmsResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends
 
     val receivers = requestTracker.receivers
 
-    val events = ListBuffer[SmsCallbackEvent]()
-
     val maybeSmsCallbackEvent: Option[List[SmsCallbackEvent]] = tryResponse match {
       case Success(smsResponse) =>
         ConnektLogger(LogFile.PROCESSORS).info(s"SmsResponseHandler received http response for: messageId : ${requestTracker.messageId} code: ${smsResponse.responseCode}")

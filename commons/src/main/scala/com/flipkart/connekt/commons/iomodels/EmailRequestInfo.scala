@@ -19,8 +19,15 @@ import com.fasterxml.jackson.annotation.JsonProperty
 case class EmailRequestInfo(@JsonProperty(required = false) appName: String,
                             @JsonProperty(required = false) to: Set[EmailAddress] = Set.empty[EmailAddress],
                             @JsonProperty(required = false) cc: Set[EmailAddress] = Set.empty[EmailAddress],
-                            @JsonProperty(required = false) bcc: Set[EmailAddress] = Set.empty[EmailAddress]
-                           ) extends ChannelRequestInfo
+                            @JsonProperty(required = false) bcc: Set[EmailAddress] = Set.empty[EmailAddress],
+                            @JsonProperty(required = false) from: EmailAddress,
+                            @JsonProperty(required = false) replyTo: EmailAddress
+
+                           ) extends ChannelRequestInfo {
+  def toStrict:EmailRequestInfo = {
+    this.copy(appName = appName.toLowerCase, cc = Option(cc).getOrElse(Set.empty), bcc = Option(bcc).getOrElse(Set.empty) )
+  }
+}
 
 case class EmailAddress(name: String, address: String){
   def toInternetAddress:InternetAddress = {

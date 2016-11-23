@@ -119,6 +119,8 @@ object DaoFactory {
 
   def getAppLevelConfigurationDao: TAppLevelConfiguration = daoMap(DaoType.APP_LEVEL_CONFIG).asInstanceOf[AppLevelConfigurationDao]
 
+  def getUserProjectConfigDao:UserProjectConfigDao = daoMap(DaoType.APP_CONFIG).asInstanceOf[UserProjectConfigDao]
+
   def getStencilDao: TStencilDao = daoMap(DaoType.STENCIL).asInstanceOf[StencilDao]
 
   def getStatsReportingDao: StatsReportingDao = daoMap(DaoType.STATS_REPORTING).asInstanceOf[StatsReportingDao]
@@ -138,6 +140,7 @@ object DaoType extends Enumeration {
   PRIVILEGE,
   USER_INFO,
   USER_CONFIG,
+  APP_CONFIG,
   APP_LEVEL_CONFIG,
   STENCIL,
   STATS_REPORTING,

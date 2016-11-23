@@ -26,13 +26,12 @@ object ServiceFactory {
     serviceCache += ServiceType.PN_MESSAGE -> new MessageService(requestDao, userConfiguration, queueProducerHelper, kafkaConsumerConfig, schedulerService)
   }
 
-  def initCallbackService(emailCallbackDao: EmailCallbackDao, smsCallbackDao: SmsCallbackDao, smsRequestDao: SmsRequestDao, pnCallbackDao: PNCallbackDao, pnRequestInfoDao: PNRequestDao, emailRequestDao: EmailRequestDao, queueProducerHelper: KafkaProducerHelper) = {
-    serviceCache += ServiceType.CALLBACK -> new CallbackService(pnCallbackDao, emailCallbackDao, smsCallbackDao, smsRequestDao, pnRequestInfoDao, emailRequestDao, queueProducerHelper)
+  def initEmailMessageService(requestDao: EmailRequestDao,userConfiguration: TUserConfiguration, queueProducerHelper: KafkaProducerHelper, kafkaConsumerConfig: Config ): Unit ={
+    serviceCache += ServiceType.EMAIL_MESSAGE -> new MessageService(requestDao, userConfiguration, queueProducerHelper, kafkaConsumerConfig, null)
   }
 
-  def initSMSMessageService(requestDao: SmsRequestDao, userConfiguration: TUserConfiguration, queueProducerHelper: KafkaProducerHelper, kafkaConsumerConfig: Config, schedulerService: SchedulerService) = {
-    serviceCache += ServiceType.SMS -> new MessageService(requestDao, userConfiguration, queueProducerHelper, kafkaConsumerConfig, schedulerService)
-  }
+  def initCallbackService(emailCallbackDao: EmailCallbackDao, smsCallbackDao: SmsCallbackDao, smsRequestDao: SmsRequestDao, pnCallbackDao: PNCallbackDao, pnRequestInfoDao: PNRequestDao, emailRequestDao: EmailRequestDao, queueProducerHelper: KafkaProducerHelper) = {
+    serviceCache += ServiceType.CALLBACK -> new CallbackService(pnCallbackDao, emailCallbackDao, smsCallbackDao, smsRequestDao, pnRequestInfoDao, emailRequestDao, queueProducerHelper)
 
   def initAuthorisationService(priv: PrivDao, userInfo: TUserInfo) = {
     serviceCache += ServiceType.AUTHORISATION -> new AuthorisationService(priv, userInfo)
@@ -43,13 +42,17 @@ object ServiceFactory {
     serviceCache += ServiceType.KEY_CHAIN -> new KeyChainService(dao)
   }
 
-  def initStatsReportingService(dao: StatsReportingDao): Unit = {
+  def initProjectConfigService(dao:UserProjectConfigDao): Unit ={
+    serviceCache += ServiceType.APP_CONFIG -> new UserProjectConfigService(dao)
+  }
+
+  def initStatsReportingService(dao : StatsReportingDao): Unit ={
     val instance = new ReportingService(dao)
     instance.init()
     serviceCache += ServiceType.STATS_REPORTING -> instance
   }
 
-  def initSchedulerService(hConnection: Connection): Unit = {
+  def initSchedulerService(hConnection: Connection): Unit ={
     val instance = new SchedulerService(hConnection)
     serviceCache += ServiceType.SCHEDULER -> instance
   }
@@ -61,6 +64,7 @@ object ServiceFactory {
   def getSchedulerService = serviceCache(ServiceType.SCHEDULER).asInstanceOf[SchedulerService]
 
   def getPNMessageService = serviceCache(ServiceType.PN_MESSAGE).asInstanceOf[TMessageService]
+  def getEmailMessageService = serviceCache(ServiceType.EMAIL_MESSAGE).asInstanceOf[TMessageService]
 
   def getSMSMessageService = serviceCache(ServiceType.SMS).asInstanceOf[TMessageService]
 
@@ -77,6 +81,8 @@ object ServiceFactory {
   def getReportingService = serviceCache(ServiceType.STATS_REPORTING).asInstanceOf[ReportingService]
 
   def getStencilService = serviceCache(ServiceType.STENCIL).asInstanceOf[TStencilService]
+
+  def getUserProjectConfigService = serviceCache(ServiceType.APP_CONFIG).asInstanceOf[UserProjectConfigService]
 
 }
 

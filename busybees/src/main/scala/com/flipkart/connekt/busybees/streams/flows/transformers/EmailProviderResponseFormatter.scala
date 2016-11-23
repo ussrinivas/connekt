@@ -33,42 +33,7 @@ class EmailProviderResponseFormatter(implicit m: Materializer, ec: ExecutionCont
 
   override val map: ((Try[HttpResponse], EmailRequestTracker)) => Future[List[(Try[EmailResponse], EmailRequestTracker)]] = responseTrackerPair => Future(profile("map") {
 
-    //val providerResponseHandlerStencil = stencilService.getStencilsByName(s"${emailPayloadEnvelope.appName.toLowerCase}-email-$selectedProvider").find(_.component.equalsIgnoreCase("parse")).get
-    val providerResponseHandlerStencil = new Stencil("handler-sendgrid", StencilEngine.GROOVY,
-      """
-        |
-        |package com.flipkart.connekt.commons.entities.fabric;
-        |
-        |import groovy.json.*
-        |import com.fasterxml.jackson.databind.node.ObjectNode;
-        |
-        |import com.flipkart.connekt.commons.entities.fabric.GroovyFabric
-        |import com.flipkart.connekt.commons.entities.fabric.EngineFabric
-        |import com.flipkart.connekt.busybees.models.EmailResponse
-        |
-        |
-        |public class SendgridV3ResponseGroovy implements GroovyFabric , EngineFabric  {
-        |
-        |  public Object compute(String id, ObjectNode context) {
-        |
-        |    println(context)
-        |
-        |    def messageIdObject = context.get('headers').find { hR ->
-        |       hR.get('lowercaseName') != null && hR.get('lowercaseName').asText()  == "x-message-id"
-        |    }
-        |
-        |    def messageId =  messageIdObject != null ? messageIdObject.get('value').asText() : null
-        |
-        |    def statusCode = context.get('statusCode').asInt()
-        |
-        |
-        |    return new EmailResponse(messageId,statusCode, "")
-        |
-        |  }
-        |}
-      """.stripMargin)
-
-
+    val providerResponseHandlerStencil = stencilService.getStencilsByName(s"ckt-email-${responseTrackerPair._2.provider}").find(_.component.equalsIgnoreCase("parse")).get
 
     val emailResponse = responseTrackerPair._1.flatMap(hR => Try_{
       val httpResponse = Await.result(hR.toStrict(30.seconds), 5.seconds)

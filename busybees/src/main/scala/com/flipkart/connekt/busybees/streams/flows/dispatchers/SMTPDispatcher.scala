@@ -69,7 +69,7 @@ class SMTPDispatcher(host: String, credentials: SimpleCredential, parallelism: I
 
           Transport.send(msg)
 
-          EmailResponse(msg.getMessageID, 0)
+          EmailResponse("smtp",msg.getMessageID, 0)
 
         }(ec).onComplete(responseTry ⇒ result.success(responseTry -> userContext))(ec)
 

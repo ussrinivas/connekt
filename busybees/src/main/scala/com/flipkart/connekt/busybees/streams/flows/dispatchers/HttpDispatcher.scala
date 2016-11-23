@@ -16,6 +16,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.stream._
 import com.flipkart.connekt.busybees.models.{GCMRequestTracker, OpenWebRequestTracker, SmsRequestTracker, WNSRequestTracker}
+import com.flipkart.connekt.busybees.models.{EmailRequestTracker, GCMRequestTracker, OpenWebRequestTracker, WNSRequestTracker}
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.typesafe.config.Config
 
@@ -33,6 +34,8 @@ class HttpDispatcher(actorSystemConf: Config) {
   private val smsPoolClientFlow = Http().superPool[SmsRequestTracker]()(httpMat)
 
   private val openWebPoolClientFlow = Http().superPool[OpenWebRequestTracker]()(httpMat)
+
+  private val emailPoolClientFlow = Http().superPool[EmailRequestTracker]()(httpMat)
 
 }
 
@@ -54,6 +57,8 @@ object HttpDispatcher {
   def wnsPoolClientFlow = instance.map(_.wnsPoolClientFlow).get
 
   def openWebPoolClientFlow =  instance.map(_.openWebPoolClientFlow).get
+
+  def emailPoolClientFlow =  instance.map(_.emailPoolClientFlow).get
 
 
 }
