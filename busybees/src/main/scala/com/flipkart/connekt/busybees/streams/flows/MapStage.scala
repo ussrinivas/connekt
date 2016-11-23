@@ -103,6 +103,6 @@ object StageSupervision {
 
     case e: Throwable =>
       ConnektLogger(LogFile.PROCESSORS).error("StageSupervision Handle Unknown Exception", e)
-      Supervision.Resume
+      Supervision.Stop
   }
 }

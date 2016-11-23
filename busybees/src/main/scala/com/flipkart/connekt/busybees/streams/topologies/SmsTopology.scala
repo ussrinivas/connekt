@@ -118,19 +118,10 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
 
   override def sink: Sink[SmsCallbackEvent, NotUsed] = Sink.fromGraph(GraphDSL.create() { implicit b =>
 
-    /**
-     * Sink Topology
-     *
-     *                        +---------------------+     +-----------------+          ...-----+
-     *   SmsCallbackEvent ---> | BigfootEventCreator | --> | MetricsRecorder | --->  IgnoreSink |
-     *                        +---------------------+     +-----------------+      +-----------+
-     */
+    val metrics = b.add(new FlowMetrics[SmsCallbackEvent](Channel.SMS).flow)
+    metrics ~> Sink.ignore
 
-    val evtCreator = b.add(new SMSBigfootEventCreator)
-    val metrics = b.add(new FlowMetrics[fkint.mp.connekt.SmsCallbackEvent](Channel.SMS).flow)
-    evtCreator.out ~> metrics ~> Sink.ignore
-    val y = SinkShape(evtCreator.in)
-    y
+    SinkShape(metrics.in)
   })
 
   override def shutdown() = {
