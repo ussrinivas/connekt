@@ -12,6 +12,8 @@
  */
 package com.flipkart.connekt.busybees.streams.flows.formaters
 
+import java.nio.charset.{Charset, CharsetEncoder}
+
 import com.flipkart.connekt.busybees.streams.errors.ConnektPNStageException
 import com.flipkart.connekt.busybees.streams.flows.NIOFlow
 import com.flipkart.connekt.commons.entities.Channel
@@ -21,12 +23,16 @@ import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.utils.StringUtils._
+import org.apache.commons.codec.CharEncoding
 import org.apache.commons.lang.StringUtils
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
 
 class SmsChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecutor) extends NIOFlow[ConnektRequest, SmsPayloadEnvelope](parallelism)(ec) {
+
+  lazy val appLevelConfigService = ServiceFactory.getUserProjectConfigService
+  private val defaultEncoder: CharsetEncoder = Charset.forName(CharEncoding.US_ASCII).newEncoder
 
   override def map: ConnektRequest => List[SmsPayloadEnvelope] = message => {
 
@@ -38,8 +44,21 @@ class SmsChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecuto
 
       val ttl = message.expiryTs.map(expiry => (expiry - System.currentTimeMillis) / 1000).getOrElse(6.hour.toSeconds)
 
+      val senderMask = appLevelConfigService.getProjectConfiguration(message.appName, s"sender-mask-${Channel.SMS.toString}").get.get.value.toUpperCase //this must be a success
+
       if (smsInfo.receivers.nonEmpty && ttl > 0) {
-        val payload = SmsPayload(smsInfo.receivers, message.channelData.asInstanceOf[SmsRequestData], "Text", "FLPKRT", "1", "0")
+
+        var isUnicodeMessage: Boolean = false
+        val rD = message.channelData.asInstanceOf[SmsRequestData]
+
+        //Check if unicode
+        defaultEncoder.reset
+        if (!defaultEncoder.canEncode(rD.body)) isUnicodeMessage = true
+
+        //Cutoff timestamp
+        val dvt = message.expiryTs.map(expiry => (expiry - System.currentTimeMillis) / 1000).getOrElse(0).toString
+
+        val payload = SmsPayload(smsInfo.receivers, rD, isUnicodeMessage, senderMask, dvt, "0")
         List(SmsPayloadEnvelope(message.id, message.clientId, message.stencilId.orEmpty, smsInfo.appName, message.contextId.orEmpty, payload, message.meta))
       } else if (smsInfo.receivers.nonEmpty) {
         ConnektLogger(LogFile.PROCESSORS).warn(s"SMSChannelFormatter dropping ttl-expired message: ${message.id}")

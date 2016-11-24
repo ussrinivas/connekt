@@ -13,16 +13,19 @@ class GupshupRequestGroovy {
   static compute(String id, ObjectNode context) {
     def data = context.get('data').get('payload')
     def credential = context.get('credentials')
-    println(context.get('data'))
 
     def output = [:]
 
     output['v'] = "1.1"
     output['method'] = "sendMessage"
     output['auth_scheme'] = "PLAIN"
+    output['format'] = "json"
     output['userid'] = credential.get("username").asText()
     output['password'] = credential.get("password").asText()
-    output['msg_type'] = data.get("messageType").asText()
+
+    String msg_type = data.get("isUnicodeMessage").asText().equalsIgnoreCase("1") ? "Unicode_Text" : "Text"
+
+    output['msg_type'] = msg_type
     output['dvt'] = data.get("dvt").asText()
     output['isIntl'] = data.get("isIntl").asText()
     def receivers = data.get("receivers").elements()
@@ -47,7 +50,6 @@ class GupshupRequestGroovy {
       .addHeader(new RawHeader("X-CNAME", context.get('headers').get("X-CNAME").asText()))
       .addHeader(new RawHeader("X-TID", context.get('headers').get("X-TID").asText()))
 
-    print(httpRequest)
     return httpRequest
   }
 
@@ -71,21 +73,22 @@ class GupshupRequestGroovy {
 
     ObjectNode onode = (ObjectNode) new ObjectMapper().readTree("{\n" +
       "    \"data\": {\n" +
-      "        \"messageId\": null,\n" +
+      "        \"messageId\": \"212\",\n" +
       "        \"clientId\": \"connekt-sms\",\n" +
       "        \"templateId\": \"\",\n" +
-      "        \"receiver\": \"7760947385\",\n" +
-      "        \"appName\": \"phonepe\",\n" +
+      "        \"appName\": \"flipkart\",\n" +
       "        \"contextId\": \"\",\n" +
       "        \"payload\": {\n" +
-      "            \"receivers\": [\"7760947385\",\"adsfafd\"],\n" +
+      "            \"receivers\": [\n" +
+      "                \"7760947385\"\n" +
+      "            ],\n" +
       "            \"messageBody\": {\n" +
       "                \"type\": \"SMS\",\n" +
       "                \"body\": \"sending sms using gupshup\"\n" +
       "            },\n" +
-      "            \"messageType\": \"Text\",\n" +
+      "            \"isUnicodeMessage\": false,\n" +
       "            \"senderMask\": \"FLPKRT\",\n" +
-      "            \"dvt\": \"1\",\n" +
+      "            \"dvt\": \"0\",\n" +
       "            \"isIntl\": \"0\"\n" +
       "        },\n" +
       "        \"meta\": {},\n" +
@@ -100,7 +103,7 @@ class GupshupRequestGroovy {
       "        \"empty\": false\n" +
       "    },\n" +
       "    \"headers\": {\n" +
-      "        \"X-MID\": null,\n" +
+      "        \"X-MID\": \"212\",\n" +
       "        \"X-CNAME\": \"connekt-sms\",\n" +
       "        \"X-TID\": \"\"\n" +
       "    }\n" +

@@ -72,7 +72,7 @@ class CommonsBaseTest extends ConnektUTSpec {
 
     ServiceFactory.initCallbackService(emailCallbackDao = DaoFactory.getEmailCallbackDao, smsCallbackDao = DaoFactory.getSmsCallbackDao,
       smsRequestDao = DaoFactory.getSmsRequestDao, pnCallbackDao = DaoFactory.getPNCallbackDao, pnRequestInfoDao = DaoFactory.getPNRequestDao,
-      emailRequestDao = DaoFactory.getEmailRequestDao, queueProducerHelper = kafkaProducerHelper.get)
+      emailRequestDao = DaoFactory.getEmailRequestDao, queueProducerHelper = getKafkaProducerHelper)
 
     ServiceFactory.initAuthorisationService(DaoFactory.getPrivDao, DaoFactory.getUserInfoDao)
     ServiceFactory.initStorageService(DaoFactory.getKeyChainDao)

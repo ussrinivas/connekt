@@ -45,8 +45,7 @@ class SmsProviderTopologyTest extends TopologyUTSpec {
                       |
                       |  "channelInfo": {
                       |   	"type" : "SMS",
-                      |   	"appName" : "FLIPKART",
-                      |     "sender": "FLPKRT",
+                      |   	"appName" : "flipkart",
                       |     "receivers": ["7760947385"]
                       |  },
                       |  "clientId" : "connekt-sms",
