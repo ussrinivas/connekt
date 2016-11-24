@@ -16,7 +16,6 @@ import akka.NotUsed
 import akka.stream._
 import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl._
-import com.flipkart.connekt.busybees.BusyBeesBoot
 import com.flipkart.connekt.busybees.models.WNSRequestTracker
 import com.flipkart.connekt.busybees.streams.ConnektTopology
 import com.flipkart.connekt.busybees.streams.flows.dispatchers._
@@ -36,22 +35,12 @@ import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.typesafe.config.Config
 
-import scala.collection.mutable.ListBuffer
 import scala.concurrent.Promise
 
 
 class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallbackEvent] with SyncDelegate {
 
   SyncManager.get().addObserver(this, List(SyncType.CLIENT_QUEUE_CREATE))
-
-  implicit val system = BusyBeesBoot.system
-  implicit val ec = BusyBeesBoot.system.dispatcher
-  implicit val mat = BusyBeesBoot.mat
-  val ioMat = BusyBeesBoot.ioMat
-
-  val ioDispatcher = system.dispatchers.lookup("akka.actor.io-dispatcher")
-
-  val sourceSwitches: scala.collection.mutable.ListBuffer[Promise[String]] = ListBuffer()
 
   private def createMergedSource(checkpointGroup: CheckPointGroup, topics: Seq[String]): Source[ConnektRequest, NotUsed] = Source.fromGraph(GraphDSL.create() { implicit b =>
 

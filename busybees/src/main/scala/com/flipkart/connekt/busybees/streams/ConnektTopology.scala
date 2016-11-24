@@ -16,7 +16,11 @@ import akka.NotUsed
 import akka.event.Logging
 import akka.stream.scaladsl.{Flow, RunnableGraph, Sink, Source}
 import akka.stream.{ActorAttributes, Attributes, Materializer}
+import com.flipkart.connekt.busybees.BusyBeesBoot
 import com.flipkart.connekt.commons.iomodels.{CallbackEvent, ConnektRequest}
+
+import scala.collection.mutable.ListBuffer
+import scala.concurrent.Promise
 
 trait ConnektTopology[E <: CallbackEvent] {
 
@@ -27,6 +31,14 @@ trait ConnektTopology[E <: CallbackEvent] {
   def transformers: Map[CheckPointGroup, Flow[ConnektRequest, E, NotUsed]]
 
   def sink: Sink[E, NotUsed]
+
+  implicit val system = BusyBeesBoot.system
+  implicit val ec = BusyBeesBoot.system.dispatcher
+  implicit val mat = BusyBeesBoot.mat
+  val ioMat = BusyBeesBoot.ioMat
+  val ioDispatcher = system.dispatchers.lookup("akka.actor.io-dispatcher")
+
+  val sourceSwitches: scala.collection.mutable.ListBuffer[Promise[String]] = ListBuffer()
 
   def graphs(): List[RunnableGraph[NotUsed]] = {
     val sourcesMap = sources
