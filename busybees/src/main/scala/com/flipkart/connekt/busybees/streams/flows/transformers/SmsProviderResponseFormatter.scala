@@ -38,13 +38,9 @@ class SmsProviderResponseFormatter(implicit m: Materializer, ec: ExecutionContex
     val tracker = responseTrackerPair._2
     val smsResponse = responseTrackerPair._1.flatMap(hR => Try_ {
       val httpResponse = Await.result(hR.toStrict(30.seconds), 5.seconds)
-
       val result = stencilService.materialize(providerResponseHandlerStencil, Map("statusCode" -> httpResponse._1.intValue(),
-        "messageLength" -> tracker.request.payload.messageBody.body.length,
         "body" -> httpResponse.entity.getString.getObj[ObjectNode]).getJsonNode).asInstanceOf[SmsResponse]
-
       assert(result != null, "Provider Parser Failed, NULL Returned")
-
       result
     })
 

@@ -22,10 +22,10 @@ class SmsCallbackDao(tableName: String, hTableFactory: THTableFactory) extends C
     Map[String, Array[Byte]](
       "messageId" -> smsCallbackEvent.messageId.getUtf8Bytes,
       "providerMessageId" -> smsCallbackEvent.providerMessageId.getUtf8Bytes,
+      "smsParts" -> smsCallbackEvent.smsParts.getUtf8Bytes,
       "eventId" -> smsCallbackEvent.eventId.getUtf8Bytes,
       "clientId" -> smsCallbackEvent.clientId.getUtf8Bytes,
       "provider" -> smsCallbackEvent.provider.getUtf8Bytes,
-      "channel" -> smsCallbackEvent.channel.getUtf8Bytes,
       "receiver" -> smsCallbackEvent.receiver.getUtf8Bytes,
       "eventType" -> smsCallbackEvent.eventType.getUtf8Bytes,
       "appName" -> smsCallbackEvent.appName.getUtf8Bytes,
@@ -39,10 +39,10 @@ class SmsCallbackDao(tableName: String, hTableFactory: THTableFactory) extends C
     SmsCallbackEvent(
       messageId = channelEventPropsMap.getS("messageId"),
       providerMessageId = channelEventPropsMap.getS("providerMessageId"),
+      smsParts = channelEventPropsMap.getS("smsParts"),
       eventId = channelEventPropsMap.getS("eventId"),
       receiver = channelEventPropsMap.getS("receiver"),
       eventType = channelEventPropsMap.getS("eventType"),
-      channel = channelEventPropsMap.getS("channel"),
       provider = channelEventPropsMap.getS("provider"),
       appName = channelEventPropsMap.getS("appName"),
       contextId = channelEventPropsMap.getS("contextId"),

@@ -19,5 +19,5 @@ object DistributedCacheType extends CacheType {
 }
 
 object LocalCacheType extends CacheType {
-  val Default, UserInfo, UserGroups, ResourcePriv, UserConfiguration, WnsAccessToken, Stencils, StencilsBucket, StencilsEnsemble, AppCredential, EngineFabrics , Subscription, UserProjectConfig, AppLevelConfig = Value
+  val Default, UserInfo, UserGroups, ResourcePriv, UserConfiguration, WnsAccessToken, Stencils, StencilsBucket, StencilsEnsemble, AppCredential, EngineFabrics , Subscription, UserProjectConfig = Value
 }

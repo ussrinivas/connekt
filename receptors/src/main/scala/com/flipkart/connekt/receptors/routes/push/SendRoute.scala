@@ -35,6 +35,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
   lazy implicit val stencilService = ServiceFactory.getStencilService
   implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
+  lazy val appLevelConfigService = ServiceFactory.getUserProjectConfigService
 
   val route =
     authenticate {
@@ -234,9 +235,8 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                               request.validate
 
                               ConnektLogger(LogFile.SERVICE).debug(s"Received SMS request with payload: ${request.toString}")
-
-                              val smsRequestInfo = request.channelInfo.asInstanceOf[SmsRequestInfo].copy(appName = appName.toLowerCase)
-
+                              val senderMask = appLevelConfigService.getProjectConfiguration(appName.toLowerCase, s"sender-mask-${Channel.SMS.toString}").get.get.value.toUpperCase
+                              val smsRequestInfo = request.channelInfo.asInstanceOf[SmsRequestInfo].copy(appName = appName.toLowerCase, sender = senderMask)
                               val smsRequest = request.copy(channelInfo = smsRequestInfo)
 
                               if (smsRequestInfo.receivers != null && smsRequestInfo.receivers.nonEmpty) {

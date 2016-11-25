@@ -27,3 +27,25 @@ case class ConnektPNStageException(messageId: String,
                                    message: String,
                                    cause: Throwable,
                                    timeStamp: Long = System.currentTimeMillis()) extends ConnektStageException(message, cause)
+
+case class ConnektEmailStageException(messageId: String,
+                                   client: String,
+                                   deviceId: Set[String],
+                                   eventType: String,
+                                   appName: String,
+                                   context: String,
+                                   meta: Map[String, Any],
+                                   message: String,
+                                   cause: Throwable,
+                                   timeStamp: Long = System.currentTimeMillis()) extends ConnektStageException(message, cause)
+
+case class ConnektSmsStageException(messageId: String,
+                                   client: String,
+                                   deviceId: Set[String],
+                                   eventType: String,
+                                   appName: String,
+                                   context: String,
+                                   meta: Map[String, Any],
+                                   message: String,
+                                   cause: Throwable,
+                                   timeStamp: Long = System.currentTimeMillis()) extends ConnektStageException(message, cause)

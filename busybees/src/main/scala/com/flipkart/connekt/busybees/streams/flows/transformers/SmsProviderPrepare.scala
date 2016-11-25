@@ -33,8 +33,6 @@ class SmsProviderPrepare extends MapFlowStage[SmsPayloadEnvelope, (HttpRequest, 
       val selectedProvider = smsPayloadEnvelope.provider.last
       val credentials = KeyChainManager.getSimpleCredential(s"sms.${smsPayloadEnvelope.appName.toLowerCase}.$selectedProvider").get
 
-      val headers: Map[String, String] = Map("X-MID" -> smsPayloadEnvelope.messageId, "X-CNAME" -> smsPayloadEnvelope.clientId, "X-TID" -> smsPayloadEnvelope.templateId)
-
       val tracker = SmsRequestTracker(messageId = smsPayloadEnvelope.messageId,
         clientId = smsPayloadEnvelope.clientId,
         receivers = smsPayloadEnvelope.payload.receivers,
@@ -46,13 +44,13 @@ class SmsProviderPrepare extends MapFlowStage[SmsPayloadEnvelope, (HttpRequest, 
 
       val providerStencil = stencilService.getStencilsByName(s"ckt-sms-$selectedProvider").find(_.component.equalsIgnoreCase("prepare")).get
 
-      val result = stencilService.materialize(providerStencil, Map("data" -> smsPayloadEnvelope, "credentials" -> credentials, "headers" -> headers).getJsonNode)
+      val result = stencilService.materialize(providerStencil, Map("data" -> smsPayloadEnvelope, "credentials" -> credentials).getJsonNode)
 
       val httpRequest = result.asInstanceOf[HttpRequest]
         .addHeader(RawHeader("x-message-id", smsPayloadEnvelope.messageId))
         .addHeader(RawHeader("x-context-id", smsPayloadEnvelope.contextId))
-
-      println(s"Http request : $httpRequest")
+        .addHeader(RawHeader("x-client-id", smsPayloadEnvelope.clientId))
+        .addHeader(RawHeader("x-stencil-id", smsPayloadEnvelope.clientId))
 
       List(Tuple2(httpRequest, tracker))
     } catch {

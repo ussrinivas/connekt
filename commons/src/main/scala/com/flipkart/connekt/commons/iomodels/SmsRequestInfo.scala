@@ -16,9 +16,4 @@ import com.fasterxml.jackson.annotation.JsonProperty
 
 case class SmsRequestInfo(@JsonProperty(required = false) appName: String,
                           @JsonProperty(required = false) sender: String,
-                          @JsonProperty(required = false) receivers: Set[String] = Set.empty[String]) extends ChannelRequestInfo {
-  def this() {
-    this(null, null, Set.empty[String])
-  }
-
-}
+                          @JsonProperty(required = false) receivers: Set[String] = Set.empty[String]) extends ChannelRequestInfo
