@@ -15,8 +15,9 @@ package com.flipkart.connekt.busybees.streams.flows.transformers
 import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.headers.RawHeader
 import com.flipkart.connekt.busybees.models.SmsRequestTracker
-import com.flipkart.connekt.busybees.streams.errors.ConnektPNStageException
+import com.flipkart.connekt.busybees.streams.errors.ConnektChannelStageException
 import com.flipkart.connekt.busybees.streams.flows.MapFlowStage
+import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.iomodels.SmsPayloadEnvelope
@@ -56,7 +57,7 @@ class SmsProviderPrepare extends MapFlowStage[SmsPayloadEnvelope, (HttpRequest, 
     } catch {
       case e: Exception =>
         ConnektLogger(LogFile.PROCESSORS).error(s"SMSChannelFormatter error for ${smsPayloadEnvelope.messageId}", e)
-        throw ConnektPNStageException(smsPayloadEnvelope.messageId, smsPayloadEnvelope.clientId, smsPayloadEnvelope.destinations, InternalStatus.StageError, smsPayloadEnvelope.appName, "", smsPayloadEnvelope.contextId, smsPayloadEnvelope.meta, "SMSChannelFormatter::".concat(e.getMessage), e)
+        throw ConnektChannelStageException(smsPayloadEnvelope.messageId, smsPayloadEnvelope.clientId, Channel.SMS, smsPayloadEnvelope.destinations, InternalStatus.StageError, smsPayloadEnvelope.appName, Channel.SMS, smsPayloadEnvelope.contextId, smsPayloadEnvelope.meta, "SMSChannelFormatter::".concat(e.getMessage), e)
     }
   }
 }

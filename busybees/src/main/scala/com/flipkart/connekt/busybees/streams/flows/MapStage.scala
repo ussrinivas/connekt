@@ -15,11 +15,12 @@ package com.flipkart.connekt.busybees.streams.flows
 import akka.stream._
 import akka.stream.scaladsl.Flow
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
-import com.flipkart.connekt.busybees.streams.errors.ConnektPNStageException
+import com.flipkart.connekt.busybees.streams.errors.ConnektChannelStageException
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
-import com.flipkart.connekt.commons.iomodels.PNCallbackEvent
+import com.flipkart.connekt.commons.iomodels.{EmailCallbackEvent, PNCallbackEvent, SmsCallbackEvent}
+import org.apache.commons.lang.StringUtils
 
 import scala.concurrent.Future
 import scala.util.control.NonFatal
@@ -93,12 +94,25 @@ private[busybees] abstract class MapGraphStage[In, Out] extends GraphStage[FlowS
 
 object StageSupervision {
   val decider: Supervision.Decider = {
-    case cEx: ConnektPNStageException =>
+    case cEx: ConnektChannelStageException =>
       ServiceFactory.getReportingService.recordPushStatsDelta(cEx.client, Option(cEx.context), cEx.meta.get("stencilId").map(_.toString), Option(cEx.platform), cEx.appName, InternalStatus.StageError.toString)
-      ConnektLogger(LogFile.PROCESSORS).warn("StageSupervision Handle ConnektPNStageException")
-      cEx.deviceId
-        .map(PNCallbackEvent(cEx.messageId, cEx.client, _, cEx.eventType, cEx.platform, cEx.appName, cEx.context, cEx.getMessage, cEx.timeStamp))
-        .persist
+      ConnektLogger(LogFile.PROCESSORS).warn(s"StageSupervision Handle ConnektChannelStageException for channel ${cEx.channel}")
+      cEx.channel.toLowerCase match {
+        case "push" =>
+          cEx.destinations
+            .map(PNCallbackEvent(cEx.messageId, cEx.client, _, cEx.eventType, cEx.platform, cEx.appName, cEx.context, cEx.getMessage, cEx.timeStamp))
+            .persist
+        case "sms" =>
+          cEx.destinations
+            .map(SmsCallbackEvent(cEx.messageId, StringUtils.EMPTY, StringUtils.EMPTY, cEx.eventType, _,
+              cEx.client, StringUtils.EMPTY, cEx.appName, cEx.context, cEx.getMessage))
+            .persist
+        case "email" =>
+          cEx.destinations
+            .map(EmailCallbackEvent(cEx.messageId, cEx.client, _, cEx.eventType, cEx.appName, cEx.context, cEx.getMessage, cEx.timeStamp))
+            .persist
+      }
+
       Supervision.Resume
 
     case e: Throwable =>

@@ -12,10 +12,10 @@
  */
 package com.flipkart.connekt.busybees.streams.flows
 
-import com.flipkart.connekt.busybees.streams.errors.{ConnektEmailStageException, ConnektPNStageException, ConnektSmsStageException}
+import com.flipkart.connekt.busybees.streams.errors.ConnektChannelStageException
 import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.entities.Channel._
-import com.flipkart.connekt.commons.entities.{Channel, ConfigFormat}
+import com.flipkart.connekt.commons.entities.ConfigFormat
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.iomodels.{EmailPayloadEnvelope, ProviderEnvelope, SmsPayloadEnvelope}
@@ -41,12 +41,7 @@ class ChooseProvider[T <: ProviderEnvelope](channel: Channel) extends MapFlowSta
     } catch {
       case e: Throwable =>
         ConnektLogger(LogFile.PROCESSORS).error(s"ChooseProvider error", e)
-        channel match {
-          case EMAIL =>
-            throw ConnektEmailStageException(payload.messageId, payload.clientId, payload.destinations, InternalStatus.RenderFailure, payload.appName, payload.contextId, payload.meta, s"ChooseProvider-${e.getMessage}", e)
-          case SMS =>
-            throw ConnektSmsStageException(payload.messageId, payload.clientId, payload.destinations, InternalStatus.RenderFailure, payload.appName, payload.contextId, payload.meta, s"ChooseProvider-${e.getMessage}", e)
-        }
+        throw ConnektChannelStageException(payload.messageId, payload.clientId, channel, payload.destinations, InternalStatus.RenderFailure, payload.appName, channel, payload.contextId, payload.meta, s"ChooseProvider-${e.getMessage}", e)
     }
   }
 
