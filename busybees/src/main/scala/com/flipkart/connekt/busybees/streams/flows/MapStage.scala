@@ -16,6 +16,7 @@ import akka.stream._
 import akka.stream.scaladsl.Flow
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import com.flipkart.connekt.busybees.streams.errors.ConnektChannelStageException
+import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
@@ -97,17 +98,17 @@ object StageSupervision {
     case cEx: ConnektChannelStageException =>
       ServiceFactory.getReportingService.recordPushStatsDelta(cEx.client, Option(cEx.context), cEx.meta.get("stencilId").map(_.toString), Option(cEx.platform), cEx.appName, InternalStatus.StageError.toString)
       ConnektLogger(LogFile.PROCESSORS).warn(s"StageSupervision Handle ConnektChannelStageException for channel ${cEx.channel}")
-      cEx.channel.toLowerCase match {
-        case "push" =>
+      Channel.withName(cEx.channel) match {
+        case Channel.PUSH =>
           cEx.destinations
             .map(PNCallbackEvent(cEx.messageId, cEx.client, _, cEx.eventType, cEx.platform, cEx.appName, cEx.context, cEx.getMessage, cEx.timeStamp))
             .persist
-        case "sms" =>
+        case Channel.SMS =>
           cEx.destinations
             .map(SmsCallbackEvent(cEx.messageId, StringUtils.EMPTY, StringUtils.EMPTY, cEx.eventType, _,
               cEx.client, StringUtils.EMPTY, cEx.appName, cEx.context, cEx.getMessage))
             .persist
-        case "email" =>
+        case Channel.EMAIL =>
           cEx.destinations
             .map(EmailCallbackEvent(cEx.messageId, cEx.client, _, cEx.eventType, cEx.appName, cEx.context, cEx.getMessage, cEx.timeStamp))
             .persist
