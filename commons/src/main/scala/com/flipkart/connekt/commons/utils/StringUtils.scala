@@ -75,14 +75,7 @@ object StringUtils {
     def getString = obj.map(_.toString).get
   }
 
-  implicit class ByteArrayHandyFunctions(val b: Array[Byte]) {
-    def getString = new String(b, CharEncoding.UTF_8)
 
-    def getStringNullable = b.unwrap match {
-      case array if array.isEmpty => null
-      case value => new String(value, CharEncoding.UTF_8)
-    }
-  }
 
   implicit class ObjectHandyFunction (val obj:AnyRef){
     def asMap: Map[String, Any] = {
@@ -102,6 +95,17 @@ object StringUtils {
     def getJson = objMapper.writeValueAsString(o)
 
     def getJsonNode = objMapper.convertValue(o, classOf[ObjectNode])
+  }
+
+  implicit class ByteArrayHandyFunctions(val b: Array[Byte]) {
+    def getString = new String(b, CharEncoding.UTF_8)
+
+    def getObj[T: ClassTag] = objMapper.readValue(b, classTag[T].runtimeClass).asInstanceOf[T]
+
+    def getStringNullable = b.unwrap match {
+      case array if array.isEmpty => null
+      case value => new String(value, CharEncoding.UTF_8)
+    }
   }
 
   implicit class JSONUnMarshallFunctions(val s: String) {
