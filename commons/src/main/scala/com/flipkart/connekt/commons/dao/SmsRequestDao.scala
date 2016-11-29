@@ -33,7 +33,7 @@ class SmsRequestDao(tableName: String, hTableFactory: THTableFactory) extends Re
   override protected def getChannelRequestInfo(reqInfoProps: Map[String, Array[Byte]]): ChannelRequestInfo = SmsRequestInfo(
     appName = reqInfoProps.getS("appName"),
     sender = reqInfoProps.getS("sender"),
-    receivers = reqInfoProps.getS("receivers").split(",").toSet
+    receivers = reqInfoProps.getKV("receivers").asInstanceOf[Set[Receiver]]
   )
 
   override protected def channelRequestDataMap(channelRequestData: ChannelRequestData): Map[String, Array[Byte]] = {

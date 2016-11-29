@@ -249,10 +249,10 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                 ServiceFactory.getSMSMessageService.saveRequest(smsRequest, queueName, isCrucial = true) match {
                                   case Success(id) =>
                                     val receivers = smsRequest.channelInfo.asInstanceOf[SmsRequestInfo].receivers
-                                    success += id -> receivers
+                                    success += id -> receivers.map(r => r.countryCode + r.number)
                                   case Failure(t) =>
                                     val receivers = smsRequest.channelInfo.asInstanceOf[SmsRequestInfo].receivers
-                                    failure ++= receivers
+                                    failure ++= receivers.map(r => r.countryCode + r.number)
                                 }
                                 GenericResponse(StatusCodes.Created.intValue, null, SendResponse("SMS Send Request Received", success.toMap, failure.toList)).respond
                               } else {

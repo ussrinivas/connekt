@@ -15,6 +15,7 @@ package com.flipkart.connekt.commons.dao
 import com.flipkart.connekt.commons.dao.HbaseDao._
 import com.flipkart.connekt.commons.factories.THTableFactory
 import com.flipkart.connekt.commons.iomodels._
+import com.flipkart.connekt.commons.utils.StringUtils.JSONMarshallFunctions
 
 class SmsCallbackDao(tableName: String, hTableFactory: THTableFactory) extends CallbackDao(tableName: String, hTableFactory: THTableFactory) {
   override def channelEventPropsMap(channelCallbackEvent: CallbackEvent): Map[String, Array[Byte]] = {
@@ -26,7 +27,7 @@ class SmsCallbackDao(tableName: String, hTableFactory: THTableFactory) extends C
       "eventId" -> smsCallbackEvent.eventId.getUtf8Bytes,
       "clientId" -> smsCallbackEvent.clientId.getUtf8Bytes,
       "provider" -> smsCallbackEvent.provider.getUtf8Bytes,
-      "receiver" -> smsCallbackEvent.receiver.getUtf8Bytes,
+      "receiver" -> smsCallbackEvent.receiver.getJson.getUtf8Bytes,
       "eventType" -> smsCallbackEvent.eventType.getUtf8Bytes,
       "appName" -> smsCallbackEvent.appName.getUtf8Bytes,
       "contextId" -> smsCallbackEvent.contextId.getUtf8Bytes,
@@ -40,8 +41,10 @@ class SmsCallbackDao(tableName: String, hTableFactory: THTableFactory) extends C
       messageId = channelEventPropsMap.getS("messageId"),
       providerMessageId = channelEventPropsMap.getS("providerMessageId"),
       smsParts = channelEventPropsMap.getS("smsParts"),
+      encoding = channelEventPropsMap.getS("encoding"),
+      smsLength = channelEventPropsMap.getS("smsLength"),
       eventId = channelEventPropsMap.getS("eventId"),
-      receiver = channelEventPropsMap.getS("receiver"),
+      receiver = channelEventPropsMap.getKV("receiver").asInstanceOf[Receiver],
       eventType = channelEventPropsMap.getS("eventType"),
       provider = channelEventPropsMap.getS("provider"),
       appName = channelEventPropsMap.getS("appName"),
@@ -59,7 +62,8 @@ class SmsCallbackDao(tableName: String, hTableFactory: THTableFactory) extends C
 
   override def fetchCallbackEvents(requestId: String, event: ChannelRequestInfo, fetchRange: Option[(Long, Long)]): Map[String, List[CallbackEvent]] = {
     val smsRequestInfo = event.asInstanceOf[SmsRequestInfo]
-    smsRequestInfo.receivers.toList.map(smsRequestInfo.appName + _).flatMap(fetchCallbackEvents(requestId, _, fetchRange)).asInstanceOf[List[(SmsCallbackEvent, Long)]].map(_._1).groupBy(_.receiver)
+    smsRequestInfo.receivers.toList.map(smsRequestInfo.appName + _).flatMap(fetchCallbackEvents(requestId, _, fetchRange))
+      .asInstanceOf[List[(SmsCallbackEvent, Long)]].map(_._1).groupBy(r => r.receiver.countryCode + r.receiver.number)
   }
 
 }

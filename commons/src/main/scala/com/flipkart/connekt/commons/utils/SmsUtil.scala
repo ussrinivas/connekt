@@ -12,39 +12,53 @@
  */
 package com.flipkart.connekt.commons.utils
 
+import java.nio.charset.Charset
+
+import org.smpp.charset.Gsm7BitCharsetProvider
+
+
+case class SmsInfo(smsParts: Int, smsLength: Int, encoding: String, isUnicode: Boolean)
+
 object SmsUtil {
 
-  val GSM_CHARSET_7BIT: Int = 0
-  val GSM_CHARSET_UNICODE: Int = 2
-  private val GSM_7BIT_ESC: Char = '\u001b'
-  private val GSM7BIT: Set[String] = Set("@", "£", "$", "¥", "è", "é", "ù", "ì", "ò", "Ç", "\n", "Ø", "ø", "\r", "Å", "å",
-    "Δ", "_", "Φ", "Γ", "Λ", "Ω", "Π", "Ψ", "Σ", "Θ", "Ξ", "\u001b", "Æ", "æ", "ß", "É", " ", "!", "'", "#", "¤", "%", "&",
-    "\"", "(", ")", "*", "+", ",", "-", ".", "/", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ":", ";", "<", "=",
-    ">", "?", "¡", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U",
-    "V", "W", "X", "Y", "Z", "Ä", "Ö", "Ñ", "Ü", "§", "¿", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
-    "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "ä", "ö", "ñ", "ü", "à")
+  val GSM_CHARSET = new Gsm7BitCharsetProvider().charsetForName("X-Gsm7Bit")
+  val USC2_CHARSET: Charset = Charset.forName("UTF-16")
+
+  private val gsm7Bit = GSM_CHARSET.newEncoder()
 
   private val GSM7BITEXT: Set[String] = Set("\f", "^", "{", "}", "\\", "[", "~", "]", "|", "€")
+  private val GSM_7BIT_ESC: Char = '\u001b'
 
-  def getCharset(content: String): Int = {
-    val isNotUnicode = content.forall(b => GSM7BIT.contains(b.toString) || GSM7BITEXT.contains(b.toString))
-    if (isNotUnicode)
-      GSM_CHARSET_7BIT
-    else
-      GSM_CHARSET_UNICODE
+  def isUnicode(charset: Charset): Boolean = {
+    charset match {
+      case GSM_CHARSET => true
+      case _ => false
+    }
   }
 
-  private def getPartCount7bit(content: String): Int = {
+  def getCharset(content: String): Charset = {
+    if (gsm7Bit.canEncode(content))
+      GSM_CHARSET
+    else if (gsm7Bit.canEncode(content))
+      USC2_CHARSET
+    else
+      null
+  }
+
+  // To calculate lenght.
+  private def getPartCountAndLength7bit(content: String): (Int, Int) = {
+
     val content7bit: StringBuilder = new StringBuilder
     content.foreach(c => {
       if (GSM7BITEXT.contains(c.toString)) {
-        content7bit.append('\u001b')
+        content7bit.append(GSM_7BIT_ESC)
       }
       content7bit.append(c)
     })
-    val cLen = content7bit.length
 
-    cLen match {
+    val cLen = content7bit.toString().length
+
+    val smsParts = cLen match {
       case x if x <= 160 => 1
       case _ =>
         val parts: Int = Math.ceil(cLen / 153.0).toInt
@@ -61,23 +75,19 @@ object SmsUtil {
           countParts
         }
     }
+    (smsParts, cLen)
   }
 
-  def getPartCount(content: String): Int = {
-    getCharset(content) match {
-      case GSM_CHARSET_7BIT => getPartCount7bit(content)
-      case GSM_CHARSET_UNICODE =>
+  def getSmsInfo(content: String): SmsInfo = {
+    val charset = getCharset(content)
+    val (smsParts, length) = charset match {
+      case GSM_CHARSET => getPartCountAndLength7bit(content)
+      case USC2_CHARSET =>
         if (content.length <= 70)
-          1
+          (1, content.length)
         else
-          Math.ceil(content.length / 67.0).toInt
+          (Math.ceil(content.length / 67.0).toInt, content.length)
     }
-  }
-
-  def isUnicode(content: String): Boolean = {
-    getCharset(content) match {
-      case GSM_CHARSET_7BIT => false
-      case GSM_CHARSET_UNICODE => true
-    }
+    SmsInfo(smsParts, length, charset.displayName(), isUnicode(charset))
   }
 }

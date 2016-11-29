@@ -20,7 +20,8 @@ import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
-import com.flipkart.connekt.commons.iomodels.{EmailCallbackEvent, PNCallbackEvent, SmsCallbackEvent}
+import com.flipkart.connekt.commons.iomodels.{EmailCallbackEvent, PNCallbackEvent, Receiver, SmsCallbackEvent}
+import com.flipkart.connekt.commons.utils.StringUtils._
 import org.apache.commons.lang.StringUtils
 
 import scala.concurrent.Future
@@ -105,8 +106,10 @@ object StageSupervision {
             .persist
         case Channel.SMS =>
           cEx.destinations
-            .map(SmsCallbackEvent(cEx.messageId, StringUtils.EMPTY, StringUtils.EMPTY, cEx.eventType, _,
-              cEx.client, StringUtils.EMPTY, cEx.appName, cEx.context, cEx.getMessage))
+            .map(r => {
+              SmsCallbackEvent(cEx.messageId, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, cEx.eventType, r.getObj[Receiver],
+                cEx.client, StringUtils.EMPTY, cEx.appName, cEx.context, cEx.getMessage)
+            })
             .persist
         case Channel.EMAIL =>
           cEx.destinations

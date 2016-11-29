@@ -18,8 +18,10 @@ import org.apache.commons.lang.RandomStringUtils
 case class SmsCallbackEvent(messageId: String,
                             providerMessageId: String,
                             smsParts: String,
+                            encoding: String,
+                            smsLength: String,
                             eventType: String,
-                            receiver: String,
+                            receiver: Receiver,
                             clientId: String,
                             provider: String,
                             appName: String,
@@ -31,7 +33,7 @@ case class SmsCallbackEvent(messageId: String,
   override def contactId: String = s"${appName.toLowerCase}$receiver"
 
   override def toPublishFormat: fkint.mp.connekt.SmsCallbackEvent = {
-    fkint.mp.connekt.SmsCallbackEvent(messageId = messageId, providerMessageId = providerMessageId, smsParts = smsParts, clientId = clientId, appName = appName, contextId = contextId, eventType = eventType, cargo = cargo, receiver = receiver, provider = provider, timestamp = DateTimeUtils.getStandardFormatted(timestamp))
+    fkint.mp.connekt.SmsCallbackEvent(messageId = messageId, providerMessageId = providerMessageId, smsParts = smsParts, encoding = encoding, smsLength = smsLength, clientId = clientId, appName = appName, contextId = contextId, eventType = eventType, cargo = cargo, receiver = receiver, provider = provider, timestamp = DateTimeUtils.getStandardFormatted(timestamp))
   }
 
   override def namespace: String = "fkint/mp/connekt/SmsCallbackEvent"
