@@ -107,7 +107,8 @@ libraryDependencies ++= Seq(
     ExclusionRule(organization = "org.mockito", name = "mockito-all"),
     ExclusionRule(organization = "org.hamcrest", name = "hamcrest-core")
     ),
-    "javax.mail" % "mail" % "1.5.0-b01"
+    "javax.mail" % "mail" % "1.5.0-b01",
+    "org.opensmpp" % "opensmpp-charset" % "3.0.1"
 )
 
 
