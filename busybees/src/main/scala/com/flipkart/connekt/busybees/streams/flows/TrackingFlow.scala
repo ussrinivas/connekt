@@ -21,7 +21,7 @@ import com.flipkart.connekt.commons.iomodels.{ConnektRequest, EmailRequestData, 
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
-import com.flipkart.connekt.commons.services.TrackingService
+import com.flipkart.connekt.commons.services.{ConnektConfig, TrackingService}
 import com.flipkart.connekt.commons.services.TrackingService.TrackerOptions
 import com.flipkart.connekt.commons.utils.IdentityURLTransformer
 
@@ -29,6 +29,7 @@ import com.flipkart.connekt.commons.utils.IdentityURLTransformer
 class TrackingFlow extends MapFlowStage[ConnektRequest, ConnektRequest] {
 
   lazy private val projectConfigService = ServiceFactory.getUserProjectConfigService
+  lazy private val defaultTrackingDomain = ConnektConfig.getString("tracking.default.domain").get
 
   override val map: (ConnektRequest) => List[ConnektRequest] = input => {
     try {
@@ -38,15 +39,14 @@ class TrackingFlow extends MapFlowStage[ConnektRequest, ConnektRequest] {
       val transformerClassName = projectConfigService.getProjectConfiguration(input.appName,"tracking-classname").get.map(_.value).getOrElse(classOf[IdentityURLTransformer].getName)
       val transformer:TURLTransformer = Class.forName(transformerClassName).newInstance().asInstanceOf[TURLTransformer]
 
-      val appDomain = projectConfigService.getProjectConfiguration(input.appName,"tracking-domain").get.map(_.value).getOrElse("l.flipkart.com")
-
+      val appDomain = projectConfigService.getProjectConfiguration(input.appName,"tracking-domain").get.map(_.value).getOrElse(defaultTrackingDomain)
 
       //identify payload and rewrite them with tracking.
       val updatedChannelData = input.channelData match {
         case cData:EmailRequestData =>
 
           /**
-            * I don't know how to individually track each reciepent. Assuming simple email,
+            * I don't know how to individually track each recipient. Assuming simple email,
             * open/click are tracked against the first `to` address
             */
           val destination = input.channelInfo.asInstanceOf[EmailRequestInfo].to.head.address

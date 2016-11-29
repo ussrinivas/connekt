@@ -22,7 +22,7 @@ import org.apache.commons.net.util.Base64
 
 import scala.collection.JavaConverters._
 
-case class URLMessageTracker(@JsonProperty("v") version: Int, @JsonProperty("c") channel: String, @JsonInclude(Include.NON_NULL) @JsonProperty("u") url: String, @JsonProperty("i") messageId: String,  @JsonProperty("d") destination: String,  @JsonProperty("ct") clientId: String, @JsonInclude(Include.NON_NULL) @JsonProperty("ctx") contextId: Option[String], @JsonProperty("a") appName: String)
+case class URLMessageTracker(@JsonProperty("v") version: Int, @JsonProperty("c") channel: String, @JsonInclude(Include.NON_NULL) @JsonProperty("u") url: String, @JsonProperty("i") messageId: String, @JsonInclude(Include.NON_NULL) @JsonProperty("n") linkName: String, @JsonProperty("d") destination: String, @JsonProperty("ct") clientId: String, @JsonInclude(Include.NON_NULL) @JsonProperty("ctx") contextId: Option[String], @JsonProperty("a") appName: String)
 
 object TrackingService {
 
@@ -58,6 +58,7 @@ object TrackingService {
           version = 1,
           channel = trackerOptions.channel.toString,
           url = deepLinkedUrl,
+          linkName = null,
           messageId = trackerOptions.messageId,
           destination = trackerOptions.destination,
           clientId = trackerOptions.clientId,
@@ -118,7 +119,7 @@ object TrackingService {
 
   private def processATag(tag: Element, trackerOptions: TrackerOptions, urlTransformer: TURLTransformer): CharSequence = {
     val attrMap = tag.getStartTag.getAttributes.asScala.toList.map(attr => attr.getKey -> attr.getValue).toMap
-    val lName:String = attrMap.getOrElse("lname", "-") //TODO : Does it matter any more? What is the use of this ?
+    val lName:String = attrMap.getOrElse("lname", "-")
 
     val sb = new StringBuffer("<" + tag.getName)
     attrMap.foreach { case (name, value) =>
@@ -134,6 +135,7 @@ object TrackingService {
             version = 1,
             channel = trackerOptions.channel.toString,
             url = url,
+            linkName = lName,
             messageId = trackerOptions.messageId,
             destination = trackerOptions.destination,
             clientId = trackerOptions.clientId,
@@ -160,6 +162,7 @@ object TrackingService {
         version = 1,
         channel = trackerOptions.channel.toString,
         url = null,
+        linkName = null,
         messageId = trackerOptions.messageId,
         destination = trackerOptions.destination,
         clientId = trackerOptions.clientId,

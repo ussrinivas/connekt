@@ -45,7 +45,7 @@ class TrackingRoute(implicit am: ActorMaterializer) extends BaseHandler {
           }
 
           event.persist
-          ServiceFactory.getReportingService.recordPushStatsDelta(entity.clientId, entity.contextId, None, Some(entity.clientId), entity.appName, event.eventType)
+          ServiceFactory.getReportingService.recordPushStatsDelta(entity.clientId, entity.contextId, None, Some(entity.channel), entity.appName, event.eventType)
           ConnektLogger(LogFile.SERVICE).debug(s"Received callback event ${event.toString}")
 
           complete {
@@ -70,11 +70,11 @@ class TrackingRoute(implicit am: ActorMaterializer) extends BaseHandler {
                 eventType = "CLICK",
                 appName = entity.appName,
                 contextId = entity.contextId.orEmpty,
-                cargo = entity.url)
+                cargo = Map("name" -> entity.linkName, "url" -> entity.url).getJson)
           }
 
           event.persist
-          ServiceFactory.getReportingService.recordPushStatsDelta(entity.clientId, entity.contextId, None, Some(entity.clientId), entity.appName, event.eventType)
+          ServiceFactory.getReportingService.recordPushStatsDelta(entity.clientId, entity.contextId, None, Some(entity.channel), entity.appName, event.eventType)
           ConnektLogger(LogFile.SERVICE).debug(s"Received callback event ${event.toString}")
 
           redirect(entity.url, StatusCodes.Found)
