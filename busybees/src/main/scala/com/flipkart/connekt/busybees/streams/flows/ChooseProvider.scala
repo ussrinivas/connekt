@@ -12,7 +12,7 @@
  */
 package com.flipkart.connekt.busybees.streams.flows
 
-import com.flipkart.connekt.busybees.streams.errors.ConnektPNStageException
+import com.flipkart.connekt.busybees.streams.errors.ConnektStageException
 import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.entities.Channel._
 import com.flipkart.connekt.commons.entities.ConfigFormat
@@ -41,7 +41,7 @@ class ChooseProvider[T <: ProviderEnvelope](channel: Channel) extends MapFlowSta
     } catch {
       case e: Throwable =>
         ConnektLogger(LogFile.PROCESSORS).error(s"RenderFlow error", e)
-        throw new ConnektPNStageException(payload.messageId, payload.clientId,payload.destinations, InternalStatus.RenderFailure, payload.appName, channel, payload.contextId,  payload.meta , s"ChooseProvider-${e.getMessage}", e)
+        throw new ConnektStageException(payload.messageId, payload.clientId,payload.destinations, InternalStatus.RenderFailure, payload.appName, channel, payload.contextId,  payload.meta , s"ChooseProvider-${e.getMessage}", e)
     }
   }
 
