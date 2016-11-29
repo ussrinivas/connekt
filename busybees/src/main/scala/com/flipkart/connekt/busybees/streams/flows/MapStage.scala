@@ -96,7 +96,7 @@ object StageSupervision {
     case cEx: ConnektStageException =>
       ServiceFactory.getReportingService.recordPushStatsDelta(cEx.client, Option(cEx.context), cEx.meta.get("stencilId").map(_.toString), Option(cEx.platform), cEx.appName, InternalStatus.StageError.toString)
       ConnektLogger(LogFile.PROCESSORS).warn("StageSupervision Handle ConnektPNStageException")
-      cEx.deviceId
+      cEx.destinations
         .map(PNCallbackEvent(cEx.messageId, cEx.client, _, cEx.eventType, cEx.platform, cEx.appName, cEx.context, cEx.getMessage, cEx.timeStamp))
         .persist
       Supervision.Resume

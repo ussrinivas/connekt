@@ -18,7 +18,7 @@ class ConnektException(message: String, cause: Throwable = null) extends Runtime
 
 case class ConnektStageException(messageId: String,
                                  client: String,
-                                 deviceId: Set[String],
+                                 destinations: Set[String],
                                  eventType: String,
                                  appName: String,
                                  platform: String,
