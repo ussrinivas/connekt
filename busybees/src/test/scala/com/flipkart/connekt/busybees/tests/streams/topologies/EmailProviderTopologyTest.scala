@@ -18,7 +18,7 @@ import com.flipkart.connekt.busybees.models.EmailRequestTracker
 import com.flipkart.connekt.busybees.streams.flows.formaters.EmailChannelFormatter
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers.EmailResponseHandler
 import com.flipkart.connekt.busybees.streams.flows.transformers.{EmailProviderPrepare, EmailProviderResponseFormatter}
-import com.flipkart.connekt.busybees.streams.flows.{ChooseProvider, RenderFlow}
+import com.flipkart.connekt.busybees.streams.flows.{ChooseProvider, RenderFlow, TrackingFlow}
 import com.flipkart.connekt.busybees.tests.streams.TopologyUTSpec
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.iomodels.ConnektRequest
@@ -40,15 +40,14 @@ class EmailProviderTopologyTest extends TopologyUTSpec {
                       |	"sla": "H",
                       |	"channelData": {
                       |		"type": "EMAIL",
-                      |		"subject": "Hello Kinshuk. GoodLuck!",
+                      |		"subject": "Hello Kinshuk with url. GoodLuck!",
                       |		"text": "Text",
-                      |    "html" : "<b>html</b>"
+                      |    "html" : "<b>html</b>  <a href='http://www.google.com'>link</a>"
                       |	},
                       |	"channelInfo" : {
                       |	    "type" : "EMAIL",
                       |     "appName" : "phonepe",
-                      |     "to" : [{ "name": "Kinshuk", "address": "kinshuk1989@gmail.com" }, { "name": "Kinshuk", "address": "kinshuk.bairagi@gmail.com" }],
-                      |     "cc" : [{ "name": "Aman", "address": "aman.shrivastava@flipkart.com" }]
+                      |     "to" : [{ "name": "Kinshuk", "address": "kinshuk.bairagi@flipkart.com" }]
                       |	},
                       |  "clientId" : "123456",
                       |	"meta": {}
@@ -58,6 +57,7 @@ class EmailProviderTopologyTest extends TopologyUTSpec {
 
     val result = Source.single(cRequest)
       .via(new RenderFlow().flow)
+      .via(new TrackingFlow().flow)
       .via(new EmailChannelFormatter(64)(system.dispatchers.lookup("akka.actor.io-dispatcher")).flow)
       .via(new ChooseProvider(Channel.EMAIL).flow)
       .via(new EmailProviderPrepare().flow)

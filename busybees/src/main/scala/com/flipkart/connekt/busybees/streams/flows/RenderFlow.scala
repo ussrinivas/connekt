@@ -12,7 +12,7 @@
  */
 package com.flipkart.connekt.busybees.streams.flows
 
-import com.flipkart.connekt.busybees.streams.errors.ConnektChannelStageException
+import com.flipkart.connekt.busybees.streams.errors.ConnektStageException
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.iomodels.ConnektRequest
@@ -37,7 +37,7 @@ class RenderFlow extends MapFlowStage[ConnektRequest, ConnektRequest] {
     } catch {
       case e: Throwable =>
         ConnektLogger(LogFile.PROCESSORS).error(s"RenderFlow error", e)
-        throw ConnektChannelStageException(input.id, input.clientId, input.channel, input.destinations, InternalStatus.RenderFailure, input.appName, input.platform, input.contextId.orEmpty, input.meta ++ input.stencilId.map("stencilId" -> _).toMap, s"RenderFlow-${e.getMessage}", e)
+        throw new ConnektStageException(input.id, input.clientId,input.destinations, InternalStatus.RenderFailure, input.appName, input.platform, input.contextId.orEmpty,  input.meta ++ input.stencilId.map("stencilId" -> _).toMap, s"RenderFlow-${e.getMessage}", e)
     }
   }
 }

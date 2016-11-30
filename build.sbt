@@ -1,5 +1,4 @@
 import com.typesafe.sbt.SbtStartScript
-import JiraIdPlugin.autoImport._
 
 organization  := "com.flipkart.marketing"
 
@@ -20,7 +19,6 @@ assemblyExcludedJars in assembly <<= (fullClasspath in assembly) map { cp =>
 
 assemblyMergeStrategy in assembly :=  AppBuild.mergeStrategy
 
-
 mainClass in assembly := Some("com.flipkart.connekt.boot") // fully qualified path
 
 test in assembly := {}
@@ -29,6 +27,3 @@ seq(Revolver.settings: _*)
 
 seq(SbtStartScript.startScriptForJarSettings: _*)
 
-jira := "CNKT"
-
-seq(JiraIdPlugin.settings: _*)

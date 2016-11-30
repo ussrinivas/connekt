@@ -15,17 +15,18 @@ package com.flipkart.connekt.busybees.streams.flows
 import akka.stream._
 import akka.stream.scaladsl.Flow
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
-import com.flipkart.connekt.busybees.streams.errors.ConnektChannelStageException
-import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
-import com.flipkart.connekt.commons.iomodels.{EmailCallbackEvent, PNCallbackEvent, Receiver, SmsCallbackEvent}
-import com.flipkart.connekt.commons.utils.StringUtils._
-import org.apache.commons.lang.StringUtils
+import com.flipkart.connekt.commons.iomodels.PNCallbackEvent
 
 import scala.concurrent.Future
 import scala.util.control.NonFatal
+import com.flipkart.connekt.commons.entities.Channel
+import com.flipkart.connekt.busybees.streams.errors.ConnektStageException
+import com.flipkart.connekt.commons.iomodels.{EmailCallbackEvent, PNCallbackEvent, Receiver, SmsCallbackEvent}
+import com.flipkart.connekt.commons.utils.StringUtils._
+import org.apache.commons.lang.StringUtils
 
 private[busybees] abstract class MapFlowStage[In, Out] {
 
@@ -96,7 +97,7 @@ private[busybees] abstract class MapGraphStage[In, Out] extends GraphStage[FlowS
 
 object StageSupervision {
   val decider: Supervision.Decider = {
-    case cEx: ConnektChannelStageException =>
+    case cEx: ConnektStageException =>
       ServiceFactory.getReportingService.recordPushStatsDelta(cEx.client, Option(cEx.context), cEx.meta.get("stencilId").map(_.toString), Option(cEx.platform), cEx.appName, InternalStatus.StageError.toString)
       ConnektLogger(LogFile.PROCESSORS).warn(s"StageSupervision Handle ConnektChannelStageException for channel ${cEx.channel}")
       Channel.withName(cEx.channel) match {

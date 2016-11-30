@@ -24,8 +24,8 @@ libraryDependencies ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  "com.flipkart.connekt" %% "concord" % "0.2.0",
-  "com.flipkart.connekt" %% "connekt-concord" % "0.2.0" excludeAll ExclusionRule(organization = "com.google.guava", name = "guava") ,
+  "com.flipkart.connekt" %% "concord" % "0.2.1",
+  "com.flipkart.connekt" %% "connekt-concord" % "0.2.1-SNAPSHOT" excludeAll ExclusionRule(organization = "com.google.guava", name = "guava"),
   /* Logging Dependencies.Since we want to use log4j2 */
   "com.lmax" % "disruptor" % "3.3.4",
   "org.apache.logging.log4j" % "log4j-api" % "2.5",
@@ -108,6 +108,7 @@ libraryDependencies ++= Seq(
     ExclusionRule(organization = "org.hamcrest", name = "hamcrest-core")
     ),
     "javax.mail" % "mail" % "1.5.0-b01",
+    "net.htmlparser.jericho" % "jericho-html" % "3.3"
     "org.opensmpp" % "opensmpp-charset" % "3.0.1"
 )
 

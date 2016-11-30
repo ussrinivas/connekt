@@ -15,9 +15,9 @@ package com.flipkart.connekt.busybees.streams.flows.dispatchers
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.RawHeader
 import com.flipkart.connekt.busybees.models.WNSRequestTracker
-import com.flipkart.connekt.busybees.streams.errors.ConnektChannelStageException
+import com.flipkart.connekt.busybees.streams.errors.ConnektStageException
 import com.flipkart.connekt.busybees.streams.flows.MapFlowStage
-import com.flipkart.connekt.commons.entities.{Channel, MobilePlatform}
+import com.flipkart.connekt.commons.entities.MobilePlatform
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.iomodels.WNSPayloadEnvelope
@@ -47,7 +47,7 @@ class WNSDispatcherPrepare extends MapFlowStage[WNSPayloadEnvelope, (HttpRequest
     } catch {
       case e: Throwable =>
         ConnektLogger(LogFile.PROCESSORS).error(s"WNSDispatcher:: onPush :: Error", e)
-        throw new ConnektChannelStageException(message.messageId, message.clientId, Channel.PUSH,Set(message.deviceId), InternalStatus.StageError, message.appName, MobilePlatform.WINDOWS, message.contextId, message.meta, s"WNSDispatcherPrepare-${e.getMessage}", e)
+        throw new ConnektStageException(message.messageId, message.clientId, Set(message.deviceId), InternalStatus.StageError, message.appName, MobilePlatform.WINDOWS, message.contextId, message.meta, s"WNSDispatcherPrepare-${e.getMessage}", e)
     }
   }
 }

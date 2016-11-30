@@ -84,6 +84,7 @@ object MessageStatus {
     type InternalStatus = Value
 
     val RenderFailure = Value("connekt_render_failure")
+    val TrackingFailure = Value("connekt_tracking_failure")
     val MissingDeviceInfo = Value("connekt_missing_device")
     val InvalidToken = Value("connekt_invalid_token")
     val GcmResponseParseError = Value("connekt_gcm_response_parse_error")

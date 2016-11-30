@@ -92,7 +92,7 @@ class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCa
     sourceSwitches.foreach(_.success("EmailTopology signal source shutdown"))
   }
 
-  def emailHTTPTransformFlow = Flow.fromGraph(GraphDSL.create() { implicit b =>
+  private def emailHTTPTransformFlow = Flow.fromGraph(GraphDSL.create() { implicit b =>
 
     val render = b.add(new RenderFlow().flow)
     val fmtEmailParallelism = ConnektConfig.getInt("topology.email.formatter.parallelism").get
