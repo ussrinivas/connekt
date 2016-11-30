@@ -73,7 +73,7 @@ class TrackingFlow extends MapFlowStage[ConnektRequest, ConnektRequest] {
     } catch {
       case e: Throwable =>
         ConnektLogger(LogFile.PROCESSORS).error(s"TrackingFlow error", e)
-        throw new ConnektStageException(input.id, input.clientId,input.destinations, InternalStatus.TrackingFailure, input.appName, input.platform, input.contextId.orEmpty,  input.meta ++ input.stencilId.map("stencilId" -> _).toMap, s"TrackingFlow-${e.getMessage}", e)
+        throw new ConnektStageException(input.id, input.clientId, input.channel, input.destinations, InternalStatus.TrackingFailure, input.appName, input.platform, input.contextId.orEmpty, input.meta ++ input.stencilId.map("stencilId" -> _).toMap, s"TrackingFlow-${e.getMessage}", e)
     }
   }
 

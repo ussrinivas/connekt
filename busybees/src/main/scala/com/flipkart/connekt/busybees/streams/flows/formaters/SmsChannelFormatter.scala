@@ -12,7 +12,7 @@
  */
 package com.flipkart.connekt.busybees.streams.flows.formaters
 
-import com.flipkart.connekt.busybees.streams.errors.ConnektChannelStageException
+import com.flipkart.connekt.busybees.streams.errors.ConnektStageException
 import com.flipkart.connekt.busybees.streams.flows.NIOFlow
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
@@ -41,8 +41,8 @@ class SmsChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecuto
       val info = SmsUtil.getSmsInfo(rD.body)
 
       if (smsInfo.receivers.nonEmpty && ttl > 0) {
-        val payload = SmsPayload(smsInfo.receivers, rD, info.isUnicode, smsInfo.sender, ttl.toString, "0", info.smsParts.toString, SmsUtil.getCharset(rD.body).displayName(), info.smsLength.toString)
-        List(SmsPayloadEnvelope(message.id, message.clientId, message.stencilId.orEmpty, smsInfo.appName, message.contextId.orEmpty, payload, message.meta))
+        val payload = SmsPayload(smsInfo.receivers, rD, smsInfo.sender, ttl.toString)
+        List(SmsPayloadEnvelope(message.id, message.clientId, message.stencilId.orEmpty, smsInfo.appName, message.contextId.orEmpty, payload, info.isUnicode, "0", info.smsParts.toString, SmsUtil.getCharset(rD.body).displayName(), info.smsLength.toString, message.meta))
       } else if (smsInfo.receivers.nonEmpty) {
         ConnektLogger(LogFile.PROCESSORS).warn(s"SMSChannelFormatter dropping ttl-expired message: ${message.id}")
         smsInfo.receivers.map(s => SmsCallbackEvent(message.id, StringUtils.EMPTY, info.smsParts.toString, SmsUtil.getCharset(rD.body).displayName(), info.smsLength.toString, InternalStatus.TTLExpired, s, message.clientId, null, smsInfo.appName, Channel.SMS, message.contextId.orEmpty)).persist
@@ -53,7 +53,7 @@ class SmsChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecuto
     } catch {
       case e: Exception =>
         ConnektLogger(LogFile.PROCESSORS).error(s"SMSChannelFormatter error for ${message.id}", e)
-        throw ConnektChannelStageException(message.id, message.clientId, Channel.SMS, message.destinations, InternalStatus.StageError, message.appName, Channel.SMS, message.contextId.orEmpty, message.meta, "SMSChannelFormatter::".concat(e.getMessage), e)
+        throw ConnektStageException(message.id, message.clientId, Channel.SMS, message.destinations, InternalStatus.StageError, message.appName, Channel.SMS, message.contextId.orEmpty, message.meta, "SMSChannelFormatter::".concat(e.getMessage), e)
     }
   }
 }

@@ -31,18 +31,16 @@ object SmsUtil {
 
   def isUnicode(charset: Charset): Boolean = {
     charset match {
-      case GSM_CHARSET => true
-      case _ => false
+      case GSM_CHARSET => false
+      case _ => true
     }
   }
 
   def getCharset(content: String): Charset = {
     if (gsm7Bit.canEncode(content))
       GSM_CHARSET
-    else if (gsm7Bit.canEncode(content))
-      USC2_CHARSET
     else
-      null
+      USC2_CHARSET
   }
 
   // To calculate lenght.

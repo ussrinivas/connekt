@@ -13,6 +13,7 @@
 package com.flipkart.connekt.commons.iomodels
 
 import com.flipkart.connekt.commons.utils.DateTimeUtils
+import com.flipkart.connekt.commons.utils.StringUtils.JSONMarshallFunctions
 import org.apache.commons.lang.RandomStringUtils
 
 case class SmsCallbackEvent(messageId: String,
@@ -33,9 +34,9 @@ case class SmsCallbackEvent(messageId: String,
   override def contactId: String = s"${appName.toLowerCase}$receiver"
 
   override def toPublishFormat: fkint.mp.connekt.SmsCallbackEvent = {
-    fkint.mp.connekt.SmsCallbackEvent(messageId = messageId, providerMessageId = providerMessageId, smsParts = smsParts, encoding = encoding, smsLength = smsLength, clientId = clientId, appName = appName, contextId = contextId, eventType = eventType, cargo = cargo, receiver = receiver, provider = provider, timestamp = DateTimeUtils.getStandardFormatted(timestamp))
+    fkint.mp.connekt.SmsCallbackEvent(messageId = messageId, providerMessageId = providerMessageId, clientId = clientId, appName = appName, contextId = contextId, eventType = eventType,
+      cargo = Map("smsParts" -> smsParts, "encoding" -> encoding, "smsLength" -> smsLength).getJson, receiver = receiver.getJson, provider = provider, timestamp = DateTimeUtils.getStandardFormatted(timestamp))
   }
 
   override def namespace: String = "fkint/mp/connekt/SmsCallbackEvent"
-
 }

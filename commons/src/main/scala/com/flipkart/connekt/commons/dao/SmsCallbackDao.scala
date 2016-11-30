@@ -24,6 +24,8 @@ class SmsCallbackDao(tableName: String, hTableFactory: THTableFactory) extends C
       "messageId" -> smsCallbackEvent.messageId.getUtf8Bytes,
       "providerMessageId" -> smsCallbackEvent.providerMessageId.getUtf8Bytes,
       "smsParts" -> smsCallbackEvent.smsParts.getUtf8Bytes,
+      "encoding" -> smsCallbackEvent.encoding.getUtf8Bytes,
+      "smsLength" -> smsCallbackEvent.smsLength.getUtf8Bytes,
       "eventId" -> smsCallbackEvent.eventId.getUtf8Bytes,
       "clientId" -> smsCallbackEvent.clientId.getUtf8Bytes,
       "provider" -> smsCallbackEvent.provider.getUtf8Bytes,
