@@ -35,7 +35,6 @@ class SmsProviderResponseFormatter(implicit m: Materializer, ec: ExecutionContex
 
     val providerResponseHandlerStencil = stencilService.getStencilsByName(s"ckt-sms-${responseTrackerPair._2.provider}").find(_.component.equalsIgnoreCase("parse")).get
 
-    val tracker = responseTrackerPair._2
     val smsResponse = responseTrackerPair._1.flatMap(hR => Try_ {
       val httpResponse = Await.result(hR.toStrict(30.seconds), 5.seconds)
       val result = stencilService.materialize(providerResponseHandlerStencil, Map("statusCode" -> httpResponse._1.intValue(),
