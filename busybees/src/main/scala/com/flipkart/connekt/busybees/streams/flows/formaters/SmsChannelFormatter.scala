@@ -41,8 +41,13 @@ class SmsChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecuto
       val info = SmsUtil.getSmsInfo(rD.body)
 
       if (smsInfo.receivers.nonEmpty && ttl > 0) {
-        val payload = SmsPayload(smsInfo.receivers, rD, smsInfo.sender, ttl.toString)
-        List(SmsPayloadEnvelope(message.id, message.clientId, message.stencilId.orEmpty, smsInfo.appName, message.contextId.orEmpty, payload, info.isUnicode, "0", info.smsParts.toString, SmsUtil.getCharset(rD.body).displayName(), info.smsLength.toString, message.meta))
+        val receiverMap = smsInfo.receivers.groupBy(r => r.countryCode.trim)
+        receiverMap.map(r => {
+          val payload = SmsPayload(r._2, rD, smsInfo.sender, ttl.toString)
+          val meta = SmsMeta(info.isUnicodeMessage, info.smsParts, SmsUtil.getCharset(rD.body).displayName(), info.smsLength).asMap
+          val isIntl = if (r._1.equals("91") || r._1.equals("+91")) "0" else "1"
+          SmsPayloadEnvelope(message.id, message.clientId, message.stencilId.orEmpty, smsInfo.appName, message.contextId.orEmpty, payload, isIntl, message.meta ++ meta)
+        }).toList
       } else if (smsInfo.receivers.nonEmpty) {
         ConnektLogger(LogFile.PROCESSORS).warn(s"SMSChannelFormatter dropping ttl-expired message: ${message.id}")
         smsInfo.receivers.map(s => SmsCallbackEvent(message.id, StringUtils.EMPTY, info.smsParts.toString, SmsUtil.getCharset(rD.body).displayName(), info.smsLength.toString, InternalStatus.TTLExpired, s, message.clientId, null, smsInfo.appName, Channel.SMS, message.contextId.orEmpty)).persist

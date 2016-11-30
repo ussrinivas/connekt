@@ -14,10 +14,8 @@ package com.flipkart.connekt.commons.utils
 
 import java.nio.charset.Charset
 
+import com.flipkart.connekt.commons.iomodels.SmsMeta
 import org.smpp.charset.Gsm7BitCharsetProvider
-
-
-case class SmsInfo(smsParts: Int, smsLength: Int, encoding: String, isUnicode: Boolean)
 
 object SmsUtil {
 
@@ -76,7 +74,7 @@ object SmsUtil {
     (smsParts, cLen)
   }
 
-  def getSmsInfo(content: String): SmsInfo = {
+  def getSmsInfo(content: String): SmsMeta = {
     val charset = getCharset(content)
     val (smsParts, length) = charset match {
       case GSM_CHARSET => getPartCountAndLength7bit(content)
@@ -86,6 +84,6 @@ object SmsUtil {
         else
           (Math.ceil(content.length / 67.0).toInt, content.length)
     }
-    SmsInfo(smsParts, length, charset.displayName(), isUnicode(charset))
+    SmsMeta(isUnicode(charset), smsParts, charset.displayName(), length)
   }
 }
