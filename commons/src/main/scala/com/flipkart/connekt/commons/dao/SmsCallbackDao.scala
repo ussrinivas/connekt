@@ -26,6 +26,7 @@ class SmsCallbackDao(tableName: String, hTableFactory: THTableFactory) extends C
       "smsParts" -> smsCallbackEvent.smsParts.getUtf8Bytes,
       "encoding" -> smsCallbackEvent.encoding.getUtf8Bytes,
       "smsLength" -> smsCallbackEvent.smsLength.getUtf8Bytes,
+      "isInternationalNumber" -> smsCallbackEvent.isInternationalNumber.getUtf8Bytes,
       "eventId" -> smsCallbackEvent.eventId.getUtf8Bytes,
       "clientId" -> smsCallbackEvent.clientId.getUtf8Bytes,
       "provider" -> smsCallbackEvent.provider.getUtf8Bytes,
@@ -45,8 +46,9 @@ class SmsCallbackDao(tableName: String, hTableFactory: THTableFactory) extends C
       smsParts = channelEventPropsMap.getS("smsParts"),
       encoding = channelEventPropsMap.getS("encoding"),
       smsLength = channelEventPropsMap.getS("smsLength"),
+      isInternationalNumber = channelEventPropsMap.getS("isInternationalNumber"),
       eventId = channelEventPropsMap.getS("eventId"),
-      receiver = channelEventPropsMap.getKV("receiver").asInstanceOf[Receiver],
+      receiver = channelEventPropsMap.getKV("receiver").asInstanceOf[String],
       eventType = channelEventPropsMap.getS("eventType"),
       provider = channelEventPropsMap.getS("provider"),
       appName = channelEventPropsMap.getS("appName"),
@@ -65,7 +67,7 @@ class SmsCallbackDao(tableName: String, hTableFactory: THTableFactory) extends C
   override def fetchCallbackEvents(requestId: String, event: ChannelRequestInfo, fetchRange: Option[(Long, Long)]): Map[String, List[CallbackEvent]] = {
     val smsRequestInfo = event.asInstanceOf[SmsRequestInfo]
     smsRequestInfo.receivers.toList.map(smsRequestInfo.appName + _).flatMap(fetchCallbackEvents(requestId, _, fetchRange))
-      .asInstanceOf[List[(SmsCallbackEvent, Long)]].map(_._1).groupBy(r => r.receiver.countryCode + r.receiver.number)
+      .asInstanceOf[List[(SmsCallbackEvent, Long)]].map(_._1).groupBy(r => r.receiver)
   }
 
 }

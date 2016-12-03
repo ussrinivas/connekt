@@ -23,7 +23,7 @@ import com.flipkart.connekt.busybees.streams.flows.formaters._
 import com.flipkart.connekt.busybees.streams.flows.profilers.TimedFlowOps._
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers._
 import com.flipkart.connekt.busybees.streams.flows.transformers.{SmsProviderPrepare, SmsProviderResponseFormatter}
-import com.flipkart.connekt.busybees.streams.flows.{ChooseProvider, FlowMetrics, RenderFlow}
+import com.flipkart.connekt.busybees.streams.flows.{ChooseProvider, FlowMetrics, RenderFlow, SeparateIntlReceivers}
 import com.flipkart.connekt.busybees.streams.sources.KafkaSource
 import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.entities.Channel
@@ -74,10 +74,10 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
     /**
       * Sms Topology
       *
-      *                      +---------------+     +-------------------+        +----------+     +-----------------+      +---------------------+     +------------------+     +----------------------------+      +----------------------+     +-------------------------+          +--..
-      *  ConnektRequest ---> | SmsFilter     | --> |SmsChannelFormatter| |----> |  Merger  | --> |ChooseProvider   |  --> |  SmsProviderPrepare | --> |  SmsDispatcher   | --> |SmsProviderResponseFormatter|  --> |  SmsResponseHandler  | --> |Response / Error Splitter| --+----> |Merger
-      *                      +---------------+     +-------------------+ |      +----------+     +-----------------+      +---------------------+     +------------------+     +----------------------------+      +----------------------+     +-------------------------+   |     +-----
-      *                                                                  +---------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------+
+      *                      +---------------+     +-------------------+        +----------+     +-----------------+      +-----------------------+     +---------------------+     +----------------+     +----------------------------+     +---------------------+     +-------------------------+      +--..
+      *  ConnektRequest ---> | SmsFilter     | --> |SmsChannelFormatter| |----> |  Merger  | --> | ChooseProvider  |  --> | SeparateIntlReceivers | --> |  SmsProviderPrepare | --> |  SmsDispatcher | --> |SmsProviderResponseFormatter| --> |  SmsResponseHandler | --> |Response / Error Splitter| -+-> |Merger
+      *                      +---------------+     +-------------------+ |      +----------+     +-----------------+      +-----------------------+     +---------------------+     +----------------+     +----------------------------+     +---------------------+     +-------------------------+  |   +-----
+      *                                                                  +---------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------+
       */
 
     val render = b.add(new RenderFlow().flow)
@@ -87,6 +87,7 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
     val smsPayloadMerge = b.add(MergePreferred[SmsPayloadEnvelope](1))
     val smsRetryMapper = b.add(Flow[SmsRequestTracker].map(_.request) /*.buffer(10, OverflowStrategy.backpressure)*/)
     val chooseProvider = b.add(new ChooseProvider[SmsPayloadEnvelope](Channel.SMS).flow)
+    val separateNumbers = b.add(new SeparateIntlReceivers().flow)
     val smsPrepare = b.add(new SmsProviderPrepare().flow)
     val smsHttpPoolFlow = b.add(HttpDispatcher.smsPoolClientFlow.timedAs("smsRTT"))
     val smsResponseFormatter = b.add(new SmsProviderResponseFormatter().flow)
@@ -98,7 +99,7 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
     }))
 
     render.out ~> smsFilter ~> fmtSMS ~> smsPayloadMerge
-    smsPayloadMerge.out ~> chooseProvider ~> smsPrepare ~> smsHttpPoolFlow ~> smsResponseFormatter ~> smsResponseHandler ~> smsRetryPartition.in
+    smsPayloadMerge.out ~> chooseProvider ~> separateNumbers ~> smsPrepare ~> smsHttpPoolFlow ~> smsResponseFormatter ~> smsResponseHandler ~> smsRetryPartition.in
     smsPayloadMerge.preferred <~ smsRetryMapper <~ smsRetryPartition.out(1).map(_.left.get).outlet
 
     FlowShape(render.in, smsRetryPartition.out(0).map(_.right.get).outlet)

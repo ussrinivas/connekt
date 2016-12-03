@@ -12,6 +12,6 @@
  */
 package com.flipkart.connekt.busybees.models
 
-import com.flipkart.connekt.commons.iomodels.{Receiver, SmsPayloadEnvelope}
+import com.flipkart.connekt.commons.iomodels.SmsPayloadEnvelope
 
-case class SmsRequestTracker(messageId: String, clientId: String, receivers: Set[Receiver], provider: String, appName: String, contextId: String, request: SmsPayloadEnvelope, meta: Map[String, Any]) extends RequestTracker
+case class SmsRequestTracker(messageId: String, clientId: String, receivers: Set[String], provider: String, appName: String, contextId: String, request: SmsPayloadEnvelope, meta: Map[String, Any]) extends RequestTracker

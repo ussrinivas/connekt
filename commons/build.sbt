@@ -109,7 +109,8 @@ libraryDependencies ++= Seq(
     ),
     "javax.mail" % "mail" % "1.5.0-b01",
     "net.htmlparser.jericho" % "jericho-html" % "3.3",
-    "org.opensmpp" % "opensmpp-charset" % "3.0.1"
+    "org.opensmpp" % "opensmpp-charset" % "3.0.1",
+    "com.googlecode.libphonenumber" % "libphonenumber" % "7.7.5"
 )
 
 

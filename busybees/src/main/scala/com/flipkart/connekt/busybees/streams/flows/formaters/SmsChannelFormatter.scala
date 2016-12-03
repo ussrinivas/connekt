@@ -37,20 +37,15 @@ class SmsChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecuto
       val smsInfo = message.channelInfo.asInstanceOf[SmsRequestInfo]
       val ttl = message.expiryTs.map(expiry => (expiry - System.currentTimeMillis) / 1000).getOrElse(1l)
       val rD = message.channelData.asInstanceOf[SmsRequestData]
-
-      val info = SmsUtil.getSmsInfo(rD.body)
+      val smsMeta = SmsUtil.getSmsInfo(rD.body)
 
       if (smsInfo.receivers.nonEmpty && ttl > 0) {
-        val receiverMap = smsInfo.receivers.groupBy(r => r.countryCode.trim)
-        receiverMap.map(r => {
-          val payload = SmsPayload(r._2, rD, smsInfo.sender, ttl.toString)
-          val meta = SmsMeta(info.isUnicodeMessage, info.smsParts, SmsUtil.getCharset(rD.body).displayName(), info.smsLength).asMap
-          val isIntl = if (r._1.equals("91") || r._1.equals("+91")) "0" else "1"
-          SmsPayloadEnvelope(message.id, message.clientId, message.stencilId.orEmpty, smsInfo.appName, message.contextId.orEmpty, payload, isIntl, message.meta ++ meta)
-        }).toList
+        val meta = SmsMeta(smsMeta.isUnicodeMessage, smsMeta.smsParts, SmsUtil.getCharset(rD.body).displayName(), smsMeta.smsLength).asMap
+        val payload = SmsPayload(smsInfo.receivers, rD, smsInfo.sender, ttl.toString)
+        List(SmsPayloadEnvelope(message.id, message.clientId, message.stencilId.orEmpty, smsInfo.appName, message.contextId.orEmpty, payload, StringUtils.EMPTY, message.meta ++ meta))
       } else if (smsInfo.receivers.nonEmpty) {
         ConnektLogger(LogFile.PROCESSORS).warn(s"SMSChannelFormatter dropping ttl-expired message: ${message.id}")
-        smsInfo.receivers.map(s => SmsCallbackEvent(message.id, StringUtils.EMPTY, info.smsParts.toString, SmsUtil.getCharset(rD.body).displayName(), info.smsLength.toString, InternalStatus.TTLExpired, s, message.clientId, null, smsInfo.appName, Channel.SMS, message.contextId.orEmpty)).persist
+        smsInfo.receivers.map(s => SmsCallbackEvent(message.id, StringUtils.EMPTY, smsMeta.smsParts.toString, SmsUtil.getCharset(rD.body).displayName(), smsMeta.smsLength.toString, StringUtils.EMPTY, InternalStatus.TTLExpired, s, message.clientId, null, smsInfo.appName, Channel.SMS, message.contextId.orEmpty)).persist
         ServiceFactory.getReportingService.recordPushStatsDelta(message.clientId, message.contextId, message.meta.get("stencilId").map(_.toString), Option(message.platform), message.appName, InternalStatus.TTLExpired, smsInfo.receivers.size)
         List.empty
       } else

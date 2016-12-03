@@ -21,8 +21,9 @@ case class SmsCallbackEvent(messageId: String,
                             smsParts: String,
                             encoding: String,
                             smsLength: String,
+                            isInternationalNumber: String,
                             eventType: String,
-                            receiver: Receiver,
+                            receiver: String,
                             clientId: String,
                             provider: String,
                             appName: String,
@@ -34,7 +35,7 @@ case class SmsCallbackEvent(messageId: String,
   override def contactId: String = s"${appName.toLowerCase}$receiver"
 
   override def toPublishFormat: fkint.mp.connekt.SmsCallbackEvent = {
-    fkint.mp.connekt.SmsCallbackEvent(messageId = messageId, providerMessageId = providerMessageId, clientId = clientId, appName = appName, contextId = contextId, eventType = eventType,
+    fkint.mp.connekt.SmsCallbackEvent(messageId = messageId, providerMessageId = providerMessageId, clientId = clientId, appName = appName, contextId = contextId, eventType = eventType, isInternationalNumber = isInternationalNumber,
       cargo = Map("smsParts" -> smsParts, "encoding" -> encoding, "smsLength" -> smsLength).getJson, receiver = receiver.getJson, provider = provider, timestamp = DateTimeUtils.getStandardFormatted(timestamp))
   }
 
