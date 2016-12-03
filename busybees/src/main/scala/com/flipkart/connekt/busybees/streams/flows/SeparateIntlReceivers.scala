@@ -45,9 +45,9 @@ class SeparateIntlReceivers extends MapFlowStage[SmsPayloadEnvelope, SmsPayloadE
 
       smsPayload.receivers.foreach(r => {
         try {
-          val validateNum: PhoneNumber = phoneUtil.parse(r, appDefaultCountryCode.get("localRegion").asText)
+          val validateNum: PhoneNumber = phoneUtil.parse(r, appDefaultCountryCode.get("localRegion").asText.trim.toUpperCase)
           if (phoneUtil.isValidNumber(validateNum)) {
-            if (validateNum.getCountryCode.equals(providersDefaultCountryCode.get("localInitial").asInt))
+            if (validateNum.getCountryCode.equals(providersDefaultCountryCode.get("localInitial").asText.trim.toInt))
               nationalNumbers += r
             else
               internationalNumbers += r
