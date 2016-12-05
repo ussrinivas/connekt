@@ -66,7 +66,7 @@ class SmsResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends
             ConnektLogger(LogFile.PROCESSORS).error(s"SmsResponseHandler http response - the server encountered an error while trying to process the request for: ${requestTracker.messageId} code: ${smsResponse.responseCode} response: ${smsResponse.message}")
             Left(smsResponse.responsePerReceivers.map(r => {
               SmsCallbackEvent(requestTracker.messageId, r.providerMessageId, smsMeta.smsParts.toString, smsMeta.encoding, smsMeta.smsLength.toString, requestTracker.request.isInternationalNumber, SmsResponseStatus.InternalError, r.receiver,
-                requestTracker.clientId, requestTracker.provider, requestTracker.appName, requestTracker.contextId, s"ProviderReponse : MessageId : ${requestTracker.messageId}, Message: ${smsResponse.message}")
+                requestTracker.clientId, requestTracker.provider, requestTracker.appName, requestTracker.contextId, s"ProviderResponse : MessageId : ${requestTracker.messageId}, Message: ${smsResponse.message}")
             }))
           case w =>
             // Retrying in this case
@@ -74,7 +74,7 @@ class SmsResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends
             ConnektLogger(LogFile.PROCESSORS).error(s"SmsResponseHandler http response - response unhandled for: ${requestTracker.messageId} code: ${smsResponse.responseCode} response: ${smsResponse.message}")
             Left(smsResponse.responsePerReceivers.map(r => {
               SmsCallbackEvent(requestTracker.messageId, r.providerMessageId, smsMeta.smsParts.toString, smsMeta.encoding, smsMeta.smsLength.toString, requestTracker.request.isInternationalNumber, SmsResponseStatus.Error, r.receiver,
-                requestTracker.clientId, requestTracker.provider, requestTracker.appName, requestTracker.contextId, s"ProviderReponse : MessageId : ${requestTracker.messageId}, Message: ${smsResponse.message}")
+                requestTracker.clientId, requestTracker.provider, requestTracker.appName, requestTracker.contextId, s"ProviderResponse : MessageId : ${requestTracker.messageId}, Message: ${smsResponse.message}")
             }))
         }
 
