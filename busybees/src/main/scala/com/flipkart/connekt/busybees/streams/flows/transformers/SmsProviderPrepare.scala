@@ -24,8 +24,6 @@ import com.flipkart.connekt.commons.iomodels.SmsPayloadEnvelope
 import com.flipkart.connekt.commons.services.KeyChainManager
 import com.flipkart.connekt.commons.utils.StringUtils._
 
-import scala.collection.mutable.ListBuffer
-
 class SmsProviderPrepare extends MapFlowStage[SmsPayloadEnvelope, (HttpRequest, SmsRequestTracker)] {
 
   lazy implicit val stencilService = ServiceFactory.getStencilService
@@ -49,18 +47,16 @@ class SmsProviderPrepare extends MapFlowStage[SmsPayloadEnvelope, (HttpRequest, 
 
       val result = stencilService.materialize(providerStencil, Map("data" -> smsPayloadEnvelope, "credentials" -> credentials).getJsonNode)
 
-      val httpRequests = result.asInstanceOf[ListBuffer[HttpRequest]].transform(
-        _.addHeader(RawHeader("x-message-id", smsPayloadEnvelope.messageId))
+      val httpRequests = result.asInstanceOf[Map[HttpRequest, Set[String]]].map(hR => {
+        (hR._1.addHeader(RawHeader("x-message-id", smsPayloadEnvelope.messageId))
           .addHeader(RawHeader("x-context-id", smsPayloadEnvelope.contextId))
           .addHeader(RawHeader("x-client-id", smsPayloadEnvelope.clientId))
           .addHeader(RawHeader("x-stencil-id", smsPayloadEnvelope.stencilId))
           .addHeader(RawHeader("x-app-name", smsPayloadEnvelope.appName))
-      ).toList
+          , tracker.copy(receivers = hR._2))
+      }).toList
 
-      httpRequests.map(r => {
-        (r , tracker)
-      })
-
+      httpRequests
     } catch {
       case e: Exception =>
         ConnektLogger(LogFile.PROCESSORS).error(s"SMSChannelFormatter error for ${smsPayloadEnvelope.messageId}", e)
