@@ -27,8 +27,8 @@ case class EmailCallbackEvent(messageId: String,
                               eventId: String = RandomStringUtils.randomAlphabetic(10)) extends CallbackEvent {
 
   //java-constructor
-  def this(messageId: String,address:String,eventType: String,contextId: String,cargo: String,timestamp: java.lang.Long){
-    this(messageId = messageId, clientId = null, address = address, eventType = eventType , appName = null, contextId = contextId ,
+  def this(messageId: String, clientId:String, address:String,eventType: String,contextId: String,cargo: String,timestamp: java.lang.Long){
+    this(messageId = messageId, clientId = clientId, address = address, eventType = eventType , appName = null, contextId = contextId ,
       cargo = cargo, timestamp = Option(timestamp).map(_.toLong).getOrElse(System.currentTimeMillis()))
   }
 

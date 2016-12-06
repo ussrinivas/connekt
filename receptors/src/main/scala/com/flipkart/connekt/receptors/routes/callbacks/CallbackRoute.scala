@@ -113,12 +113,12 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with
                             case y => Map("post" -> y.getObj[BaseJsonNode]).getJsonNode
                           }
 
-                          val stencil =  stencilService.getStencilsByName(s"ckt-email-$providerName").find(_.component.equalsIgnoreCase("webhook")).head
+                          val stencil =  stencilService.getStencilsByName(s"ckt-email-$providerName").find(_.component.equalsIgnoreCase("webhook")).get
                           val rawEvents = stencilService.materialize(stencil, payload).asInstanceOf[java.util.ArrayList[EmailCallbackEvent]].asScala
 
                           val validEvents = rawEvents.flatMap(event => {
                             Try {
-                              val e = event.copy(messageId = Option(event.messageId).orEmpty, eventId = RandomStringUtils.randomAlphabetic(10), clientId = user.userId, appName = appName, contextId = Option(event.contextId).orEmpty, eventType = Option(event.eventType).map(_.toLowerCase).orNull)
+                              val e = event.copy(messageId = Option(event.messageId).orEmpty, eventId = RandomStringUtils.randomAlphabetic(10), clientId = Option(event.clientId).getOrElse(user.userId), appName = appName, contextId = Option(event.contextId).orEmpty, eventType = Option(event.eventType).map(_.toLowerCase).orNull)
                               e.validate()
                               Some(e)
                             }.getOrElse(None)
