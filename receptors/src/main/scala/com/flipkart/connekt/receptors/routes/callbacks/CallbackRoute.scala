@@ -13,8 +13,9 @@
 package com.flipkart.connekt.receptors.routes.callbacks
 
 import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.unmarshalling.PredefinedFromEntityUnmarshallers
 import akka.stream.ActorMaterializer
-import com.flipkart.connekt.commons.entities.Channel
+import com.flipkart.connekt.commons.entities.{Channel, Stencil, StencilEngine}
 import com.flipkart.connekt.commons.entities.MobilePlatform._
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
@@ -24,10 +25,15 @@ import com.flipkart.connekt.receptors.directives.MPlatformSegment
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
 import com.flipkart.connekt.receptors.wire.ResponseUtils._
 import org.apache.commons.lang.RandomStringUtils
+import akka.http.scaladsl.unmarshalling.Unmarshaller._
+import com.fasterxml.jackson.databind.node.{BaseJsonNode, ObjectNode}
 
 import scala.util.Try
+import scala.collection.JavaConverters._
 
-class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
+class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with PredefinedFromEntityUnmarshallers {
+
+  private lazy implicit val stencilService = ServiceFactory.getStencilService
 
   val route =
     authenticate {
@@ -41,7 +47,7 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                     authorize(user, "ADD_EVENTS", s"ADD_EVENTS_$appName") {
                       post {
                         entity(as[PNCallbackEvent]) { e =>
-                          val event = e.copy(messageId = Option(e.messageId).orEmpty, eventId = RandomStringUtils.randomAlphabetic(10), clientId = user.userId, contextId = Option(e.contextId).orEmpty, platform = appPlatform.toString, appName = appName, deviceId = deviceId,  eventType = Option(e.eventType).map(_.toLowerCase).orNull)
+                          val event = e.copy(messageId = Option(e.messageId).orEmpty, eventId = RandomStringUtils.randomAlphabetic(10), clientId = user.userId, contextId = Option(e.contextId).orEmpty, platform = appPlatform.toString, appName = appName, deviceId = deviceId, eventType = Option(e.eventType).map(_.toLowerCase).orNull)
                           event.validate()
                           event.persist
                           ServiceFactory.getReportingService.recordPushStatsDelta(user.userId, Option(e.contextId), None, Some(event.platform), event.appName, event.eventType)
@@ -93,7 +99,48 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                   }
                 }
             }
+          } ~ pathPrefix("email") {
+            path("callbacks" / Segment / Segment) {
+              (appName: String, providerName: String) =>
+                authorize(user, "ADD_EVENTS", s"ADD_EVENTS_$appName") {
+                  meteredResource(s"saveEvent.email.$appName") {
+                    extractRequestContext { ctx =>
+                      (post | get) {
+                        parameterMap { urlParams =>
+
+                          val payload : ObjectNode = ctx.request.entity.getString match {
+                            case x if x.isEmpty => Map( "get" ->  urlParams).getJsonNode
+                            case y => Map("post" -> y.getObj[BaseJsonNode]).getJsonNode
+                          }
+
+                          val stencil =  stencilService.getStencilsByName(s"ckt-email-$providerName").find(_.component.equalsIgnoreCase("webhook")).head
+                          val rawEvents = stencilService.materialize(stencil, payload).asInstanceOf[java.util.ArrayList[EmailCallbackEvent]].asScala
+
+                          val validEvents = rawEvents.flatMap(event => {
+                            Try {
+                              val e = event.copy(messageId = Option(event.messageId).orEmpty, eventId = RandomStringUtils.randomAlphabetic(10), clientId = user.userId, appName = appName, contextId = Option(event.contextId).orEmpty, eventType = Option(event.eventType).map(_.toLowerCase).orNull)
+                              e.validate()
+                              Some(e)
+                            }.getOrElse(None)
+                          }).toList
+
+                          validEvents.persist
+
+                          validEvents.foreach(event => {
+                            ServiceFactory.getReportingService.recordPushStatsDelta(user.userId, Some(event.contextId), None, Some(Channel.EMAIL), event.appName, event.eventType)
+                          })
+
+                          ConnektLogger(LogFile.SERVICE).debug(s"Received callback events ${validEvents.getJson}")
+                          complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Email callbacks request recieved.", s"Events successfully ingested : ${validEvents.length}")))
+
+                        }
+                      }
+                    }
+                  }
+                }
+            }
           }
         }
     }
+
 }
