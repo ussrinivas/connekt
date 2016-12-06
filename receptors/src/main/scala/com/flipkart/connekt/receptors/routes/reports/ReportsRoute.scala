@@ -66,7 +66,7 @@ class ReportsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
               (channel: Channel, messageId: String) =>
                 get {
                   meteredResource("reportsMessageEvents") {
-                    val events = ServiceFactory.getCallbackService.fetchCallbackEventByMId(messageId, Channel.PUSH).get
+                    val events = ServiceFactory.getCallbackService.fetchCallbackEventByMId(messageId, channel).get
                     complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Events for $messageId fetched.", events)))
                   }
                 }
@@ -74,7 +74,10 @@ class ReportsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
               (channel: Channel, messageId: String) =>
                 get {
                   meteredResource("reportsMessage") {
-                    val data = ServiceFactory.getPNMessageService.getRequestInfo(messageId).get // Not sure why this is getPNMessageService
+                    val data =  ( channel match  {
+                      case Channel.PUSH => ServiceFactory.getPNMessageService
+                      case Channel.EMAIL => ServiceFactory.getEmailMessageService
+                    }) .getRequestInfo(messageId).get
                     data match {
                       case None =>
                         complete(GenericResponse(StatusCodes.NotFound.intValue, Map("messageId" -> messageId), Response(s"No Message found for messageId $messageId.", null)))

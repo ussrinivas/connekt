@@ -53,7 +53,7 @@ class EmailCallbackDao(tableName: String, hTableFactory: THTableFactory) extends
 
   override def fetchCallbackEvents(requestId: String, event: ChannelRequestInfo, fetchRange: Option[(Long, Long)]): Map[String, List[CallbackEvent]] = {
     val emailRequestInfo = event.asInstanceOf[EmailRequestInfo]
-    (emailRequestInfo.to ++ emailRequestInfo.cc).toList.map(emailRequestInfo.appName + _).flatMap(fetchCallbackEvents(requestId, _, fetchRange)).asInstanceOf[List[(EmailCallbackEvent, Long)]].map(_._1).groupBy(_.address)
+    (emailRequestInfo.to ++ emailRequestInfo.cc).toList.map(eId => emailRequestInfo.appName + eId.address).flatMap(fetchCallbackEvents(requestId, _, fetchRange)).asInstanceOf[List[(EmailCallbackEvent, Long)]].map(_._1).groupBy(_.address)
   }
 
 
