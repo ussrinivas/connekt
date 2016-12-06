@@ -18,7 +18,7 @@ case class SmsMeta(@JsonProperty(required = true) isUnicodeMessage: Boolean, @Js
 
 case class SmsPayload(@JsonProperty(required = false) receivers: Set[String], messageBody: SmsRequestData, senderMask: String, ttl: String)
 
-case class SmsPayloadEnvelope(messageId: String, clientId: String, stencilId: String, appName: String, contextId: String, payload: SmsPayload, isInternationalNumber: String, meta: Map[String, Any], provider: Seq[String] = Seq.empty) extends ProviderEnvelope {
+case class SmsPayloadEnvelope(messageId: String, clientId: String, stencilId: String, appName: String, contextId: String, payload: SmsPayload, meta: Map[String, Any], provider: Seq[String] = Seq.empty) extends ProviderEnvelope {
   override def destinations: Set[String] = payload.receivers
 }
 
