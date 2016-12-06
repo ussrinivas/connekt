@@ -14,7 +14,7 @@ package com.flipkart.connekt.commons.iomodels
 
 import com.fasterxml.jackson.annotation.JsonProperty
 
-case class SmsMeta(@JsonProperty(required = true) isUnicodeMessage: Boolean, @JsonProperty(required = true) smsParts: Int, @JsonProperty(required = true) encoding: String, @JsonProperty(required = true) smsLength: Int)
+case class SmsMeta(@JsonProperty(required = true) isUnicodeMessage: Boolean, @JsonProperty(required = true) smsParts: Int, @JsonProperty(required = true) encoding: String)
 
 case class SmsPayload(@JsonProperty(required = false) receivers: Set[String], messageBody: SmsRequestData, senderMask: String, ttl: String)
 

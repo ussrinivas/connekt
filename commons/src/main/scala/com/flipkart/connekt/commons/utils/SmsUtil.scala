@@ -42,7 +42,7 @@ object SmsUtil {
   }
 
   // To calculate lenght.
-  private def getPartCountAndLength7bit(content: String): (Int, Int) = {
+  private def getPartCountAndLength7bit(content: String): Int = {
 
     val content7bit: StringBuilder = new StringBuilder
     content.foreach(c => {
@@ -71,19 +71,19 @@ object SmsUtil {
           countParts
         }
     }
-    (smsParts, cLen)
+    smsParts
   }
 
   def getSmsInfo(content: String): SmsMeta = {
     val charset = getCharset(content)
-    val (smsParts, length) = charset match {
+    val smsParts = charset match {
       case GSM_CHARSET => getPartCountAndLength7bit(content)
       case USC2_CHARSET =>
         if (content.length <= 70)
-          (1, content.length)
+          1
         else
-          (Math.ceil(content.length / 67.0).toInt, content.length)
+          Math.ceil(content.length / 67.0).toInt
     }
-    SmsMeta(isUnicode(charset), smsParts, charset.displayName(), length)
+    SmsMeta(isUnicode(charset), smsParts, charset.displayName())
   }
 }

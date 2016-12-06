@@ -20,8 +20,7 @@ import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
-import com.flipkart.connekt.commons.iomodels.{EmailCallbackEvent, PNCallbackEvent, SmsCallbackEvent, SmsMeta}
-import com.flipkart.connekt.commons.utils.StringUtils.{JSONMarshallFunctions, _}
+import com.flipkart.connekt.commons.iomodels.{EmailCallbackEvent, PNCallbackEvent, SmsCallbackEvent}
 import org.apache.commons.lang.StringUtils
 
 import scala.concurrent.Future
@@ -105,9 +104,8 @@ object StageSupervision {
             .map(PNCallbackEvent(cEx.messageId, cEx.client, _, cEx.eventType, cEx.platform, cEx.appName, cEx.context, cEx.getMessage, cEx.timeStamp))
             .persist
         case Channel.SMS =>
-          val smsMeta = cEx.meta.getJson.getObj[SmsMeta]
           cEx.destinations
-            .map(SmsCallbackEvent(cEx.messageId, StringUtils.EMPTY, smsMeta.smsParts.toString, smsMeta.encoding, smsMeta.smsLength.toString, StringUtils.EMPTY, cEx.eventType, _, cEx.client, StringUtils.EMPTY, cEx.appName, cEx.context, cEx.getMessage))
+            .map(SmsCallbackEvent(cEx.messageId, StringUtils.EMPTY, cEx.eventType, _, cEx.client, StringUtils.EMPTY, cEx.appName, cEx.context, cEx.getMessage))
             .persist
         case Channel.EMAIL =>
           cEx.destinations

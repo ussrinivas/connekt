@@ -13,15 +13,11 @@
 package com.flipkart.connekt.commons.iomodels
 
 import com.flipkart.connekt.commons.utils.DateTimeUtils
-import com.flipkart.connekt.commons.utils.StringUtils.JSONMarshallFunctions
+import com.flipkart.connekt.commons.utils.StringUtils.{StringHandyFunctions, _}
 import org.apache.commons.lang.RandomStringUtils
 
 case class SmsCallbackEvent(messageId: String,
                             providerMessageId: String,
-                            smsParts: String,
-                            encoding: String,
-                            smsLength: String,
-                            isInternationalNumber: String,
                             eventType: String,
                             receiver: String,
                             clientId: String,
@@ -32,11 +28,17 @@ case class SmsCallbackEvent(messageId: String,
                             timestamp: Long = System.currentTimeMillis(),
                             eventId: String = RandomStringUtils.randomAlphabetic(10)) extends CallbackEvent {
 
+  def validate() = {
+    require(contextId == null || contextId.hasOnlyAllowedChars, s"`contextId` field can only contain [A-Za-z0-9_\\.\\-\\:\\|] allowed chars, `messageId`: $messageId, `contextId`: $contextId")
+    require(contextId == null || contextId.length <= 20, s"`contextId` can be max 20 characters, `messageId`: $messageId, `contextId`: $contextId")
+    require(eventType.isDefined, s"`eventType` field cannot be empty or null, `messageId`: $messageId")
+  }
+
   override def contactId: String = s"${appName.toLowerCase}$receiver"
 
   override def toPublishFormat: fkint.mp.connekt.SmsCallbackEvent = {
-    fkint.mp.connekt.SmsCallbackEvent(messageId = messageId, providerMessageId = providerMessageId, clientId = clientId, appName = appName, contextId = contextId, eventType = eventType, isInternationalNumber = isInternationalNumber,
-      cargo = Map("smsParts" -> smsParts, "encoding" -> encoding, "smsLength" -> smsLength).getJson, receiver = receiver.getJson, provider = provider, timestamp = DateTimeUtils.getStandardFormatted(timestamp))
+    fkint.mp.connekt.SmsCallbackEvent(messageId = messageId, providerMessageId = providerMessageId, clientId = clientId, appName = appName, contextId = contextId, eventType = eventType,
+      cargo = cargo, receiver = receiver.getJson, provider = provider, timestamp = DateTimeUtils.getStandardFormatted(timestamp))
   }
 
   override def namespace: String = "fkint/mp/connekt/SmsCallbackEvent"

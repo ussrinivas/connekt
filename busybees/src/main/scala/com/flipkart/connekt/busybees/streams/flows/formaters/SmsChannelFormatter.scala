@@ -12,6 +12,7 @@
  */
 package com.flipkart.connekt.busybees.streams.flows.formaters
 
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.flipkart.connekt.busybees.streams.errors.ConnektStageException
 import com.flipkart.connekt.busybees.streams.flows.NIOFlow
 import com.flipkart.connekt.commons.entities.Channel
@@ -22,11 +23,17 @@ import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.utils.SmsUtil
 import com.flipkart.connekt.commons.utils.StringUtils._
+import com.google.i18n.phonenumbers.PhoneNumberUtil
+import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
+import com.google.i18n.phonenumbers.Phonenumber.PhoneNumber
+import org.apache.commons.lang
 import org.apache.commons.lang.StringUtils
 
 import scala.concurrent.ExecutionContextExecutor
 
 class SmsChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecutor) extends NIOFlow[ConnektRequest, SmsPayloadEnvelope](parallelism)(ec) {
+
+  lazy val appLevelConfigService = ServiceFactory.getUserProjectConfigService
 
   override def map: ConnektRequest => List[SmsPayloadEnvelope] = message => {
 
@@ -40,12 +47,34 @@ class SmsChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecuto
       val smsMeta = SmsUtil.getSmsInfo(rD.body)
 
       if (smsInfo.receivers.nonEmpty && ttl > 0) {
-        val meta = SmsMeta(smsMeta.isUnicodeMessage, smsMeta.smsParts, SmsUtil.getCharset(rD.body).displayName(), smsMeta.smsLength).asMap
-        val payload = SmsPayload(smsInfo.receivers, rD, smsInfo.sender, ttl.toString)
-        List(SmsPayloadEnvelope(message.id, message.clientId, message.stencilId.orEmpty, smsInfo.appName, message.contextId.orEmpty, payload, StringUtils.EMPTY, message.meta ++ meta))
+        val appDefaultCountryCode = appLevelConfigService.getProjectConfiguration(message.appName.toLowerCase, "app-local-country-code").get.get.value.getObj[ObjectNode]
+        val phoneUtil: PhoneNumberUtil = PhoneNumberUtil.getInstance()
+
+        val formattedReceivers = smsInfo.receivers.map(r => {
+          try {
+            val validateNum: PhoneNumber = phoneUtil.parse(r, appDefaultCountryCode.get("localRegion").asText.trim.toUpperCase)
+            if (phoneUtil.isValidNumber(validateNum)) {
+              phoneUtil.format(validateNum, PhoneNumberFormat.E164)
+            } else {
+              ConnektLogger(LogFile.PROCESSORS).warn(s"SMSChannelFormatter dropping invalid numbers: $r")
+              SmsCallbackEvent(message.id, lang.StringUtils.EMPTY, InternalStatus.InvalidNumber, r, message.clientId, lang.StringUtils.EMPTY, message.appName, message.contextId.orEmpty, s"SMSChannelFormatter dropping invalid numbers: $r").persist
+              ServiceFactory.getReportingService.recordPushStatsDelta(message.clientId, message.contextId, message.stencilId, Option(lang.StringUtils.EMPTY), message.appName, InternalStatus.TTLExpired)
+              null
+            }
+          } catch {
+            case e: Exception =>
+              ConnektLogger(LogFile.PROCESSORS).warn(s"SMSChannelFormatter dropping invalid numbers: $r", e)
+              SmsCallbackEvent(message.id, lang.StringUtils.EMPTY, InternalStatus.InvalidNumber, r, message.clientId, lang.StringUtils.EMPTY, message.appName, message.contextId.orEmpty, e.getMessage).persist
+              ServiceFactory.getReportingService.recordPushStatsDelta(message.clientId, message.contextId, message.stencilId, Option(lang.StringUtils.EMPTY), message.appName, InternalStatus.TTLExpired)
+              null
+          }
+        }).filter(_ != null)
+
+        val payload = SmsPayload(formattedReceivers, rD, smsInfo.sender, ttl.toString)
+        List(SmsPayloadEnvelope(message.id, message.clientId, message.stencilId.orEmpty, smsInfo.appName, message.contextId.orEmpty, payload, StringUtils.EMPTY, message.meta))
       } else if (smsInfo.receivers.nonEmpty) {
         ConnektLogger(LogFile.PROCESSORS).warn(s"SMSChannelFormatter dropping ttl-expired message: ${message.id}")
-        smsInfo.receivers.map(s => SmsCallbackEvent(message.id, StringUtils.EMPTY, smsMeta.smsParts.toString, SmsUtil.getCharset(rD.body).displayName(), smsMeta.smsLength.toString, StringUtils.EMPTY, InternalStatus.TTLExpired, s, message.clientId, null, smsInfo.appName, Channel.SMS, message.contextId.orEmpty)).persist
+        smsInfo.receivers.map(s => SmsCallbackEvent(message.id, StringUtils.EMPTY, InternalStatus.TTLExpired, s, message.clientId, null, smsInfo.appName, Channel.SMS, message.contextId.orEmpty)).persist
         ServiceFactory.getReportingService.recordPushStatsDelta(message.clientId, message.contextId, message.meta.get("stencilId").map(_.toString), Option(message.platform), message.appName, InternalStatus.TTLExpired, smsInfo.receivers.size)
         List.empty
       } else

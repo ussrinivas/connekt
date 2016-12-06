@@ -20,9 +20,11 @@ import com.flipkart.connekt.busybees.streams.flows.MapFlowStage
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
-import com.flipkart.connekt.commons.iomodels.{SmsMeta, SmsPayloadEnvelope}
+import com.flipkart.connekt.commons.iomodels.SmsPayloadEnvelope
 import com.flipkart.connekt.commons.services.KeyChainManager
 import com.flipkart.connekt.commons.utils.StringUtils._
+
+import scala.collection.mutable.ListBuffer
 
 class SmsProviderPrepare extends MapFlowStage[SmsPayloadEnvelope, (HttpRequest, SmsRequestTracker)] {
 
@@ -47,20 +49,18 @@ class SmsProviderPrepare extends MapFlowStage[SmsPayloadEnvelope, (HttpRequest, 
 
       val result = stencilService.materialize(providerStencil, Map("data" -> smsPayloadEnvelope, "credentials" -> credentials).getJsonNode)
 
-      val smsMeta = smsPayloadEnvelope.meta.getJson.getObj[SmsMeta]
+      val httpRequests = result.asInstanceOf[ListBuffer[HttpRequest]].transform(
+        _.addHeader(RawHeader("x-message-id", smsPayloadEnvelope.messageId))
+          .addHeader(RawHeader("x-context-id", smsPayloadEnvelope.contextId))
+          .addHeader(RawHeader("x-client-id", smsPayloadEnvelope.clientId))
+          .addHeader(RawHeader("x-stencil-id", smsPayloadEnvelope.stencilId))
+          .addHeader(RawHeader("x-app-name", smsPayloadEnvelope.appName))
+      ).toList
 
-      val httpRequest = result.asInstanceOf[HttpRequest]
-        .addHeader(RawHeader("x-message-id", smsPayloadEnvelope.messageId))
-        .addHeader(RawHeader("x-context-id", smsPayloadEnvelope.contextId))
-        .addHeader(RawHeader("x-client-id", smsPayloadEnvelope.clientId))
-        .addHeader(RawHeader("x-stencil-id", smsPayloadEnvelope.stencilId))
-        .addHeader(RawHeader("x-sms-parts", smsMeta.smsParts.toString))
-        .addHeader(RawHeader("x-encoding", smsMeta.encoding))
-        .addHeader(RawHeader("x-sms-length", smsMeta.smsLength.toString))
-        .addHeader(RawHeader("x-is-intl", smsPayloadEnvelope.isInternationalNumber))
-        .addHeader(RawHeader("x-app-name", smsPayloadEnvelope.appName))
+      httpRequests.map(r => {
+        (r , tracker)
+      })
 
-      List(Tuple2(httpRequest, tracker))
     } catch {
       case e: Exception =>
         ConnektLogger(LogFile.PROCESSORS).error(s"SMSChannelFormatter error for ${smsPayloadEnvelope.messageId}", e)
