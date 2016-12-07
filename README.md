@@ -17,6 +17,7 @@ Following drawbacks were found in existing in-house last-mile engagement platfor
 - none of the platforms ensure clients’ individual sla are insulated from each other
 - none of the platforms have clean authentication, authorization control over api
 
+#### Wiki 
 
-
-
+Head out to our [wiki](https://github.com/Flipkart/connekt/wiki) to read more about how connekt is designed, and getting started guide. 
+ 

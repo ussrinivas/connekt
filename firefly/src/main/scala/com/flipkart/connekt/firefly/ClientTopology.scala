@@ -32,15 +32,15 @@ import scala.concurrent.Promise
 
 class ClientTopology(topic: String, retryLimit: Int, kafkaConsumerConnConf: Config, subscription: Subscription)(implicit am: ActorMaterializer, sys: ActorSystem) {
 
-  implicit val ec = am.executionContext
+  private implicit val ec = am.executionContext
 
-  val stencilService = ServiceFactory.getStencilService
+  private val stencilService = ServiceFactory.getStencilService
 
-  lazy val stencil = Option(subscription.stencilId).map(stencilService.get(_)).getOrElse(List.empty)
+  private lazy val stencils = Option(subscription.stencilId).map(stencilService.get(_)).getOrElse(List.empty)
 
-  lazy val eventFilterStencil = stencil.find(_.component == "eventFilter")
-  lazy val eventHeaderTransformer = stencil.find(_.component == "header")
-  lazy val eventPayloadTransformer = stencil.find(_.component == "payload")
+  private lazy val eventFilterStencil = stencils.find(_.component == "eventFilter")
+  private lazy val eventHeaderTransformer = stencils.find(_.component == "header")
+  private lazy val eventPayloadTransformer = stencils.find(_.component == "payload")
 
   def start(): Promise[String] = {
 
@@ -51,8 +51,7 @@ class ClientTopology(topic: String, retryLimit: Int, kafkaConsumerConnConf: Conf
     subscription.sink match {
       case http: HTTPEventSink => source.runWith(new HttpSink(subscription, retryLimit, topologyShutdownTrigger).getHttpSink)
       case kafka: KafkaEventSink => source.runWith(new KafkaSink(kafka.topic, kafka.broker).getKafkaSink)
-      case specter: SpecterEventSink =>
-        source.runWith(new SpecterSink().sink)
+      case specter: SpecterEventSink => source.runWith(new SpecterSink().sink)
     }
 
     ConnektLogger(LogFile.SERVICE).info(s"Started client topology ${subscription.name}, id: ${subscription.id}")

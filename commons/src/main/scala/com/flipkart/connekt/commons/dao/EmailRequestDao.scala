@@ -17,8 +17,12 @@ import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.dao.HbaseDao._
 import com.flipkart.connekt.commons.utils.StringUtils.JSONMarshallFunctions
 import com.flipkart.connekt.commons.utils.StringUtils.JSONUnMarshallFunctions
+import scala.reflect.runtime.universe._
+
 
 class EmailRequestDao(tableName: String, hTableFactory: THTableFactory) extends RequestDao(tableName: String, hTableFactory: THTableFactory) {
+
+  val SET_EMAIL_TYPETAG =  typeTag[Set[EmailAddress]]
 
   override protected def channelRequestInfoMap(channelRequestInfo: ChannelRequestInfo): Map[String, Array[Byte]] = {
     val requestInfo = channelRequestInfo.asInstanceOf[EmailRequestInfo]
@@ -39,9 +43,9 @@ class EmailRequestDao(tableName: String, hTableFactory: THTableFactory) extends 
 
   override protected def getChannelRequestInfo(reqInfoProps: Map[String, Array[Byte]]): ChannelRequestInfo = EmailRequestInfo(
     appName = reqInfoProps.getS("appName"),
-    cc = Option(reqInfoProps.getS("cc")).map(_.getObj[Set[EmailAddress]]).getOrElse(Set.empty),
-    bcc = Option(reqInfoProps.getS("bcc")).map(_.getObj[Set[EmailAddress]]).getOrElse(Set.empty),
-    to = reqInfoProps.getS("to").getObj[Set[EmailAddress]],
+    cc = Option(reqInfoProps.getS("cc")).map(_.getObj(SET_EMAIL_TYPETAG)).getOrElse(Set.empty),
+    bcc = Option(reqInfoProps.getS("bcc")).map(_.getObj(SET_EMAIL_TYPETAG)).getOrElse(Set.empty),
+    to = reqInfoProps.getS("to").getObj(SET_EMAIL_TYPETAG),
     from = Option(reqInfoProps.getS("from")).map(_.getObj[EmailAddress]).orNull,
     replyTo = Option(reqInfoProps.getS("replyTo")).map(_.getObj[EmailAddress]).orNull
   )
