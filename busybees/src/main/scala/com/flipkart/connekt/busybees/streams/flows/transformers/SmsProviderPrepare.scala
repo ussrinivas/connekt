@@ -12,6 +12,8 @@
  */
 package com.flipkart.connekt.busybees.streams.flows.transformers
 
+import java.util
+
 import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.headers.RawHeader
 import com.flipkart.connekt.busybees.models.SmsRequestTracker
@@ -23,6 +25,9 @@ import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.iomodels.SmsPayloadEnvelope
 import com.flipkart.connekt.commons.services.KeyChainManager
 import com.flipkart.connekt.commons.utils.StringUtils._
+import groovy.json.internal.LazyMap
+
+import scala.collection.JavaConverters._
 
 class SmsProviderPrepare extends MapFlowStage[SmsPayloadEnvelope, (HttpRequest, SmsRequestTracker)] {
 
@@ -45,15 +50,15 @@ class SmsProviderPrepare extends MapFlowStage[SmsPayloadEnvelope, (HttpRequest, 
 
       val providerStencil = stencilService.getStencilsByName(s"ckt-sms-$selectedProvider").find(_.component.equalsIgnoreCase("prepare")).get
 
-      val result = stencilService.materialize(providerStencil, Map("data" -> smsPayloadEnvelope, "credentials" -> credentials).getJsonNode)
+      val result = stencilService.materialize(providerStencil, Map("data" -> smsPayloadEnvelope, "credentials" -> credentials, "tracker" -> tracker).getJsonNode)
 
-      val httpRequests = result.asInstanceOf[Map[HttpRequest, Set[String]]].map(hR => {
+      val httpRequests = result.asInstanceOf[util.LinkedHashMap[HttpRequest, LazyMap]].asScala.map(hR => {
         (hR._1.addHeader(RawHeader("x-message-id", smsPayloadEnvelope.messageId))
           .addHeader(RawHeader("x-context-id", smsPayloadEnvelope.contextId))
           .addHeader(RawHeader("x-client-id", smsPayloadEnvelope.clientId))
           .addHeader(RawHeader("x-stencil-id", smsPayloadEnvelope.stencilId))
           .addHeader(RawHeader("x-app-name", smsPayloadEnvelope.appName))
-          , tracker.copy(receivers = hR._2))
+          , hR._2.getJson.getObj[SmsRequestTracker])
       }).toList
 
       httpRequests

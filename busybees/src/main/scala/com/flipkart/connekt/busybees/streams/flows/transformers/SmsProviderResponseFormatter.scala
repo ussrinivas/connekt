@@ -24,7 +24,7 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 
 class SmsProviderResponseFormatter(implicit m: Materializer, ec: ExecutionContext) extends MapAsyncFlowStage[(Try[HttpResponse], SmsRequestTracker), (Try[SmsResponse], SmsRequestTracker)](96) with Instrumented {
@@ -37,8 +37,15 @@ class SmsProviderResponseFormatter(implicit m: Materializer, ec: ExecutionContex
 
     val smsResponse = responseTrackerPair._1.flatMap(hR => Try_ {
       val httpResponse = Await.result(hR.toStrict(30.seconds), 5.seconds)
+
+      val body = Try(httpResponse.entity.getString.getObj[ObjectNode]) match {
+        case Success(b) => b
+        case Failure(_) => httpResponse.entity.getString
+      }
+
       val result = stencilService.materialize(providerResponseHandlerStencil, Map("statusCode" -> httpResponse._1.intValue(),
-        "body" -> httpResponse.entity.getString.getObj[ObjectNode]).getJsonNode).asInstanceOf[SmsResponse]
+        "tracker" -> responseTrackerPair._2,
+        "body" -> body).getJsonNode).asInstanceOf[SmsResponse]
       assert(result != null, "Provider Parser Failed, NULL Returned")
       result
     })

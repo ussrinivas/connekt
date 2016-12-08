@@ -22,6 +22,7 @@ import com.flipkart.connekt.commons.iomodels.SmsCallbackEvent
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.StringUtils._
 import org.apache.commons.lang.StringUtils
+import scala.collection.JavaConverters._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Either.MergeableEither
@@ -47,34 +48,34 @@ class SmsResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends
         ConnektLogger(LogFile.PROCESSORS).info(s"SmsResponseHandler received http response for: messageId : ${requestTracker.messageId} code: ${smsResponse.responseCode}")
         smsResponse.responseCode match {
           case s if 2 == (s / 100) =>
-            Right(smsResponse.responsePerReceivers.map(r => {
+            Right(smsResponse.responsePerReceivers.asScala.map(r => {
               ServiceFactory.getReportingService.recordPushStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), platform = Option(Channel.SMS), appName = requestTracker.appName, event = r.receiverStatus)
               SmsCallbackEvent(requestTracker.messageId, r.providerMessageId, r.receiverStatus, r.receiver,
                 requestTracker.clientId, requestTracker.provider, requestTracker.appName, requestTracker.contextId, r.cargo)
-            }))
+            }).toList)
           case f if 4 == (f / 100) =>
             ServiceFactory.getReportingService.recordPushStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), platform = Option(Channel.SMS), appName = requestTracker.appName, event = SmsResponseStatus.AuthError, count = smsResponse.responsePerReceivers.size)
             ConnektLogger(LogFile.PROCESSORS).error(s"SmsResponseHandler http response - auth error for: ${requestTracker.messageId} code: ${smsResponse.responseCode} response: ${smsResponse.message}")
-            Right(smsResponse.responsePerReceivers.map(r => {
+            Right(smsResponse.responsePerReceivers.asScala.map(r => {
               SmsCallbackEvent(requestTracker.messageId, r.providerMessageId, SmsResponseStatus.AuthError, r.receiver,
                 requestTracker.clientId, requestTracker.provider, requestTracker.appName, requestTracker.contextId, s"ProviderReponse : MessageId : ${requestTracker.messageId}, Message: ${smsResponse.message}")
-            }))
+            }).toList)
           case e if 5 == (e / 100) =>
             // Retrying in this case
             ServiceFactory.getReportingService.recordPushStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), platform = Option(Channel.SMS), appName = requestTracker.appName, event = SmsResponseStatus.InternalError, count = smsResponse.responsePerReceivers.size)
             ConnektLogger(LogFile.PROCESSORS).error(s"SmsResponseHandler http response - the server encountered an error while trying to process the request for: ${requestTracker.messageId} code: ${smsResponse.responseCode} response: ${smsResponse.message}")
-            Left(smsResponse.responsePerReceivers.map(r => {
+            Left(smsResponse.responsePerReceivers.asScala.map(r => {
               SmsCallbackEvent(requestTracker.messageId, r.providerMessageId, SmsResponseStatus.InternalError, r.receiver,
                 requestTracker.clientId, requestTracker.provider, requestTracker.appName, requestTracker.contextId, s"ProviderResponse : MessageId : ${requestTracker.messageId}, Message: ${smsResponse.message}")
-            }))
+            }).toList)
           case w =>
             // Retrying in this case
             ServiceFactory.getReportingService.recordPushStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), platform = Option(Channel.SMS), appName = requestTracker.appName, event = SmsResponseStatus.Error, count = smsResponse.responsePerReceivers.size)
             ConnektLogger(LogFile.PROCESSORS).error(s"SmsResponseHandler http response - response unhandled for: ${requestTracker.messageId} code: ${smsResponse.responseCode} response: ${smsResponse.message}")
-            Left(smsResponse.responsePerReceivers.map(r => {
+            Left(smsResponse.responsePerReceivers.asScala.map(r => {
               SmsCallbackEvent(requestTracker.messageId, r.providerMessageId, SmsResponseStatus.Error, r.receiver,
                 requestTracker.clientId, requestTracker.provider, requestTracker.appName, requestTracker.contextId, s"ProviderResponse : MessageId : ${requestTracker.messageId}, Message: ${smsResponse.message}")
-            }))
+            }).toList)
         }
 
       case Failure(e) =>
