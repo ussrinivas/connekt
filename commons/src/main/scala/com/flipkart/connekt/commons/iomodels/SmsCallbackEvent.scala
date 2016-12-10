@@ -28,6 +28,11 @@ case class SmsCallbackEvent(messageId: String,
                             timestamp: Long = System.currentTimeMillis(),
                             eventId: String = RandomStringUtils.randomAlphabetic(10)) extends CallbackEvent {
 
+  def this(messageId: String, providerMessageId: String, eventType: String, receiver: String, clientId: String, provider: String, appName: String, contextId: String, cargo: String) {
+    this(messageId = messageId, providerMessageId = providerMessageId, clientId = clientId, receiver = receiver, eventType = eventType, provider = provider, appName = appName, contextId = contextId,
+      cargo = cargo, timestamp = System.currentTimeMillis())
+  }
+
   def validate() = {
     require(contextId == null || contextId.hasOnlyAllowedChars, s"`contextId` field can only contain [A-Za-z0-9_\\.\\-\\:\\|] allowed chars, `messageId`: $messageId, `contextId`: $contextId")
     require(contextId == null || contextId.length <= 20, s"`contextId` can be max 20 characters, `messageId`: $messageId, `contextId`: $contextId")

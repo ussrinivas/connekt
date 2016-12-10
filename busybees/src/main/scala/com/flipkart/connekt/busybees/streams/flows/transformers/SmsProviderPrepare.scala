@@ -53,12 +53,16 @@ class SmsProviderPrepare extends MapFlowStage[SmsPayloadEnvelope, (HttpRequest, 
       val result = stencilService.materialize(providerStencil, Map("data" -> smsPayloadEnvelope, "credentials" -> credentials, "tracker" -> tracker).getJsonNode)
 
       val httpRequests = result.asInstanceOf[util.LinkedHashMap[HttpRequest, LazyMap]].asScala.map(hR => {
+
+        val tracker = hR._2.getJson.getObj[SmsRequestTracker]
+
         (hR._1.addHeader(RawHeader("x-message-id", smsPayloadEnvelope.messageId))
           .addHeader(RawHeader("x-context-id", smsPayloadEnvelope.contextId))
           .addHeader(RawHeader("x-client-id", smsPayloadEnvelope.clientId))
           .addHeader(RawHeader("x-stencil-id", smsPayloadEnvelope.stencilId))
           .addHeader(RawHeader("x-app-name", smsPayloadEnvelope.appName))
-          , hR._2.getJson.getObj[SmsRequestTracker])
+          .addHeader(RawHeader("x-contact", tracker.receivers.mkString(",")))
+          , tracker)
       }).toList
 
       httpRequests
