@@ -44,14 +44,14 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
 
   SyncManager.get().addObserver(this, List(SyncType.CLIENT_QUEUE_CREATE))
 
-  implicit val system = BusyBeesBoot.system
-  implicit val ec = BusyBeesBoot.system.dispatcher
-  implicit val mat = BusyBeesBoot.mat
-  val ioMat = BusyBeesBoot.ioMat
+  private implicit val system = BusyBeesBoot.system
+  private implicit val ec = BusyBeesBoot.system.dispatcher
+  private implicit val mat = BusyBeesBoot.mat
+  private val ioMat = BusyBeesBoot.ioMat
 
-  val ioDispatcher = system.dispatchers.lookup("akka.actor.io-dispatcher")
+  private val ioDispatcher = system.dispatchers.lookup("akka.actor.io-dispatcher")
 
-  val sourceSwitches: scala.collection.mutable.ListBuffer[Promise[String]] = ListBuffer()
+  private val sourceSwitches: scala.collection.mutable.ListBuffer[Promise[String]] = ListBuffer()
 
   private def createMergedSource(checkpointGroup: CheckPointGroup, topics: Seq[String]): Source[ConnektRequest, NotUsed] = Source.fromGraph(GraphDSL.create() { implicit b =>
 
