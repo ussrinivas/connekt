@@ -12,11 +12,11 @@
  */
 package com.flipkart.connekt.receptors.routes.push
 
-import akka.actor.ActorSystem
+import akka.connekt.AkkaHelpers._
 import akka.http.scaladsl.model.StatusCodes
 import akka.stream.ActorMaterializer
-import com.flipkart.connekt.commons.entities.{Channel, MobilePlatform}
 import com.flipkart.connekt.commons.entities.MobilePlatform.MobilePlatform
+import com.flipkart.connekt.commons.entities.{Channel, MobilePlatform}
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
@@ -26,7 +26,6 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.receptors.directives.MPlatformSegment
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
 import com.flipkart.connekt.receptors.wire.ResponseUtils._
-import akka.connekt.AkkaHelpers._
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
@@ -202,10 +201,10 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                               ServiceFactory.getEmailMessageService.saveRequest(request.copy(channelInfo = emailRequestInfo), queueName, isCrucial = true) match {
                                 case Success(id) =>
                                   success += id -> recipients
-                                  ServiceFactory.getReportingService.recordPushStatsDelta(user.userId, request.contextId, request.stencilId, Option(Channel.EMAIL), appName, InternalStatus.Received, recipients.size)
+                                  ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, request.contextId, request.stencilId, Channel.EMAIL, appName, InternalStatus.Received, recipients.size)
                                 case Failure(t) =>
                                   failure ++= recipients
-                                  ServiceFactory.getReportingService.recordPushStatsDelta(user.userId, request.contextId, request.stencilId, Option(Channel.EMAIL), appName, InternalStatus.Rejected, recipients.size)
+                                  ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, request.contextId, request.stencilId, Channel.EMAIL, appName, InternalStatus.Rejected, recipients.size)
                               }
 
                               GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse("Email Send Request Received", success.toMap, failure.toList)).respond

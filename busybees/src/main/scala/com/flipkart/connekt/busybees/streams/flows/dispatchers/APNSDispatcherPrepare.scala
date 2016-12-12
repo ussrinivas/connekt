@@ -15,7 +15,7 @@ package com.flipkart.connekt.busybees.streams.flows.dispatchers
 import java.util.Date
 
 import com.flipkart.connekt.busybees.models.APNSRequestTracker
-import com.flipkart.connekt.busybees.streams.errors.ConnektStageException
+import com.flipkart.connekt.busybees.streams.errors.ConnektPNStageException
 import com.flipkart.connekt.busybees.streams.flows.MapFlowStage
 import com.flipkart.connekt.commons.entities.MobilePlatform
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
@@ -41,7 +41,7 @@ class APNSDispatcherPrepare extends MapFlowStage[APSPayloadEnvelope, (SimpleApns
     } catch {
       case e: Throwable =>
         ConnektLogger(LogFile.PROCESSORS).error(s"APNSDispatcherPrepare:: onPush :: Error", e)
-        throw new ConnektStageException(envelope.messageId, envelope.clientId, Set(envelope.deviceId), InternalStatus.StageError, envelope.appName, MobilePlatform.IOS, envelope.contextId, envelope.meta, s"APNSDispatcherPrepare-${e.getMessage}", e)
+        throw new ConnektPNStageException(envelope.messageId, envelope.clientId, Set(envelope.deviceId), InternalStatus.StageError, envelope.appName, MobilePlatform.IOS, envelope.contextId, envelope.meta, s"APNSDispatcherPrepare-${e.getMessage}", e)
     }
   }
 }

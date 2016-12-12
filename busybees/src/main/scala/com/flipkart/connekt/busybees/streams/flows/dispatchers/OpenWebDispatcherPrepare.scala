@@ -15,7 +15,7 @@ package com.flipkart.connekt.busybees.streams.flows.dispatchers
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.RawHeader
 import com.flipkart.connekt.busybees.models.OpenWebRequestTracker
-import com.flipkart.connekt.busybees.streams.errors.ConnektStageException
+import com.flipkart.connekt.busybees.streams.errors.ConnektPNStageException
 import com.flipkart.connekt.busybees.streams.flows.MapFlowStage
 import com.flipkart.connekt.commons.entities.MobilePlatform
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
@@ -40,7 +40,7 @@ class OpenWebDispatcherPrepare extends MapFlowStage[OpenWebStandardPayloadEnvelo
     } catch {
       case e: Throwable =>
         ConnektLogger(LogFile.PROCESSORS).error(s"OpenWebDispatcherPrepare failed with ${e.getMessage}", e)
-        throw new ConnektStageException(message.messageId, message.clientId, Set(message.deviceId), InternalStatus.StageError, message.appName, MobilePlatform.OPENWEB, message.contextId, message.meta, s"OpenWebDispatcherPrepare-${e.getMessage}", e)
+        throw new ConnektPNStageException(message.messageId, message.clientId, Set(message.deviceId), InternalStatus.StageError, message.appName, MobilePlatform.OPENWEB, message.contextId, message.meta, s"OpenWebDispatcherPrepare-${e.getMessage}", e)
     }
   }
 }

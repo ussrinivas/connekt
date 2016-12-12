@@ -14,8 +14,10 @@ package com.flipkart.connekt.receptors.routes.callbacks
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.unmarshalling.PredefinedFromEntityUnmarshallers
+import akka.http.scaladsl.unmarshalling.Unmarshaller._
 import akka.stream.ActorMaterializer
-import com.flipkart.connekt.commons.entities.{Channel, Stencil, StencilEngine}
+import com.fasterxml.jackson.databind.node.{BaseJsonNode, ObjectNode}
+import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.entities.MobilePlatform._
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
@@ -25,11 +27,9 @@ import com.flipkart.connekt.receptors.directives.MPlatformSegment
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
 import com.flipkart.connekt.receptors.wire.ResponseUtils._
 import org.apache.commons.lang.RandomStringUtils
-import akka.http.scaladsl.unmarshalling.Unmarshaller._
-import com.fasterxml.jackson.databind.node.{BaseJsonNode, ObjectNode}
 
-import scala.util.Try
 import scala.collection.JavaConverters._
+import scala.util.Try
 
 class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with PredefinedFromEntityUnmarshallers {
 
@@ -127,7 +127,7 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with
                           validEvents.persist
 
                           validEvents.foreach(event => {
-                            ServiceFactory.getReportingService.recordPushStatsDelta(user.userId, Some(event.contextId), None, Some(Channel.EMAIL), event.appName, event.eventType)
+                            ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, Some(event.contextId), None, Channel.EMAIL, event.appName, event.eventType)
                           })
 
                           ConnektLogger(LogFile.SERVICE).debug(s"Received callback events ${validEvents.getJson}")

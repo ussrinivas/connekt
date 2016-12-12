@@ -15,15 +15,14 @@ package com.flipkart.connekt.busybees.streams.flows
 import com.flipkart.concord.transformer.TURLTransformer
 import com.flipkart.connekt.busybees.streams.errors.ConnektStageException
 import com.flipkart.connekt.commons.entities.Channel
-import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
-import com.flipkart.connekt.commons.iomodels.{ConnektRequest, EmailRequestData, EmailRequestInfo}
-import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
-import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
-import com.flipkart.connekt.commons.services.{ConnektConfig, TrackingService}
+import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
+import com.flipkart.connekt.commons.iomodels.{ConnektRequest, EmailRequestData, EmailRequestInfo}
 import com.flipkart.connekt.commons.services.TrackingService.TrackerOptions
+import com.flipkart.connekt.commons.services.{ConnektConfig, TrackingService}
 import com.flipkart.connekt.commons.utils.IdentityURLTransformer
+import com.flipkart.connekt.commons.utils.StringUtils._
 
 
 class TrackingFlow extends MapFlowStage[ConnektRequest, ConnektRequest] {
@@ -73,7 +72,7 @@ class TrackingFlow extends MapFlowStage[ConnektRequest, ConnektRequest] {
     } catch {
       case e: Throwable =>
         ConnektLogger(LogFile.PROCESSORS).error(s"TrackingFlow error", e)
-        throw new ConnektStageException(input.id, input.clientId,input.destinations, InternalStatus.TrackingFailure, input.appName, input.platform, input.contextId.orEmpty,  input.meta ++ input.stencilId.map("stencilId" -> _).toMap, s"TrackingFlow-${e.getMessage}", e)
+        throw new ConnektStageException(input.id, input.clientId,input.destinations, InternalStatus.TrackingFailure, input.appName, input.channel, input.contextId.orEmpty,  input.meta ++ input.stencilId.map("stencilId" -> _).toMap, s"TrackingFlow-${e.getMessage}", e)
     }
   }
 

@@ -12,7 +12,6 @@
  */
 package com.flipkart.connekt.busybees.streams.flows.formaters
 
-import com.flipkart.connekt.busybees.models.EmailRequestTracker
 import com.flipkart.connekt.busybees.streams.errors.ConnektStageException
 import com.flipkart.connekt.busybees.streams.flows.NIOFlow
 import com.flipkart.connekt.commons.entities.Channel
@@ -62,7 +61,7 @@ class EmailChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecu
         //TODO: Fix PNCallbackEvent
         emailInfo.to.map(e => PNCallbackEvent(message.id, message.clientId, e.address, InternalStatus.TTLExpired, Channel.EMAIL, emailInfo.appName, message.contextId.orEmpty)).persist
         emailInfo.cc.map(e => PNCallbackEvent(message.id, message.clientId, e.address, InternalStatus.TTLExpired, Channel.EMAIL, emailInfo.appName, message.contextId.orEmpty)).persist
-        ServiceFactory.getReportingService.recordPushStatsDelta(message.clientId, message.contextId, message.meta.get("stencilId").map(_.toString), Option(message.platform), message.appName, InternalStatus.TTLExpired, emailInfo.to.size + emailInfo.cc.size)
+        ServiceFactory.getReportingService.recordChannelStatsDelta(message.clientId, message.contextId, message.meta.get("stencilId").map(_.toString), Channel.EMAIL, message.appName, InternalStatus.TTLExpired, emailInfo.to.size + emailInfo.cc.size)
         List.empty
       } else
         List.empty
@@ -70,7 +69,7 @@ class EmailChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecu
       case e: Exception =>
         //TODO: Fix PNCallbackEvent
         ConnektLogger(LogFile.PROCESSORS).error(s"EmailChannelFormatter error for ${message.id}", e)
-        throw new ConnektStageException(message.id, message.clientId, message.destinations, InternalStatus.StageError, message.appName, message.platform, message.contextId.orEmpty, message.meta, "AndroidChannelFormatter::".concat(e.getMessage), e)
+        throw new ConnektStageException(message.id, message.clientId, message.destinations, InternalStatus.StageError, message.appName, Channel.EMAIL, message.contextId.orEmpty, message.meta, "AndroidChannelFormatter::".concat(e.getMessage), e)
     }
   }
 }
