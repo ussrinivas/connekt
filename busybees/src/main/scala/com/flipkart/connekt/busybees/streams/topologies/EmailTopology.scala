@@ -23,7 +23,7 @@ import com.flipkart.connekt.busybees.streams.flows.formaters._
 import com.flipkart.connekt.busybees.streams.flows.profilers.TimedFlowOps._
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers._
 import com.flipkart.connekt.busybees.streams.flows.transformers.{EmailProviderPrepare, EmailProviderResponseFormatter}
-import com.flipkart.connekt.busybees.streams.flows.{ChooseProvider, FlowMetrics, RenderFlow}
+import com.flipkart.connekt.busybees.streams.flows.{ChooseProvider, FlowMetrics, RenderFlow, TrackingFlow}
 import com.flipkart.connekt.busybees.streams.sources.KafkaSource
 import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.entities.Channel
@@ -104,6 +104,7 @@ class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCa
   private def emailHTTPTransformFlow = Flow.fromGraph(GraphDSL.create() { implicit b =>
 
     val render = b.add(new RenderFlow().flow)
+    val tracking = b.add(new TrackingFlow().flow)
     val fmtEmailParallelism = ConnektConfig.getInt("topology.email.formatter.parallelism").get
     val fmtEmail = b.add(new EmailChannelFormatter(fmtEmailParallelism)(ioDispatcher).flow)
 
@@ -113,7 +114,7 @@ class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCa
     val providerResponseFormatter = b.add(new EmailProviderResponseFormatter()(ioMat, ec).flow)
     val emailResponseHandle = b.add(new EmailResponseHandler().flow)
 
-    render.out ~>  fmtEmail ~> providerPicker ~> providerHttpPrepare ~> emailPoolFlow ~> providerResponseFormatter ~> emailResponseHandle
+    render.out ~> tracking ~> fmtEmail ~> providerPicker ~> providerHttpPrepare ~> emailPoolFlow ~> providerResponseFormatter ~> emailResponseHandle
 
     FlowShape(render.in, emailResponseHandle.out)
   })
