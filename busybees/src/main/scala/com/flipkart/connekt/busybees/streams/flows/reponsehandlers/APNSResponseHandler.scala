@@ -48,7 +48,7 @@ class APNSResponseHandler(implicit m: Materializer, ec: ExecutionContext) extend
           case true =>
             ConnektLogger(LogFile.PROCESSORS).trace(s"APNSResponseHandler notification accepted by the apns gateway for: ${requestTracker.messageId}")
             events += PNCallbackEvent(requestTracker.messageId, requestTracker.clientId, requestTracker.deviceId, APNSResponseStatus.Received, MobilePlatform.IOS.toString, requestTracker.appName, requestTracker.contextId)
-            ServiceFactory.getReportingService.recordPushStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Option(requestTracker.appName), MobilePlatform.IOS, APNSResponseStatus.Received)
+            ServiceFactory.getReportingService.recordPushStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Option(MobilePlatform.IOS), requestTracker.appName, APNSResponseStatus.Received)
           case false =>
             if (pushNotificationResponse.getTokenInvalidationTimestamp != null) {
 
@@ -60,18 +60,18 @@ class APNSResponseHandler(implicit m: Materializer, ec: ExecutionContext) extend
                   DeviceDetailsService.delete(requestTracker.appName, device.deviceId)
                 })
               }
-              ServiceFactory.getReportingService.recordPushStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Option(requestTracker.appName), MobilePlatform.IOS, APNSResponseStatus.TokenExpired)
+              ServiceFactory.getReportingService.recordPushStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Option(MobilePlatform.IOS), requestTracker.appName, APNSResponseStatus.TokenExpired)
               events += PNCallbackEvent(requestTracker.messageId, requestTracker.clientId, requestTracker.deviceId, APNSResponseStatus.TokenExpired, MobilePlatform.IOS.toString, requestTracker.appName, requestTracker.contextId, s"TokenExpiredAt: ${pushNotificationResponse.getTokenInvalidationTimestamp}")
             } else {
               ConnektLogger(LogFile.PROCESSORS).error(s"APNSResponseHandler notification rejected by the apns gateway: ${pushNotificationResponse.getRejectionReason} for: ${requestTracker.messageId}")
-              ServiceFactory.getReportingService.recordPushStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Option(requestTracker.appName), MobilePlatform.IOS, APNSResponseStatus.Rejected)
+              ServiceFactory.getReportingService.recordPushStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Option(MobilePlatform.IOS), requestTracker.appName, APNSResponseStatus.Rejected)
               events += PNCallbackEvent(requestTracker.messageId, requestTracker.clientId, requestTracker.deviceId, APNSResponseStatus.Rejected, MobilePlatform.IOS.toString, requestTracker.appName, requestTracker.contextId, pushNotificationResponse.getRejectionReason)
             }
         }
 
       case Failure(e) =>
         ConnektLogger(LogFile.PROCESSORS).error(s"APNSResponseHandler failed to send push notification for: ${requestTracker.messageId} due to: ${e.getClass.getSimpleName}, ${e.getMessage}", e)
-        ServiceFactory.getReportingService.recordPushStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Option(requestTracker.appName), MobilePlatform.IOS, InternalStatus.ProviderSendError)
+        ServiceFactory.getReportingService.recordPushStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Option(MobilePlatform.IOS), requestTracker.appName, InternalStatus.ProviderSendError)
         events += PNCallbackEvent(requestTracker.messageId, requestTracker.clientId, requestTracker.deviceId, InternalStatus.ProviderSendError, MobilePlatform.IOS.toString, requestTracker.appName, requestTracker.contextId, s"APNSResponseHandler-${e.getClass.getSimpleName}-${e.getMessage}")
     }
     events.persist
