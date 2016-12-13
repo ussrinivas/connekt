@@ -90,7 +90,7 @@ class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCa
 
   override def sink: Sink[EmailCallbackEvent, NotUsed] = Sink.fromGraph(GraphDSL.create() { implicit b =>
 
-    val metrics = b.add(new FlowMetrics[EmailCallbackEvent](Channel.PUSH).flow)
+    val metrics = b.add(new FlowMetrics[EmailCallbackEvent](Channel.EMAIL).flow)
     metrics ~> Sink.ignore
 
     SinkShape(metrics.in)
