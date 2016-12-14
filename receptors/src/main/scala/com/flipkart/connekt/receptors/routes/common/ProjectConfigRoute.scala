@@ -43,16 +43,16 @@ class ProjectConfigRoute(implicit am: ActorMaterializer) extends BaseJsonHandler
                         case None =>
                           complete(GenericResponse(StatusCodes.NotFound.intValue, null, Response(s"Project $appName/$propertyName's config not defined.", null)))
                       }
+                    } ~ put {
+                      entity(as[UserProjectConfig]) { projectConfig =>
+                        projectConfig.updatedBy = user.userId
+                        projectConfig.name = propertyName
+                        projectConfig.appName = appName
+                        projectConfig.validate()
+                        ServiceFactory.getUserProjectConfigService.add(projectConfig).get
+                        complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Project $appName/${projectConfig.name}'s config has been added.", projectConfig)))
+                      }
                     }
-                } ~ pathEndOrSingleSlash {
-                  post {
-                    entity(as[UserProjectConfig]) { projectConfig =>
-                      projectConfig.updatedBy = user.userId
-                      projectConfig.validate()
-                      ServiceFactory.getUserProjectConfigService.add(projectConfig).get
-                      complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Project $appName/${projectConfig.name}'s config has been added.", projectConfig)))
-                    }
-                  }
                 }
               }
           }
