@@ -202,8 +202,10 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                               ServiceFactory.getEmailMessageService.saveRequest(request.copy(channelInfo = emailRequestInfo), queueName, isCrucial = true) match {
                                 case Success(id) =>
                                   success += id -> recipients
+                                  ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, request.contextId, request.stencilId, Channel.EMAIL, appName, InternalStatus.Received, recipients.size)
                                 case Failure(t) =>
                                   failure ++= recipients
+                                  ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, request.contextId, request.stencilId, Channel.EMAIL, appName, InternalStatus.Rejected, recipients.size)
                               }
 
                               GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse("Email Send Request Received", success.toMap, failure.toList)).respond

@@ -37,7 +37,7 @@ class EmailChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecu
 
       val emailInfo = message.channelInfo.asInstanceOf[EmailRequestInfo]
 
-      val ttl = message.expiryTs.map(expiry => (expiry - System.currentTimeMillis) / 1000).getOrElse(6.hour.toSeconds)
+      val ttl = message.expiryTs.map(expiry => (expiry - System.currentTimeMillis) / 1000).getOrElse(30.days.toSeconds)
 
       val cc = Option(emailInfo.cc).getOrElse(Set.empty)
       val bcc = Option(emailInfo.bcc).getOrElse(Set.empty)
@@ -58,18 +58,16 @@ class EmailChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecu
         List(EmailPayloadEnvelope( messageId = message.id, appName = emailInfo.appName, contextId = message.contextId.orEmpty, clientId = message.clientId, payload = payload, meta = message.meta) )
       } else if (emailInfo.to.nonEmpty) {
         ConnektLogger(LogFile.PROCESSORS).warn(s"EmailChannelFormatter dropping ttl-expired message: ${message.id}")
-        //TODO: Fix PNCallbackEvent
-        emailInfo.to.map(e => PNCallbackEvent(message.id, message.clientId, e.address, InternalStatus.TTLExpired, Channel.EMAIL, emailInfo.appName, message.contextId.orEmpty)).persist
-        emailInfo.cc.map(e => PNCallbackEvent(message.id, message.clientId, e.address, InternalStatus.TTLExpired, Channel.EMAIL, emailInfo.appName, message.contextId.orEmpty)).persist
-        ServiceFactory.getReportingService.recordPushStatsDelta(message.clientId, message.contextId, message.meta.get("stencilId").map(_.toString), Option(message.platform), message.appName, InternalStatus.TTLExpired, emailInfo.to.size + emailInfo.cc.size)
+        emailInfo.to.map(e => EmailCallbackEvent(message.id, message.clientId, e.address, InternalStatus.TTLExpired, emailInfo.appName, message.contextId.orEmpty)).persist
+        emailInfo.cc.map(e => EmailCallbackEvent(message.id, message.clientId, e.address, InternalStatus.TTLExpired, emailInfo.appName, message.contextId.orEmpty)).persist
+        ServiceFactory.getReportingService.recordChannelStatsDelta(message.clientId, message.contextId, message.meta.get("stencilId").map(_.toString), Channel.EMAIL, message.appName, InternalStatus.TTLExpired, emailInfo.to.size + emailInfo.cc.size)
         List.empty
       } else
         List.empty
     } catch {
       case e: Exception =>
-        //TODO: Fix PNCallbackEvent
         ConnektLogger(LogFile.PROCESSORS).error(s"EmailChannelFormatter error for ${message.id}", e)
-        throw new ConnektStageException(message.id, message.clientId,Channel.EMAIL, message.destinations, InternalStatus.StageError, message.appName, message.platform, message.contextId.orEmpty, message.meta, "AndroidChannelFormatter::".concat(e.getMessage), e)
+        throw new ConnektStageException(message.id, message.clientId, message.destinations, InternalStatus.StageError, message.appName, Channel.EMAIL, message.contextId.orEmpty, message.meta, "AndroidChannelFormatter::".concat(e.getMessage), e)
     }
   }
 }

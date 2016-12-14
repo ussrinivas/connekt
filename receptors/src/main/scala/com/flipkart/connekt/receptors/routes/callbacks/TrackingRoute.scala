@@ -33,7 +33,8 @@ class TrackingRoute(implicit am: ActorMaterializer) extends BaseHandler {
         get {
           val entity = Base64.decodeBase64(encodedData).getObj[URLMessageTracker]
 
-          val event: CallbackEvent = Channel.withName(entity.channel) match {
+          val channel = Channel.withName(entity.channel)
+          val event: CallbackEvent = channel match {
             case Channel.EMAIL =>
               EmailCallbackEvent(messageId = entity.messageId,
                 clientId = entity.clientId,
@@ -45,7 +46,7 @@ class TrackingRoute(implicit am: ActorMaterializer) extends BaseHandler {
           }
 
           event.persist
-          ServiceFactory.getReportingService.recordPushStatsDelta(entity.clientId, entity.contextId, None, Some(entity.channel), entity.appName, event.eventType)
+          ServiceFactory.getReportingService.recordChannelStatsDelta(entity.clientId, entity.contextId, None, channel, entity.appName, event.eventType)
           ConnektLogger(LogFile.SERVICE).debug(s"Received callback event ${event.toString}")
 
           complete {
@@ -62,7 +63,8 @@ class TrackingRoute(implicit am: ActorMaterializer) extends BaseHandler {
         get {
           val entity = Base64.decodeBase64(encodedData).getObj[URLMessageTracker]
 
-          val event: CallbackEvent = Channel.withName(entity.channel) match {
+          val channel = Channel.withName(entity.channel)
+          val event: CallbackEvent = channel match {
             case Channel.EMAIL =>
               EmailCallbackEvent(messageId = entity.messageId,
                 clientId = entity.clientId,
@@ -74,7 +76,7 @@ class TrackingRoute(implicit am: ActorMaterializer) extends BaseHandler {
           }
 
           event.persist
-          ServiceFactory.getReportingService.recordPushStatsDelta(entity.clientId, entity.contextId, None, Some(entity.channel), entity.appName, event.eventType)
+          ServiceFactory.getReportingService.recordChannelStatsDelta(entity.clientId, entity.contextId, None, channel, entity.appName, event.eventType)
           ConnektLogger(LogFile.SERVICE).debug(s"Received callback event ${event.toString}")
 
           redirect(entity.url, StatusCodes.Found)

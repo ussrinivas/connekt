@@ -13,9 +13,9 @@
 package com.flipkart.connekt.busybees.streams.flows.formaters
 
 import com.fasterxml.jackson.databind.node.ObjectNode
-import com.flipkart.connekt.busybees.streams.errors.ConnektStageException
+import com.flipkart.connekt.busybees.streams.errors.ConnektPNStageException
 import com.flipkart.connekt.busybees.streams.flows.NIOFlow
-import com.flipkart.connekt.commons.entities.{Channel, MobilePlatform}
+import com.flipkart.connekt.commons.entities.MobilePlatform
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
@@ -76,7 +76,7 @@ class IOSChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecuto
     } catch {
       case e: Throwable =>
         ConnektLogger(LogFile.PROCESSORS).error(s"IOSChannelFormatter error for ${message.id}", e)
-        throw new ConnektStageException(message.id, message.clientId, Channel.PUSH, message.destinations, InternalStatus.StageError, message.appName, message.platform, message.contextId.orEmpty, message.meta, "IOSChannelFormatter::".concat(e.getMessage), e)
+        throw new ConnektPNStageException(message.id, message.clientId, message.destinations, InternalStatus.StageError, message.appName, message.platform, message.contextId.orEmpty, message.meta, "IOSChannelFormatter::".concat(e.getMessage), e)
     }
   }
 }

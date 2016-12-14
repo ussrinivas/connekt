@@ -18,9 +18,9 @@ import org.springframework.dao.{DataAccessException, IncorrectResultSizeDataAcce
 
 class UserProjectConfigDao(table: String, mysqlFactory: TMySQLFactory) extends MySQLDao {
 
-  val mysqlHelper = mysqlFactory
+  private val mysqlHelper = mysqlFactory
 
-  def addProjectConfiguration(upc: UserProjectConfig) = {
+  def addProjectConfiguration(upc: UserProjectConfig):Unit = {
     implicit val j = mysqlHelper.getJDBCInterface
     val q =
       s"""

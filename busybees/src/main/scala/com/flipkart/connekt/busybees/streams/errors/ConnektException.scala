@@ -16,7 +16,7 @@ import scala.util.control.NoStackTrace
 
 class ConnektException(message: String, cause: Throwable = null) extends RuntimeException(message, cause) with NoStackTrace
 
-case class ConnektStageException(messageId: String,
+case class ConnektPNStageException(messageId: String,
                                  client: String,
                                  channel: String,
                                  destinations: Set[String],
@@ -28,3 +28,16 @@ case class ConnektStageException(messageId: String,
                                  message: String,
                                  cause: Throwable,
                                  timeStamp: Long = System.currentTimeMillis()) extends ConnektException(message, cause)
+
+case class ConnektStageException(messageId: String,
+                                 client: String,
+                                 destinations: Set[String],
+                                 eventType: String,
+                                 appName: String,
+                                 channel: String,
+                                 context: String,
+                                 meta: Map[String, Any],
+                                 message: String,
+                                 cause: Throwable,
+                                 timeStamp: Long = System.currentTimeMillis()) extends ConnektException(message, cause)
+

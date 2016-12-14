@@ -18,6 +18,7 @@ import java.util.concurrent.{ConcurrentHashMap, ScheduledThreadPoolExecutor, Tim
 
 import com.flipkart.connekt.commons.dao.StatsReportingDao
 import com.flipkart.connekt.commons.entities.Channel
+import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.DateTimeUtils
@@ -72,10 +73,16 @@ class ReportingService(reportManagerDao: StatsReportingDao) extends TService wit
 
   @Timed("pushStatsUpdate")
   def recordPushStatsDelta(clientId: String, contextId: Option[String], stencilId: Option[String], platform: Option[String], appName: String, event: String, count: Int = 1): Unit = {
-
     val datePrefix = DateTimeUtils.calenderDate.print(Calendar.getInstance().getTimeInMillis) + "."
     updateTagCounters(clientId, count.toLong, datePrefix, contextId.orNull, Channel.PUSH, stencilId.orNull)(platform.orNull, appName.toLowerCase, event)
-    contextId.foreach(id => updateLastSeen(s"$datePrefix${clientId}.$id"))
+    contextId.foreach(id => updateLastSeen(s"$datePrefix$clientId.$id"))
+  }
+
+  @Timed("channelStatsUpdate")
+  def recordChannelStatsDelta(clientId: String, contextId: Option[String], stencilId: Option[String], channel: Channel, appName: String, event: String, count: Int = 1): Unit = {
+    val datePrefix = DateTimeUtils.calenderDate.print(Calendar.getInstance().getTimeInMillis) + "."
+    updateTagCounters(clientId, count.toLong, datePrefix, contextId.orNull, channel, stencilId.orNull)(appName.toLowerCase, event)
+    contextId.foreach(id => updateLastSeen(s"$datePrefix$clientId.$id"))
   }
 
   private val mapCounter = new ConcurrentHashMap[String, AtomicLong]().asScala
@@ -91,7 +98,7 @@ class ReportingService(reportManagerDao: StatsReportingDao) extends TService wit
     mapCounter.putIfAbsent(key, new AtomicLong(delta)).map(_.getAndAdd(delta))
   }
 
-  private def updateLastSeen(key: String): Unit = mapLastSeenTime.update(s"${key}.$cbKeyLastSent", System.currentTimeMillis())
+  private def updateLastSeen(key: String): Unit = mapLastSeenTime.update(s"$key.$cbKeyLastSent", System.currentTimeMillis())
 
   private def getAllCombinations(list: List[String]): List[String] = {
     list.toSet[String].subsets().map(_.mkString(".")).toList.drop(1)
