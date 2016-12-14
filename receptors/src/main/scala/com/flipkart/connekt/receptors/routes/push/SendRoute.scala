@@ -15,6 +15,7 @@ package com.flipkart.connekt.receptors.routes.push
 import akka.connekt.AkkaHelpers._
 import akka.http.scaladsl.model.StatusCodes
 import akka.stream.ActorMaterializer
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.flipkart.connekt.commons.entities.MobilePlatform.MobilePlatform
 import com.flipkart.connekt.commons.entities.{Channel, MobilePlatform}
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
@@ -26,6 +27,10 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.receptors.directives.MPlatformSegment
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
 import com.flipkart.connekt.receptors.wire.ResponseUtils._
+import com.google.i18n.phonenumbers.PhoneNumberUtil
+import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
+import com.google.i18n.phonenumbers.Phonenumber.PhoneNumber
+import org.apache.commons.lang
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
@@ -35,7 +40,6 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
   lazy implicit val stencilService = ServiceFactory.getStencilService
   implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
-  lazy val appLevelConfigService = ServiceFactory.getUserProjectConfigService
 
   val route =
     authenticate {
@@ -236,25 +240,47 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                               })
                               request.validate
 
+                              val appLevelConfigService = ServiceFactory.getUserProjectConfigService
                               ConnektLogger(LogFile.SERVICE).debug(s"Received SMS request with payload: ${request.toString}")
                               val senderMask = appLevelConfigService.getProjectConfiguration(appName.toLowerCase, s"sender-mask-${Channel.SMS.toString}").get.get.value.toUpperCase
                               val smsRequestInfo = request.channelInfo.asInstanceOf[SmsRequestInfo].copy(appName = appName.toLowerCase, sender = senderMask)
-                              val smsRequest = request.copy(channelInfo = smsRequestInfo)
+
+                              val appDefaultCountryCode = appLevelConfigService.getProjectConfiguration(appName.toLowerCase, "app-local-country-code").get.get.value.getObj[ObjectNode]
+                              val phoneUtil: PhoneNumberUtil = PhoneNumberUtil.getInstance()
+
+                              val validNumbers = ListBuffer[String]()
+                              val invalidNumbers = ListBuffer[String]()
 
                               if (smsRequestInfo.receivers != null && smsRequestInfo.receivers.nonEmpty) {
 
-                                val success = scala.collection.mutable.Map[String, Set[String]]()
-                                val failure = ListBuffer[String]()
+                                smsRequestInfo.receivers.foreach(r => {
+                                  try {
+                                    val validateNum: PhoneNumber = phoneUtil.parse(r, appDefaultCountryCode.get("localRegion").asText.trim.toUpperCase)
+                                    if (phoneUtil.isValidNumber(validateNum)) {
+                                      validNumbers += phoneUtil.format(validateNum, PhoneNumberFormat.E164)
+                                    } else {
+                                      ConnektLogger(LogFile.PROCESSORS).error(s"SMSChannelFormatter dropping invalid numbers: $r")
+                                      ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.SMS, appName, InternalStatus.InvalidNumber)
+                                      invalidNumbers += r
+                                    }
+                                  } catch {
+                                    case e: Exception =>
+                                      ConnektLogger(LogFile.PROCESSORS).error(s"SMSChannelFormatter dropping invalid numbers: $r", e)
+                                      ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.SMS, appName, InternalStatus.InvalidNumber)
+                                      invalidNumbers += r
+                                  }
+                                })
+
+                                val smsRequest = request.copy(channelInfo = smsRequestInfo.copy(receivers = validNumbers.toSet))
 
                                 val queueName = ServiceFactory.getSMSMessageService.getRequestBucket(request, user)
                                 /* enqueue multiple requests into kafka */
-                                ServiceFactory.getSMSMessageService.saveRequest(smsRequest, queueName, isCrucial = true) match {
+                                val (success, failure) = ServiceFactory.getSMSMessageService.saveRequest(smsRequest, queueName, isCrucial = true) match {
                                   case Success(id) =>
-                                    val receivers = smsRequest.channelInfo.asInstanceOf[SmsRequestInfo].receivers
-                                    success += id -> receivers
+                                    (Map(id -> validNumbers.toSet), invalidNumbers)
                                   case Failure(t) =>
                                     val receivers = smsRequest.channelInfo.asInstanceOf[SmsRequestInfo].receivers
-                                    failure ++= receivers
+                                    (Map(), validNumbers ++ invalidNumbers)
                                 }
                                 GenericResponse(StatusCodes.Created.intValue, null, SendResponse("SMS Send Request Received", success.toMap, failure.toList)).respond
                               } else {

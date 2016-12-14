@@ -49,12 +49,12 @@ class SmsResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends
         smsResponse.responseCode match {
           case s if 2 == (s / 100) =>
             Right(smsResponse.responsePerReceivers.asScala.map(r => {
-              ServiceFactory.getReportingService.recordPushStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), platform = Option(Channel.SMS), appName = requestTracker.appName, event = r.receiverStatus)
+              ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.SMS, appName = requestTracker.appName, event = r.receiverStatus)
               SmsCallbackEvent(requestTracker.messageId, r.providerMessageId, r.receiverStatus, r.receiver,
                 requestTracker.clientId, requestTracker.provider, requestTracker.appName, requestTracker.contextId, r.cargo)
             }).toList)
           case f if 4 == (f / 100) =>
-            ServiceFactory.getReportingService.recordPushStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), platform = Option(Channel.SMS), appName = requestTracker.appName, event = SmsResponseStatus.AuthError, count = smsResponse.responsePerReceivers.size)
+            ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.SMS, appName = requestTracker.appName, event = SmsResponseStatus.AuthError, count = smsResponse.responsePerReceivers.size)
             ConnektLogger(LogFile.PROCESSORS).error(s"SmsResponseHandler http response - auth error for: ${requestTracker.messageId} code: ${smsResponse.responseCode} response: ${smsResponse.message}")
             Right(smsResponse.responsePerReceivers.asScala.map(r => {
               SmsCallbackEvent(requestTracker.messageId, r.providerMessageId, SmsResponseStatus.AuthError, r.receiver,
@@ -62,7 +62,7 @@ class SmsResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends
             }).toList)
           case e if 5 == (e / 100) =>
             // Retrying in this case
-            ServiceFactory.getReportingService.recordPushStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), platform = Option(Channel.SMS), appName = requestTracker.appName, event = SmsResponseStatus.InternalError, count = smsResponse.responsePerReceivers.size)
+            ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.SMS, appName = requestTracker.appName, event = SmsResponseStatus.InternalError, count = smsResponse.responsePerReceivers.size)
             ConnektLogger(LogFile.PROCESSORS).error(s"SmsResponseHandler http response - the server encountered an error while trying to process the request for: ${requestTracker.messageId} code: ${smsResponse.responseCode} response: ${smsResponse.message}")
             Left(smsResponse.responsePerReceivers.asScala.map(r => {
               SmsCallbackEvent(requestTracker.messageId, r.providerMessageId, SmsResponseStatus.InternalError, r.receiver,
@@ -70,7 +70,7 @@ class SmsResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends
             }).toList)
           case w =>
             // Retrying in this case
-            ServiceFactory.getReportingService.recordPushStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), platform = Option(Channel.SMS), appName = requestTracker.appName, event = SmsResponseStatus.Error, count = smsResponse.responsePerReceivers.size)
+            ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.SMS, appName = requestTracker.appName, event = SmsResponseStatus.Error, count = smsResponse.responsePerReceivers.size)
             ConnektLogger(LogFile.PROCESSORS).error(s"SmsResponseHandler http response - response unhandled for: ${requestTracker.messageId} code: ${smsResponse.responseCode} response: ${smsResponse.message}")
             Left(smsResponse.responsePerReceivers.asScala.map(r => {
               SmsCallbackEvent(requestTracker.messageId, r.providerMessageId, SmsResponseStatus.Error, r.receiver,
@@ -81,7 +81,7 @@ class SmsResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends
       case Failure(e) =>
         // Retrying in this case
         ConnektLogger(LogFile.PROCESSORS).error(s"SmsResponseHandler failed to send sms for: ${requestTracker.messageId} due to: ${e.getClass.getSimpleName}, ${e.getMessage}", e)
-        ServiceFactory.getReportingService.recordPushStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), platform = Option(Channel.SMS), appName = requestTracker.appName, event = InternalStatus.ProviderSendError, count = tryResponse.get.responsePerReceivers.size)
+        ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.SMS, appName = requestTracker.appName, event = InternalStatus.ProviderSendError, count = tryResponse.get.responsePerReceivers.size)
         Left(receivers.map(SmsCallbackEvent(requestTracker.messageId, StringUtils.EMPTY, InternalStatus.ProviderSendError, _,
           requestTracker.clientId, requestTracker.provider, requestTracker.appName, requestTracker.contextId, s"SmsResponseHandler-${e.getClass.getSimpleName}-${e.getMessage}")).toList)
     }

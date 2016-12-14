@@ -47,43 +47,20 @@ class SmsChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecuto
       val smsMeta = SmsUtil.getSmsInfo(rD.body)
 
       if (smsInfo.receivers.nonEmpty && ttl > 0) {
-        val appDefaultCountryCode = appLevelConfigService.getProjectConfiguration(message.appName.toLowerCase, "app-local-country-code").get.get.value.getObj[ObjectNode]
-        val phoneUtil: PhoneNumberUtil = PhoneNumberUtil.getInstance()
-
-        val formattedReceivers = smsInfo.receivers.map(r => {
-          try {
-            val validateNum: PhoneNumber = phoneUtil.parse(r, appDefaultCountryCode.get("localRegion").asText.trim.toUpperCase)
-            if (phoneUtil.isValidNumber(validateNum)) {
-              phoneUtil.format(validateNum, PhoneNumberFormat.E164)
-            } else {
-              ConnektLogger(LogFile.PROCESSORS).warn(s"SMSChannelFormatter dropping invalid numbers: $r")
-              SmsCallbackEvent(message.id, lang.StringUtils.EMPTY, InternalStatus.InvalidNumber, r, message.clientId, lang.StringUtils.EMPTY, message.appName, message.contextId.orEmpty, s"SMSChannelFormatter dropping invalid numbers: $r").persist
-              ServiceFactory.getReportingService.recordPushStatsDelta(message.clientId, message.contextId, message.stencilId, Option(lang.StringUtils.EMPTY), message.appName, InternalStatus.TTLExpired)
-              null
-            }
-          } catch {
-            case e: Exception =>
-              ConnektLogger(LogFile.PROCESSORS).warn(s"SMSChannelFormatter dropping invalid numbers: $r", e)
-              SmsCallbackEvent(message.id, lang.StringUtils.EMPTY, InternalStatus.InvalidNumber, r, message.clientId, lang.StringUtils.EMPTY, message.appName, message.contextId.orEmpty, e.getMessage).persist
-              ServiceFactory.getReportingService.recordPushStatsDelta(message.clientId, message.contextId, message.stencilId, Option(lang.StringUtils.EMPTY), message.appName, InternalStatus.TTLExpired)
-              null
-          }
-        }).filter(_ != null)
-
         val meta = SmsMeta(smsMeta.isUnicodeMessage, smsMeta.smsParts, SmsUtil.getCharset(rD.body).displayName()).asMap
-        val payload = SmsPayload(formattedReceivers, rD, smsInfo.sender, ttl.toString)
+        val payload = SmsPayload(smsInfo.receivers, rD, smsInfo.sender, ttl.toString)
         List(SmsPayloadEnvelope(message.id, message.clientId, message.stencilId.orEmpty, smsInfo.appName, message.contextId.orEmpty, payload, message.meta ++ meta))
       } else if (smsInfo.receivers.nonEmpty) {
         ConnektLogger(LogFile.PROCESSORS).warn(s"SMSChannelFormatter dropping ttl-expired message: ${message.id}")
         smsInfo.receivers.map(s => SmsCallbackEvent(message.id, StringUtils.EMPTY, InternalStatus.TTLExpired, s, message.clientId, null, smsInfo.appName, Channel.SMS, message.contextId.orEmpty)).persist
-        ServiceFactory.getReportingService.recordPushStatsDelta(message.clientId, message.contextId, message.meta.get("stencilId").map(_.toString), Option(message.platform), message.appName, InternalStatus.TTLExpired, smsInfo.receivers.size)
+        ServiceFactory.getReportingService.recordChannelStatsDelta(message.clientId, message.contextId, message.meta.get("stencilId").map(_.toString), Channel.SMS, message.appName, InternalStatus.TTLExpired, smsInfo.receivers.size)
         List.empty
       } else
         List.empty
     } catch {
       case e: Exception =>
         ConnektLogger(LogFile.PROCESSORS).error(s"SMSChannelFormatter error for ${message.id}", e)
-        throw ConnektStageException(message.id, message.clientId, Channel.SMS, message.destinations, InternalStatus.StageError, message.appName, Channel.SMS, message.contextId.orEmpty, message.meta, "SMSChannelFormatter::".concat(e.getMessage), e)
+        throw ConnektStageException(message.id, message.clientId, message.destinations, InternalStatus.StageError, message.appName, Channel.SMS, message.contextId.orEmpty, message.meta, "SMSChannelFormatter::".concat(e.getMessage), e)
     }
   }
 }

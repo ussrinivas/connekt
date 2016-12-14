@@ -15,6 +15,7 @@ package com.flipkart.connekt.commons.dao
 import com.flipkart.connekt.commons.dao.HbaseDao._
 import com.flipkart.connekt.commons.factories.THTableFactory
 import com.flipkart.connekt.commons.iomodels._
+import com.flipkart.connekt.commons.utils.StringUtils
 
 class SmsRequestDao(tableName: String, hTableFactory: THTableFactory) extends RequestDao(tableName: String, hTableFactory: THTableFactory) {
 
@@ -33,7 +34,7 @@ class SmsRequestDao(tableName: String, hTableFactory: THTableFactory) extends Re
   override protected def getChannelRequestInfo(reqInfoProps: Map[String, Array[Byte]]): ChannelRequestInfo = SmsRequestInfo(
     appName = reqInfoProps.getS("appName"),
     sender = reqInfoProps.getS("sender"),
-    receivers = reqInfoProps.getKV("receivers").asInstanceOf[Set[String]]
+    receivers = reqInfoProps.getS("receivers").split(",").toSet
   )
 
   override protected def channelRequestDataMap(channelRequestData: ChannelRequestData): Map[String, Array[Byte]] = {
@@ -44,8 +45,11 @@ class SmsRequestDao(tableName: String, hTableFactory: THTableFactory) extends Re
   }
 
   override protected def getChannelRequestData(reqDataProps: Map[String, Array[Byte]]): ChannelRequestData = {
-    val body = reqDataProps.getKV("body").toString
-    SmsRequestData(body = body)
+    val body = reqDataProps.getKV("body")
+    if (StringUtils.isNullOrEmpty(body))
+      null
+    else
+      SmsRequestData(body = body.toString)
   }
 
   def fetchSmsRequestInfo(id: String): Option[SmsRequestInfo] = {

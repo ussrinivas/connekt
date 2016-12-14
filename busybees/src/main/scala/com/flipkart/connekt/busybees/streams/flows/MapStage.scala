@@ -20,7 +20,8 @@ import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
-import com.flipkart.connekt.commons.iomodels.{EmailCallbackEvent, PNCallbackEvent}
+import com.flipkart.connekt.commons.iomodels.{EmailCallbackEvent, PNCallbackEvent, SmsCallbackEvent}
+import org.apache.commons.lang.StringUtils
 
 import scala.concurrent.Future
 import scala.util.control.NonFatal
@@ -110,6 +111,12 @@ object StageSupervision {
           ConnektLogger(LogFile.PROCESSORS).warn("StageSupervision Handle ConnektEmailStageException")
           cEx.destinations
             .map(EmailCallbackEvent(cEx.messageId, cEx.client, _, cEx.eventType, cEx.appName, cEx.context, cEx.getMessage, cEx.timeStamp))
+            .persist
+        case Channel.SMS =>
+          ServiceFactory.getReportingService.recordChannelStatsDelta(cEx.client, Option(cEx.context), cEx.meta.get("stencilId").map(_.toString), Channel.SMS, cEx.appName, InternalStatus.StageError.toString)
+          ConnektLogger(LogFile.PROCESSORS).warn("StageSupervision Handle ConnektSmsStageException")
+          cEx.destinations
+            .map(SmsCallbackEvent(cEx.messageId, StringUtils.EMPTY, cEx.eventType, _, cEx.client, StringUtils.EMPTY, cEx.appName, cEx.context, cEx.getMessage))
             .persist
       }
 

@@ -69,7 +69,7 @@ class SmsProviderPrepare extends MapFlowStage[SmsPayloadEnvelope, (HttpRequest, 
     } catch {
       case e: Exception =>
         ConnektLogger(LogFile.PROCESSORS).error(s"SMSChannelFormatter error for ${smsPayloadEnvelope.messageId}", e)
-        throw ConnektStageException(smsPayloadEnvelope.messageId, smsPayloadEnvelope.clientId, Channel.SMS, smsPayloadEnvelope.destinations, InternalStatus.StageError, smsPayloadEnvelope.appName, Channel.SMS, smsPayloadEnvelope.contextId, smsPayloadEnvelope.meta, "SMSChannelFormatter::".concat(e.getMessage), e)
+        throw ConnektStageException(smsPayloadEnvelope.messageId, smsPayloadEnvelope.clientId, smsPayloadEnvelope.destinations, InternalStatus.StageError, smsPayloadEnvelope.appName, Channel.SMS, smsPayloadEnvelope.contextId, smsPayloadEnvelope.meta, "SMSChannelFormatter::".concat(e.getMessage), e)
     }
   }
 }

@@ -52,15 +52,6 @@ class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCa
     }
   }
 
-  private implicit val system = BusyBeesBoot.system
-  private implicit val ec = BusyBeesBoot.system.dispatcher
-  private implicit val mat = BusyBeesBoot.mat
-  private val ioMat = BusyBeesBoot.ioMat
-
-  private val ioDispatcher = system.dispatchers.lookup("akka.actor.io-dispatcher")
-
-  private val sourceSwitches: scala.collection.mutable.ListBuffer[Promise[String]] = ListBuffer()
-
   private def createMergedSource(checkpointGroup: CheckPointGroup, topics: Seq[String]): Source[ConnektRequest, NotUsed] = Source.fromGraph(GraphDSL.create() { implicit b =>
 
     val groupId = kafkaConsumerConfig.getString("group.id")
