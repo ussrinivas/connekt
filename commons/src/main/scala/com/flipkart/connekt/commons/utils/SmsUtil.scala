@@ -84,6 +84,6 @@ object SmsUtil {
         else
           Math.ceil(content.length / 67.0).toInt
     }
-    SmsMeta(isUnicode(charset), smsParts, charset.displayName())
+    SmsMeta(smsParts, charset)
   }
 }

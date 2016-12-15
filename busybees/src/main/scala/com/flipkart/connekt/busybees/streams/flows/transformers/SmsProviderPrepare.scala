@@ -24,8 +24,7 @@ import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFa
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.iomodels.SmsPayloadEnvelope
 import com.flipkart.connekt.commons.services.KeyChainManager
-import com.flipkart.connekt.commons.utils.StringUtils._
-import groovy.json.internal.LazyMap
+import com.flipkart.connekt.commons.utils.StringUtils.{JSONUnMarshallFunctions, _}
 
 import scala.collection.JavaConverters._
 
@@ -52,24 +51,22 @@ class SmsProviderPrepare extends MapFlowStage[SmsPayloadEnvelope, (HttpRequest, 
 
       val result = stencilService.materialize(providerStencil, Map("data" -> smsPayloadEnvelope, "credentials" -> credentials, "tracker" -> tracker).getJsonNode)
 
-      val httpRequests = result.asInstanceOf[util.LinkedHashMap[HttpRequest, LazyMap]].asScala.map(hR => {
-
-        val tracker = hR._2.getJson.getObj[SmsRequestTracker]
-
-        (hR._1.addHeader(RawHeader("x-message-id", smsPayloadEnvelope.messageId))
+      val httpRequests = result.asInstanceOf[util.LinkedHashMap[HttpRequest, String]].asScala.map { case (request, updatedTracker) =>
+        (request.addHeader(RawHeader("x-message-id", smsPayloadEnvelope.messageId))
           .addHeader(RawHeader("x-context-id", smsPayloadEnvelope.contextId))
           .addHeader(RawHeader("x-client-id", smsPayloadEnvelope.clientId))
           .addHeader(RawHeader("x-stencil-id", smsPayloadEnvelope.stencilId))
           .addHeader(RawHeader("x-app-name", smsPayloadEnvelope.appName))
-          .addHeader(RawHeader("x-contact", tracker.receivers.mkString(",")))
-          , tracker)
-      }).toList
+          , updatedTracker.getObj[SmsRequestTracker])
+      }.toList
 
       httpRequests
-    } catch {
+    }
+    catch {
       case e: Exception =>
         ConnektLogger(LogFile.PROCESSORS).error(s"SMSChannelFormatter error for ${smsPayloadEnvelope.messageId}", e)
         throw ConnektStageException(smsPayloadEnvelope.messageId, smsPayloadEnvelope.clientId, smsPayloadEnvelope.destinations, InternalStatus.StageError, smsPayloadEnvelope.appName, Channel.SMS, smsPayloadEnvelope.contextId, smsPayloadEnvelope.meta, "SMSChannelFormatter::".concat(e.getMessage), e)
     }
   }
+
 }

@@ -30,11 +30,10 @@ import com.flipkart.connekt.receptors.wire.ResponseUtils._
 import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
 import com.google.i18n.phonenumbers.Phonenumber.PhoneNumber
-import org.apache.commons.lang
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
@@ -242,8 +241,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
                               val appLevelConfigService = ServiceFactory.getUserProjectConfigService
                               ConnektLogger(LogFile.SERVICE).debug(s"Received SMS request with payload: ${request.toString}")
-                              val senderMask = appLevelConfigService.getProjectConfiguration(appName.toLowerCase, s"sender-mask-${Channel.SMS.toString}").get.get.value.toUpperCase
-                              val smsRequestInfo = request.channelInfo.asInstanceOf[SmsRequestInfo].copy(appName = appName.toLowerCase, sender = senderMask)
+                              val smsRequestInfo = request.channelInfo.asInstanceOf[SmsRequestInfo].copy(appName = appName.toLowerCase)
 
                               val appDefaultCountryCode = appLevelConfigService.getProjectConfiguration(appName.toLowerCase, "app-local-country-code").get.get.value.getObj[ObjectNode]
                               val phoneUtil: PhoneNumberUtil = PhoneNumberUtil.getInstance()
@@ -254,7 +252,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                               if (smsRequestInfo.receivers != null && smsRequestInfo.receivers.nonEmpty) {
 
                                 smsRequestInfo.receivers.foreach(r => {
-                                  try {
+                                  Try {
                                     val validateNum: PhoneNumber = phoneUtil.parse(r, appDefaultCountryCode.get("localRegion").asText.trim.toUpperCase)
                                     if (phoneUtil.isValidNumber(validateNum)) {
                                       validNumbers += phoneUtil.format(validateNum, PhoneNumberFormat.E164)
@@ -263,9 +261,9 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                       ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.SMS, appName, InternalStatus.InvalidNumber)
                                       invalidNumbers += r
                                     }
-                                  } catch {
-                                    case e: Exception =>
-                                      ConnektLogger(LogFile.PROCESSORS).error(s"SMSChannelFormatter dropping invalid numbers: $r", e)
+                                  } match {
+                                    case Success(_) =>
+                                    case Failure(e) => ConnektLogger(LogFile.PROCESSORS).error(s"SMSChannelFormatter dropping invalid numbers: $r", e)
                                       ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.SMS, appName, InternalStatus.InvalidNumber)
                                       invalidNumbers += r
                                   }
@@ -279,11 +277,11 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                   case Success(id) =>
                                     (Map(id -> validNumbers.toSet), invalidNumbers)
                                   case Failure(t) =>
-                                    val receivers = smsRequest.channelInfo.asInstanceOf[SmsRequestInfo].receivers
-                                    (Map(), validNumbers ++ invalidNumbers)
+                                    (Map(), smsRequestInfo.receivers)
                                 }
                                 GenericResponse(StatusCodes.Created.intValue, null, SendResponse("SMS Send Request Received", success.toMap, failure.toList)).respond
-                              } else {
+                              }
+                              else {
                                 ConnektLogger(LogFile.SERVICE).error(s"Request Validation Failed, $request ")
                                 GenericResponse(StatusCodes.BadRequest.intValue, null, Response("Request Validation Failed, Please ensure mandatory field values.", null)).respond
                               }

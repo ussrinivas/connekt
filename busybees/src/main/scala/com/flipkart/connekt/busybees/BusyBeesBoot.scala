@@ -18,14 +18,13 @@ import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings}
 import com.flipkart.connekt.busybees.streams.flows.StageSupervision
 import com.flipkart.connekt.busybees.streams.flows.dispatchers.HttpDispatcher
-import com.flipkart.connekt.busybees.streams.topologies.{PushTopology, SmsTopology}
-import com.flipkart.connekt.busybees.streams.topologies.{EmailTopology, PushTopology}
+import com.flipkart.connekt.busybees.streams.topologies.{EmailTopology, PushTopology, SmsTopology}
 import com.flipkart.connekt.commons.connections.ConnectionProvider
 import com.flipkart.connekt.commons.core.BaseApp
 import com.flipkart.connekt.commons.dao.DaoFactory
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.KafkaProducerHelper
-import com.flipkart.connekt.commons.services.{ConnektConfig, DeviceDetailsService}
+import com.flipkart.connekt.commons.services._
 import com.flipkart.connekt.commons.sync.SyncManager
 import com.flipkart.connekt.commons.utils.ConfigUtils
 import com.typesafe.config.ConfigFactory
@@ -59,7 +58,7 @@ object BusyBeesBoot extends BaseApp {
       ConnektLogger.init(loggerConfigFile)
 
       val applicationConfigFile = ConfigUtils.getSystemProperty("busybees.appConfigurationFile").getOrElse("busybees-config.json")
-      ConnektConfig(configServiceHost, configServicePort, apiVersion)(Seq("fk-connekt-root", "fk-connekt-".concat(ConfigUtils.getConfEnvironment),"fk-connekt-busybees", "fk-connekt-busybees-akka-nm"))(applicationConfigFile)
+      ConnektConfig(configServiceHost, configServicePort, apiVersion)(Seq("fk-connekt-root", "fk-connekt-".concat(ConfigUtils.getConfEnvironment), "fk-connekt-busybees", "fk-connekt-busybees-akka-nm"))(applicationConfigFile)
 
       SyncManager.create(ConnektConfig.getString("sync.zookeeper").get)
 
@@ -86,9 +85,9 @@ object BusyBeesBoot extends BaseApp {
       val kafkaProducerPoolConf = ConnektConfig.getConfig("connections.kafka.producerPool").getOrElse(ConfigFactory.empty())
       val kafkaProducerHelper = KafkaProducerHelper.init(kafkaProducerConnConf, kafkaProducerPoolConf)
 
-      ServiceFactory.initCallbackService(emailCallbackDao = DaoFactory.getEmailCallbackDao,smsCallbackDao = DaoFactory.getSmsCallbackDao,
-        smsRequestDao = DaoFactory.getSmsRequestDao, pnCallbackDao = DaoFactory.getPNCallbackDao, pnRequestInfoDao = DaoFactory.getPNRequestDao,
-        emailRequestDao = DaoFactory.getEmailRequestDao, queueProducerHelper = kafkaProducerHelper)
+      val eventsDao = EventsDao(pnEventsDao = DaoFactory.getPNCallbackDao, emailEventsDao = DaoFactory.getEmailCallbackDao, smsEventsDao = DaoFactory.getSmsCallbackDao)
+      val requestDao = ChannelRequestDao(smsRequestDao = DaoFactory.getSmsRequestDao, pnRequestDao = DaoFactory.getPNRequestDao, emailRequestDao = DaoFactory.getEmailRequestDao)
+      ServiceFactory.initCallbackService(eventsDao, requestDao, kafkaProducerHelper)
 
       ServiceFactory.initPNMessageService(DaoFactory.getPNRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf, null)
       ServiceFactory.initEmailMessageService(DaoFactory.getEmailRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf)

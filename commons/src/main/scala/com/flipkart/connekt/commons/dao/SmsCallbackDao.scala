@@ -15,17 +15,14 @@ package com.flipkart.connekt.commons.dao
 import com.flipkart.connekt.commons.dao.HbaseDao._
 import com.flipkart.connekt.commons.factories.THTableFactory
 import com.flipkart.connekt.commons.iomodels._
-import com.flipkart.connekt.commons.utils.StringUtils.JSONMarshallFunctions
 
 class SmsCallbackDao(tableName: String, hTableFactory: THTableFactory) extends CallbackDao(tableName: String, hTableFactory: THTableFactory) {
   override def channelEventPropsMap(channelCallbackEvent: CallbackEvent): Map[String, Array[Byte]] = {
     val smsCallbackEvent = channelCallbackEvent.asInstanceOf[SmsCallbackEvent]
     Map[String, Array[Byte]](
       "messageId" -> smsCallbackEvent.messageId.getUtf8Bytes,
-      "providerMessageId" -> smsCallbackEvent.providerMessageId.getUtf8Bytes,
       "eventId" -> smsCallbackEvent.eventId.getUtf8Bytes,
       "clientId" -> smsCallbackEvent.clientId.getUtf8Bytes,
-      "provider" -> smsCallbackEvent.provider.getUtf8Bytes,
       "receiver" -> smsCallbackEvent.receiver.getUtf8Bytes,
       "eventType" -> smsCallbackEvent.eventType.getUtf8Bytes,
       "appName" -> smsCallbackEvent.appName.getUtf8Bytes,
@@ -38,11 +35,9 @@ class SmsCallbackDao(tableName: String, hTableFactory: THTableFactory) extends C
   override def mapToChannelEvent(channelEventPropsMap: Map[String, Array[Byte]]): CallbackEvent = {
     SmsCallbackEvent(
       messageId = channelEventPropsMap.getS("messageId"),
-      providerMessageId = channelEventPropsMap.getS("providerMessageId"),
       eventId = channelEventPropsMap.getS("eventId"),
       receiver = channelEventPropsMap.getS("receiver"),
       eventType = channelEventPropsMap.getS("eventType"),
-      provider = channelEventPropsMap.getS("provider"),
       appName = channelEventPropsMap.getS("appName"),
       contextId = channelEventPropsMap.getS("contextId"),
       clientId = channelEventPropsMap.getS("clientId"),

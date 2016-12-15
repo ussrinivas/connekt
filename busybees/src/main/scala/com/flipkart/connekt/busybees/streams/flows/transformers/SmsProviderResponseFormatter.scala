@@ -22,8 +22,7 @@ import com.flipkart.connekt.commons.factories.ServiceFactory
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.StringUtils._
 
-import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 
@@ -36,14 +35,14 @@ class SmsProviderResponseFormatter(implicit m: Materializer, ec: ExecutionContex
     val providerResponseHandlerStencil = stencilService.getStencilsByName(s"ckt-sms-${responseTrackerPair._2.provider}").find(_.component.equalsIgnoreCase("parse")).get
 
     val smsResponse = responseTrackerPair._1.flatMap(hR => Try_ {
-      val httpResponse = Await.result(hR.toStrict(30.seconds), 5.seconds)
 
-      val body = Try(httpResponse.entity.getString.getObj[ObjectNode]) match {
+      val stringBody = hR.entity.getString
+      val body = Try(stringBody.getObj[ObjectNode]) match {
         case Success(b) => b
-        case Failure(_) => httpResponse.entity.getString
+        case Failure(_) => stringBody
       }
 
-      val result = stencilService.materialize(providerResponseHandlerStencil, Map("statusCode" -> httpResponse._1.intValue(),
+      val result = stencilService.materialize(providerResponseHandlerStencil, Map("statusCode" -> hR._1.intValue(),
         "tracker" -> responseTrackerPair._2,
         "body" -> body).getJsonNode).asInstanceOf[SmsResponse]
       assert(result != null, "Provider Parser Failed, NULL Returned")

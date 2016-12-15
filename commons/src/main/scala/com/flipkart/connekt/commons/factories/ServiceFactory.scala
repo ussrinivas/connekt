@@ -34,8 +34,8 @@ object ServiceFactory {
     serviceCache += ServiceType.SMS_MESSAGE -> new MessageService(requestDao, userConfiguration, queueProducerHelper, kafkaConsumerConfig, schedulerService)
   }
 
-  def initCallbackService(emailCallbackDao: EmailCallbackDao, smsCallbackDao: SmsCallbackDao, smsRequestDao: SmsRequestDao, pnCallbackDao: PNCallbackDao, pnRequestInfoDao: PNRequestDao, emailRequestDao: EmailRequestDao, queueProducerHelper: KafkaProducerHelper) = {
-    serviceCache += ServiceType.CALLBACK -> new CallbackService(pnCallbackDao, emailCallbackDao, smsCallbackDao, smsRequestDao, pnRequestInfoDao, emailRequestDao, queueProducerHelper)
+  def initCallbackService(eventsDao: EventsDao, requestDao: ChannelRequestDao, queueProducerHelper: KafkaProducerHelper) = {
+    serviceCache += ServiceType.CALLBACK -> new CallbackService(eventsDao, requestDao, queueProducerHelper)
   }
 
   def initAuthorisationService(priv: PrivDao, userInfo: TUserInfo) = {

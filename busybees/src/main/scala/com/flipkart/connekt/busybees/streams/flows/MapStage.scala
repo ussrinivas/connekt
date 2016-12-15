@@ -21,7 +21,6 @@ import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFa
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.iomodels.{EmailCallbackEvent, PNCallbackEvent, SmsCallbackEvent}
-import org.apache.commons.lang.StringUtils
 
 import scala.concurrent.Future
 import scala.util.control.NonFatal
@@ -116,7 +115,7 @@ object StageSupervision {
           ServiceFactory.getReportingService.recordChannelStatsDelta(cEx.client, Option(cEx.context), cEx.meta.get("stencilId").map(_.toString), Channel.SMS, cEx.appName, InternalStatus.StageError.toString)
           ConnektLogger(LogFile.PROCESSORS).warn("StageSupervision Handle ConnektSmsStageException")
           cEx.destinations
-            .map(SmsCallbackEvent(cEx.messageId, StringUtils.EMPTY, cEx.eventType, _, cEx.client, StringUtils.EMPTY, cEx.appName, cEx.context, cEx.getMessage))
+            .map(SmsCallbackEvent(cEx.messageId, cEx.eventType, _, cEx.client, cEx.appName, cEx.context, cEx.getMessage))
             .persist
       }
 
