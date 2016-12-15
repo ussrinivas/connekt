@@ -255,7 +255,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                     if (validateNum.isSuccess && phoneUtil.isValidNumber(validateNum.get)) {
                                       validNumbers += phoneUtil.format(validateNum.get, PhoneNumberFormat.E164)
                                     } else {
-                                      ConnektLogger(LogFile.PROCESSORS).error(s"SMSChannelFormatter dropping invalid numbers: $r")
+                                      ConnektLogger(LogFile.PROCESSORS).error(s"Dropping invalid numbers: $r")
                                       ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.SMS, appName, InternalStatus.Rejected)
                                       invalidNumbers += r
                                     }

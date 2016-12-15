@@ -37,7 +37,7 @@ class SmsChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecuto
       ConnektLogger(LogFile.PROCESSORS).trace(s"SMSChannelFormatter received message: ${message.toString}")
 
       val senderMask = appLevelConfigService.getProjectConfiguration(message.appName.toLowerCase, s"sender-mask-${Channel.SMS.toString}") match {
-        case Success(s) =>  s.map(_.value.toUpperCase).orNull
+        case Success(s) => s.map(_.value.toUpperCase).orNull
         case Failure(e) =>
           throw ConnektStageException(message.id, message.clientId, message.destinations, InternalStatus.StageError, message.appName, Channel.SMS, message.contextId.orEmpty, message.meta, "SMSChannelFormatter::".concat(e.getMessage), e)
       }
@@ -47,17 +47,23 @@ class SmsChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecuto
       val rD = message.channelData.asInstanceOf[SmsRequestData]
       val smsMeta = SmsUtil.getSmsInfo(rD.body)
 
-      if (smsInfo.receivers.nonEmpty && ttl > 0) {
-        val meta = SmsMeta(smsMeta.smsParts, SmsUtil.getCharset(rD.body)).asMap
-        val payload = SmsPayload(smsInfo.receivers, rD, senderMask, ttl.toString)
-        List(SmsPayloadEnvelope(message.id, message.clientId, message.stencilId.orEmpty, smsInfo.appName, message.contextId.orEmpty, payload, message.meta ++ meta))
-      } else if (smsInfo.receivers.nonEmpty) {
+      if (ttl > 0) {
+        if (smsInfo.receivers.nonEmpty && rD.body.trim.nonEmpty) {
+          val meta = SmsMeta(smsMeta.smsParts, SmsUtil.getCharset(rD.body)).asMap
+          val payload = SmsPayload(smsInfo.receivers, rD, senderMask, ttl.toString)
+          List(SmsPayloadEnvelope(message.id, message.clientId, message.stencilId.orEmpty, smsInfo.appName, message.contextId.orEmpty, payload, message.meta ++ meta))
+        } else {
+          ConnektLogger(LogFile.PROCESSORS).warn(s"SMSChannelFormatter dropping message with empty body or no receiver : ${message.id}")
+          smsInfo.receivers.map(s => SmsCallbackEvent(message.id, InternalStatus.InvalidRequest, s, message.clientId, smsInfo.appName, Channel.SMS, message.contextId.orEmpty)).persist
+          ServiceFactory.getReportingService.recordChannelStatsDelta(message.clientId, message.contextId, message.meta.get("stencilId").map(_.toString), Channel.SMS, message.appName, InternalStatus.InvalidRequest, smsInfo.receivers.size)
+          List.empty
+        }
+      } else {
         ConnektLogger(LogFile.PROCESSORS).warn(s"SMSChannelFormatter dropping ttl-expired message: ${message.id}")
         smsInfo.receivers.map(s => SmsCallbackEvent(message.id, InternalStatus.TTLExpired, s, message.clientId, smsInfo.appName, Channel.SMS, message.contextId.orEmpty)).persist
         ServiceFactory.getReportingService.recordChannelStatsDelta(message.clientId, message.contextId, message.meta.get("stencilId").map(_.toString), Channel.SMS, message.appName, InternalStatus.TTLExpired, smsInfo.receivers.size)
         List.empty
-      } else
-        List.empty
+      }
     } catch {
       case e: Exception =>
         ConnektLogger(LogFile.PROCESSORS).error(s"SMSChannelFormatter error for ${message.id}", e)

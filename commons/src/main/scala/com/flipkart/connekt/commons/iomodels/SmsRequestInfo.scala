@@ -15,4 +15,4 @@ package com.flipkart.connekt.commons.iomodels
 import com.fasterxml.jackson.annotation.JsonProperty
 
 case class SmsRequestInfo(@JsonProperty(required = false) appName: String,
-                          @JsonProperty(required = false) receivers: Set[String]) extends ChannelRequestInfo
+                          @JsonProperty(required = true) receivers: Set[String]) extends ChannelRequestInfo

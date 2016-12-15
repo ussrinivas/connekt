@@ -40,7 +40,7 @@ case class ChannelRequestDao(smsRequestDao: SmsRequestDao, pnRequestDao: PNReque
   }
 }
 
-class CallbackService(eventsDao: EventsDao, requestDao: ChannelRequestDao, queueProducerHelper: KafkaProducerHelper) extends TCallbackService with Instrumented {
+class CallbackService(eventsDao: EventsDao, channelRequestDao: ChannelRequestDao, queueProducerHelper: KafkaProducerHelper) extends TCallbackService with Instrumented {
 
   lazy val MAX_FETCH_EVENTS = ConnektConfig.get("receptors.callback.events.max-results").orElse(Some(100))
   lazy val CALLBACK_QUEUE_NAME = ConnektConfig.get("firefly.kafka.topic").getOrElse("ckt_callback_events")
@@ -83,7 +83,7 @@ class CallbackService(eventsDao: EventsDao, requestDao: ChannelRequestDao, queue
   @Timed("fetchCallbackEventByMId")
   def fetchCallbackEventByMId(messageId: String, channel: Channel.Value): Try[Map[String, List[CallbackEvent]]] = {
     Try {
-      val events = requestDao.requestDao(channel).fetchRequestInfo(messageId)
+      val events = channelRequestDao.requestDao(channel).fetchRequestInfo(messageId)
       events.isDefined match {
         case true =>
           eventsDao.channelEventsDao(channel).fetchCallbackEvents(messageId, events.get, None)
