@@ -96,7 +96,6 @@ object MessageStatus {
     val ProviderSendError = Value("connekt_provider_send_error")
     val Received = Value("connekt_received")
     val Rejected = Value("connekt_rejected")
-    val InvalidNumber = Value("sms_invalid_number")
 
   }
 }

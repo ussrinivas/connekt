@@ -258,13 +258,13 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                       validNumbers += phoneUtil.format(validateNum, PhoneNumberFormat.E164)
                                     } else {
                                       ConnektLogger(LogFile.PROCESSORS).error(s"SMSChannelFormatter dropping invalid numbers: $r")
-                                      ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.SMS, appName, InternalStatus.InvalidNumber)
+                                      ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.SMS, appName, InternalStatus.Rejected)
                                       invalidNumbers += r
                                     }
                                   } match {
                                     case Success(_) =>
                                     case Failure(e) => ConnektLogger(LogFile.PROCESSORS).error(s"SMSChannelFormatter dropping invalid numbers: $r", e)
-                                      ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.SMS, appName, InternalStatus.InvalidNumber)
+                                      ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.SMS, appName, InternalStatus.Rejected)
                                       invalidNumbers += r
                                   }
                                 })
