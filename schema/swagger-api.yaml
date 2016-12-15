@@ -257,6 +257,29 @@ paths:
           description: Unexpected error
           schema:
             $ref: '#/definitions/Error'
+  /send/email/{appName}:
+    post:
+      summary: Send Emails to User(s)
+      description: |
+        Send a new push notification all devices of given user and platform.
+      parameters:
+        - $ref: '#/parameters/api-key'
+        - $ref: '#/parameters/appName'
+        - name: ConnektRequest
+          in: body
+          description: ConnektRequest.
+          required: true
+          schema:
+            $ref: '#/definitions/ConnektRequest'
+      tags:
+        - "Send"
+      responses:
+        '202':
+          description:  Request Accepted
+        default:
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Error'
   /push/callback/{MPlatform}/{appName}/{deviceId}:
     post:
       summary: Notification Callback
@@ -301,6 +324,25 @@ paths:
       responses:
         200:
           description: "callback events deleted for messageId."
+  /email/callback/{appName}/{providerId}:
+    post:
+      tags:
+      - "Callback"
+      summary: "email provider callback events of a connekt request"
+      description: "email callback events of a connekt request. Dynamic payload is accepted in this method, which are transformed via providerId webhook stencil."
+      produces:
+      - "application/json"
+      parameters:
+        - $ref: '#/parameters/api-key'
+        - $ref: '#/parameters/appName'
+        - name: providerId
+          in: path
+          description: providerName.
+          required: true
+          type: string
+      responses:
+        200:
+          description: "callback events accepted for messageId."
   /fetch/push/{MPlatform}/{appName}/{deviceId}:
     get:
       summary: Fetch Notifications
@@ -584,6 +626,67 @@ paths:
           description: "no api-key found for clientName"
         400:
           description: "while user does not existed for user level access"
+  /project/config/{appName}:
+   get:
+    tags:
+      - "Admin"
+    summary: "get project configurations for given app."
+    description: "list appName specific configurations."
+    produces:
+      - "application/json"
+    parameters:
+        - $ref: '#/parameters/api-key'
+        - $ref: '#/parameters/appName'
+    responses:
+        200:
+          description: "list of project configs"
+
+  /project/config/{appName}/{propertyName}:
+   get:
+    tags:
+      - "Admin"
+    summary: "get project specific config"
+    description: "get appName/propertyName configuration"
+    produces:
+      - "application/json"
+    parameters:
+        - $ref: '#/parameters/api-key'
+        - $ref: '#/parameters/appName'
+        - name: propertyName
+          in: path
+          description: propertyName.
+          required: true
+          type: string
+    responses:
+        200:
+          description: "propertyName details"
+   put:
+    tags:
+      - "Admin"
+    summary: "update project specific config"
+    description: "update appName/propertyName configuration"
+    produces:
+      - "application/json"
+    parameters:
+        - $ref: '#/parameters/api-key'
+        - $ref: '#/parameters/appName'
+        - name: propertyName
+          in: path
+          description: propertyName.
+          required: true
+          type: string
+        - name: propertyConfig
+          in: body
+          description: propertyConfig.
+          required: true
+          schema:
+            $ref: '#/definitions/UserProjectConfig'
+
+    responses:
+        200:
+          description: "propertyName details"
+
+
   /debugger/secure-code/generate:
     get:
       summary: Generate Secure Code
@@ -722,7 +825,7 @@ paths:
           description: Unexpected error
           schema:
             $ref: '#/definitions/Error'
-                     
+
   /stencil:
     post:
       summary: creating stencil
@@ -957,6 +1060,18 @@ definitions:
       platforms:
         type: string
         description: sending platforms (android / ios / windows / openweb)
+  UserProjectConfig:
+    type: object
+    properties:
+      format:
+        type: string
+        enum:
+        - STRING
+        - JSON
+        description: the serialisation format
+      value:
+        type: string
+        description: the serialized value of the config
   ResourcePriv:
     type: object
     properties:
