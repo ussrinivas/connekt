@@ -19,7 +19,7 @@ import com.flipkart.connekt.commons.core.BaseApp
 import com.flipkart.connekt.commons.dao.DaoFactory
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.KafkaProducerHelper
-import com.flipkart.connekt.commons.services.ConnektConfig
+import com.flipkart.connekt.commons.services.{ChannelRequestDao, ConnektConfig, EventsDao}
 import com.flipkart.connekt.commons.sync.SyncManager
 import com.flipkart.connekt.commons.utils.ConfigUtils
 import com.flipkart.connekt.receptors.service.ReceptorsServer
@@ -67,9 +67,11 @@ object ReceptorsBoot extends BaseApp {
       ServiceFactory.initSMSMessageService(DaoFactory.getSmsRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf, null)
 
       ServiceFactory.initEmailMessageService(DaoFactory.getEmailRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf)
-      ServiceFactory.initCallbackService(emailCallbackDao = DaoFactory.getEmailCallbackDao,smsCallbackDao = DaoFactory.getSmsCallbackDao,
-        smsRequestDao = DaoFactory.getSmsRequestDao, pnCallbackDao = DaoFactory.getPNCallbackDao, pnRequestInfoDao = DaoFactory.getPNRequestDao,
-        emailRequestDao = DaoFactory.getEmailRequestDao, queueProducerHelper = kafkaProducerHelper)
+
+      val eventsDao = EventsDao(pnEventsDao = DaoFactory.getPNCallbackDao, emailEventsDao = DaoFactory.getEmailCallbackDao, smsEventsDao = DaoFactory.getSmsCallbackDao)
+      val requestDao = ChannelRequestDao(smsRequestDao = DaoFactory.getSmsRequestDao, pnRequestDao = DaoFactory.getPNRequestDao, emailRequestDao = DaoFactory.getEmailRequestDao)
+      ServiceFactory.initCallbackService(eventsDao, requestDao, kafkaProducerHelper)
+
       ServiceFactory.initAuthorisationService(DaoFactory.getPrivDao, DaoFactory.getUserInfoDao)
       ServiceFactory.initStorageService(DaoFactory.getKeyChainDao)
       ServiceFactory.initProjectConfigService(DaoFactory.getUserProjectConfigDao)
