@@ -29,7 +29,6 @@ import com.flipkart.connekt.receptors.routes.BaseJsonHandler
 import com.flipkart.connekt.receptors.wire.ResponseUtils._
 import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
-import com.google.i18n.phonenumbers.Phonenumber.PhoneNumber
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
@@ -252,21 +251,14 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                               if (smsRequestInfo.receivers != null && smsRequestInfo.receivers.nonEmpty) {
 
                                 smsRequestInfo.receivers.foreach(r => {
-                                  Try {
-                                    val validateNum: PhoneNumber = phoneUtil.parse(r, appDefaultCountryCode.get("localRegion").asText.trim.toUpperCase)
-                                    if (phoneUtil.isValidNumber(validateNum)) {
-                                      validNumbers += phoneUtil.format(validateNum, PhoneNumberFormat.E164)
+                                    val validateNum = Try(phoneUtil.parse(r, appDefaultCountryCode.get("localRegion").asText.trim.toUpperCase))
+                                    if (validateNum.isSuccess && phoneUtil.isValidNumber(validateNum.get)) {
+                                      validNumbers += phoneUtil.format(validateNum.get, PhoneNumberFormat.E164)
                                     } else {
                                       ConnektLogger(LogFile.PROCESSORS).error(s"SMSChannelFormatter dropping invalid numbers: $r")
                                       ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.SMS, appName, InternalStatus.Rejected)
                                       invalidNumbers += r
                                     }
-                                  } match {
-                                    case Success(_) =>
-                                    case Failure(e) => ConnektLogger(LogFile.PROCESSORS).error(s"SMSChannelFormatter dropping invalid numbers: $r", e)
-                                      ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.SMS, appName, InternalStatus.Rejected)
-                                      invalidNumbers += r
-                                  }
                                 })
 
                                 val smsRequest = request.copy(channelInfo = smsRequestInfo.copy(receivers = validNumbers.toSet))
