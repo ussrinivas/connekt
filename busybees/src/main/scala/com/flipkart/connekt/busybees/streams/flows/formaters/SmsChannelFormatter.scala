@@ -37,7 +37,7 @@ class SmsChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecuto
       ConnektLogger(LogFile.PROCESSORS).trace(s"SMSChannelFormatter received message: ${message.toString}")
 
       val senderMask = appLevelConfigService.getProjectConfiguration(message.appName.toLowerCase, s"sender-mask-${Channel.SMS.toString}") match {
-        case Success(s) => if (s.isDefined) s.get.value.toUpperCase else null
+        case Success(s) =>  s.map(_.value.toUpperCase).orNull
         case Failure(e) =>
           throw ConnektStageException(message.id, message.clientId, message.destinations, InternalStatus.StageError, message.appName, Channel.SMS, message.contextId.orEmpty, message.meta, "SMSChannelFormatter::".concat(e.getMessage), e)
       }
