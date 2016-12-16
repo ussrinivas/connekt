@@ -46,7 +46,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
           pathPrefix("send" / "push") {
             path(MPlatformSegment / Segment) {
               (appPlatform: MobilePlatform, appName: String) =>
-                authorize(user, "SEND_" + appName) {
+                authorize(user, "SEND_PN", "SEND_" + appName) {
                   post {
                     getXHeaders { headers =>
                       entity(as[ConnektRequest]) { r =>
@@ -114,7 +114,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                 }
             } ~ path(MPlatformSegment / Segment / "users" / Segment) {
               (appPlatform: MobilePlatform, appName: String, userId: String) =>
-                authorize(user, "SEND_" + appName) {
+                authorize(user, "SEND_PN", "SEND_" + appName) {
                   post {
                     getXHeaders { headers =>
                       entity(as[ConnektRequest]) { r =>
@@ -176,7 +176,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
             }
           } ~ pathPrefix("send" / "email") {
             path(Segment) { appName: String =>
-              authorize(user, "SEND_EMAIL", s"SEND_EMAIL_$appName") {
+              authorize(user, "SEND_EMAIL", s"SEND_$appName") {
                 post {
                   getXHeaders { headers =>
                     entity(as[ConnektRequest]) { r =>
@@ -226,7 +226,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
           } ~ pathPrefix("send" / "sms") {
             path(Segment) {
               (appName: String) =>
-                authorize(user, "SEND_" + appName) {
+                authorize(user, "SEND_SMS", "SEND_" + appName) {
                   post {
                     getXHeaders { headers =>
                       entity(as[ConnektRequest]) { r =>
@@ -251,14 +251,14 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                               if (smsRequestInfo.receivers != null && smsRequestInfo.receivers.nonEmpty) {
 
                                 smsRequestInfo.receivers.foreach(r => {
-                                    val validateNum = Try(phoneUtil.parse(r, appDefaultCountryCode.get("localRegion").asText.trim.toUpperCase))
-                                    if (validateNum.isSuccess && phoneUtil.isValidNumber(validateNum.get)) {
-                                      validNumbers += phoneUtil.format(validateNum.get, PhoneNumberFormat.E164)
-                                    } else {
-                                      ConnektLogger(LogFile.PROCESSORS).error(s"Dropping invalid numbers: $r")
-                                      ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.SMS, appName, InternalStatus.Rejected)
-                                      invalidNumbers += r
-                                    }
+                                  val validateNum = Try(phoneUtil.parse(r, appDefaultCountryCode.get("localRegion").asText.trim.toUpperCase))
+                                  if (validateNum.isSuccess && phoneUtil.isValidNumber(validateNum.get)) {
+                                    validNumbers += phoneUtil.format(validateNum.get, PhoneNumberFormat.E164)
+                                  } else {
+                                    ConnektLogger(LogFile.PROCESSORS).error(s"Dropping invalid numbers: $r")
+                                    ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.SMS, appName, InternalStatus.Rejected)
+                                    invalidNumbers += r
+                                  }
                                 })
 
                                 val smsRequest = request.copy(channelInfo = smsRequestInfo.copy(receivers = validNumbers.toSet))

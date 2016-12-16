@@ -32,7 +32,8 @@ sealed case class ProviderMeta(providerMessageId: String, provider: String, smsR
 class SmsResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends SmsProviderResponseHandler[(Try[SmsResponse], SmsRequestTracker), SmsRequestTracker](96) with Instrumented {
   override val map: ((Try[SmsResponse], SmsRequestTracker)) => Future[List[Either[SmsRequestTracker, SmsCallbackEvent]]] = responseTrackerPair => Future({
 
-    handleSmsResponse(responseTrackerPair._1, responseTrackerPair._2) match {
+    val (smsResponse, smsTracker) = responseTrackerPair
+    handleSmsResponse(smsResponse, smsTracker) match {
       case Right(events) =>
         events.map(Right(_))
       case Left(_) =>

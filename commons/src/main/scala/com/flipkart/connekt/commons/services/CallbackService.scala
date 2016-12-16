@@ -24,31 +24,31 @@ import com.flipkart.metrics.Timed
 
 import scala.util.Try
 
-sealed case class EventsDao(pnEventsDao: PNCallbackDao, emailEventsDao: EmailCallbackDao, smsEventsDao: SmsCallbackDao) {
-  def channelEventsDao(channel: Channel.Value) = channel match {
+sealed case class EventsDaoContainer(pnEventsDao: PNCallbackDao, emailEventsDao: EmailCallbackDao, smsEventsDao: SmsCallbackDao) {
+  def apply(channel: Channel.Value): CallbackDao = channel match {
     case Channel.PUSH => pnEventsDao
     case Channel.EMAIL => emailEventsDao
     case Channel.SMS => smsEventsDao
   }
 }
 
-sealed case class ChannelRequestDao(smsRequestDao: SmsRequestDao, pnRequestDao: PNRequestDao, emailRequestDao: EmailRequestDao) {
-  def requestDao(channel: Channel.Value) = channel match {
+sealed case class RequestDaoContainer(smsRequestDao: SmsRequestDao, pnRequestDao: PNRequestDao, emailRequestDao: EmailRequestDao) {
+  def apply(channel: Channel.Value): RequestDao = channel match {
     case Channel.PUSH => pnRequestDao
     case Channel.EMAIL => emailRequestDao
     case Channel.SMS => smsRequestDao
   }
 }
 
-class CallbackService(eventsDao: EventsDao, channelRequestDao: ChannelRequestDao, queueProducerHelper: KafkaProducerHelper) extends TCallbackService with Instrumented {
+class CallbackService(eventsDao: EventsDaoContainer, requestDao: RequestDaoContainer, queueProducerHelper: KafkaProducerHelper) extends TCallbackService with Instrumented {
 
-  lazy val MAX_FETCH_EVENTS = ConnektConfig.get("receptors.callback.events.max-results").orElse(Some(100))
-  lazy val CALLBACK_QUEUE_NAME = ConnektConfig.get("firefly.kafka.topic").getOrElse("ckt_callback_events")
+  private lazy val MAX_FETCH_EVENTS = ConnektConfig.get("receptors.callback.events.max-results").orElse(Some(100))
+  private lazy val CALLBACK_QUEUE_NAME = ConnektConfig.get("firefly.kafka.topic").getOrElse("ckt_callback_events")
 
   @Timed("persistCallbackEvent")
   override def persistCallbackEvents(channel: Channel.Value, events: List[CallbackEvent]): Try[List[String]] = {
     Try {
-      val rowKeys = eventsDao.channelEventsDao(channel).asyncSaveCallbackEvents(events)
+      val rowKeys = eventsDao(channel).asyncSaveCallbackEvents(events)
       enqueueCallbackEvents(events).get
       ConnektLogger(LogFile.SERVICE).debug(s"Event saved with rowKeys $rowKeys")
       rowKeys
@@ -63,14 +63,14 @@ class CallbackService(eventsDao: EventsDao, channelRequestDao: ChannelRequestDao
   @Timed("fetchCallbackEvent")
   override def fetchCallbackEvent(requestId: String, contactId: String, channel: Channel.Value): Try[List[(CallbackEvent, Long)]] = {
     Try {
-      eventsDao.channelEventsDao(channel).fetchCallbackEvents(requestId, contactId, None, MAX_FETCH_EVENTS)
+      eventsDao(channel).fetchCallbackEvents(requestId, contactId, None, MAX_FETCH_EVENTS)
     }
   }
 
   @Timed("fetchCallbackEventByContactId")
   def fetchCallbackEventByContactId(contactId: String, channel: Channel.Value, minTimestamp: Long, maxTimestamp: Long): Try[List[(CallbackEvent, Long)]] = {
     Try {
-      eventsDao.channelEventsDao(channel).fetchCallbackEvents("", contactId, Some(Tuple2(minTimestamp, maxTimestamp)), MAX_FETCH_EVENTS)
+      eventsDao(channel).fetchCallbackEvents("", contactId, Some(Tuple2(minTimestamp, maxTimestamp)), MAX_FETCH_EVENTS)
     }
   }
 
@@ -83,11 +83,10 @@ class CallbackService(eventsDao: EventsDao, channelRequestDao: ChannelRequestDao
   @Timed("fetchCallbackEventByMId")
   def fetchCallbackEventByMId(messageId: String, channel: Channel.Value): Try[Map[String, List[CallbackEvent]]] = {
     Try {
-      val events = channelRequestDao.requestDao(channel).fetchRequestInfo(messageId)
-      events.isDefined match {
-        case true =>
-          eventsDao.channelEventsDao(channel).fetchCallbackEvents(messageId, events.get, None)
-        case false =>
+      requestDao(channel).fetchRequestInfo(messageId)  match {
+        case Some(events) =>
+          eventsDao(channel).fetchCallbackEvents(messageId, events, None)
+        case None =>
           Map()
       }
     }
@@ -96,7 +95,7 @@ class CallbackService(eventsDao: EventsDao, channelRequestDao: ChannelRequestDao
   @Timed("deleteCallBackEvent")
   def deleteCallBackEvent(requestId: String, forContact: String, channel: Channel.Value): Try[List[CallbackEvent]] = {
     Try {
-      eventsDao.channelEventsDao(channel).deleteCallbackEvents(requestId, forContact)
+      eventsDao(channel).deleteCallbackEvents(requestId, forContact)
     }
   }
 
@@ -104,7 +103,7 @@ class CallbackService(eventsDao: EventsDao, channelRequestDao: ChannelRequestDao
   override def fetchEventsMapForContactId(contactId: String, channel: Channel.Value, minTimestamp: Long, maxTimestamp: Long): Try[Map[String, List[CallbackEvent]]] = {
     Try {
       val eventList = fetchCallbackEventByContactId(contactId, channel, minTimestamp, maxTimestamp)
-      eventsDao.channelEventsDao(channel).fetchEventMapFromList(eventList.get.map(_._1))
+      eventsDao(channel).fetchEventMapFromList(eventList.get.map(_._1))
     }
   }
 }
