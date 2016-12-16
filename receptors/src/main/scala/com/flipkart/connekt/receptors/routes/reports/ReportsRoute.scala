@@ -77,6 +77,7 @@ class ReportsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                     val data =  ( channel match  {
                       case Channel.PUSH => ServiceFactory.getPNMessageService
                       case Channel.EMAIL => ServiceFactory.getEmailMessageService
+                      case Channel.SMS => ServiceFactory.getSMSMessageService
                     }) .getRequestInfo(messageId).get
                     data match {
                       case None =>

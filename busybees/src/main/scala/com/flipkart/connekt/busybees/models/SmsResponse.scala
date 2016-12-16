@@ -10,20 +10,12 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.commons.iomodels
+package com.flipkart.connekt.busybees.models
 
-import com.fasterxml.jackson.annotation.JsonSubTypes.Type
-import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
+import java.util
 
-@JsonTypeInfo(
-use = JsonTypeInfo.Id.NAME,
-include = JsonTypeInfo.As.PROPERTY,
-property = "type"
-)
-@JsonSubTypes(Array(
-new Type(value = classOf[PNRequestData], name = "PN"),
-new Type(value = classOf[GCardRequestData], name = "GCard"),
-new Type(value = classOf[EmailRequestData], name="EMAIL"),
-new Type(value = classOf[SmsRequestData], name="SMS")
-))
-abstract class ChannelRequestData
+import org.apache.commons.lang.StringUtils
+
+case class SmsResponse(responseCode: Int, message: String = StringUtils.EMPTY, responsePerReceivers: util.ArrayList[ResponsePerReceiver])
+
+case class ResponsePerReceiver(receiverStatus: String, receiver: String, providerMessageId: String, cargo: String, receiverResponseCode: Int)

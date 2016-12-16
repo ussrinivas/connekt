@@ -10,20 +10,8 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.commons.iomodels
+package com.flipkart.connekt.busybees.models
 
-import com.fasterxml.jackson.annotation.JsonSubTypes.Type
-import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
+import com.flipkart.connekt.commons.iomodels.SmsPayloadEnvelope
 
-@JsonTypeInfo(
-use = JsonTypeInfo.Id.NAME,
-include = JsonTypeInfo.As.PROPERTY,
-property = "type"
-)
-@JsonSubTypes(Array(
-new Type(value = classOf[PNRequestData], name = "PN"),
-new Type(value = classOf[GCardRequestData], name = "GCard"),
-new Type(value = classOf[EmailRequestData], name="EMAIL"),
-new Type(value = classOf[SmsRequestData], name="SMS")
-))
-abstract class ChannelRequestData
+case class SmsRequestTracker(messageId: String, clientId: String, receivers: Set[String], provider: String, appName: String, contextId: String, request: SmsPayloadEnvelope, meta: Map[String, Any]) extends RequestTracker

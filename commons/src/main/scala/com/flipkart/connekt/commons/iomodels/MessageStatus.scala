@@ -70,6 +70,15 @@ object MessageStatus {
     val AuthError = Value("email_auth_error")
   }
 
+  object SmsResponseStatus extends Enumeration {
+    type SmsResponseStatus = Value
+
+    val Received = Value("sms_received")
+    val Error = Value("sms_error")
+    val InternalError = Value("sms_server_error")
+    val AuthError = Value("sms_auth_error")
+  }
+
 
   object InternalStatus extends Enumeration {
     type InternalStatus = Value
@@ -82,10 +91,12 @@ object MessageStatus {
     val WnsResponseHandleError = Value("connekt_wns_response_handle_error")
     val OpenWebResponseHandleError = Value("connekt_openweb_response_handle_error")
     val TTLExpired = Value("connekt_ttl_expired")
+    val InvalidRequest = Value("connekt_invalid_request")
     val StageError = Value("connekt_stage_error")
     val EncryptionError = Value("connekt_encryption_error")
     val ProviderSendError = Value("connekt_provider_send_error")
     val Received = Value("connekt_received")
     val Rejected = Value("connekt_rejected")
+
   }
 }

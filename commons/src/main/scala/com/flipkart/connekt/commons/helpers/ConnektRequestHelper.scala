@@ -12,7 +12,7 @@
  */
 package com.flipkart.connekt.commons.helpers
 
-import com.flipkart.connekt.commons.iomodels.{ConnektRequest, EmailRequestInfo, PNRequestInfo}
+import com.flipkart.connekt.commons.iomodels.{ConnektRequest, EmailRequestInfo, PNRequestInfo, SmsRequestInfo}
 
 object ConnektRequestHelper {
 
@@ -21,19 +21,25 @@ object ConnektRequestHelper {
   implicit class FlatRequest(request: ConnektRequest) extends FlatConnektRequest {
 
     def id = request.id
-    def destinations :Set[String] =  request.channelInfo match {
-      case pn:PNRequestInfo => pn.deviceIds
-      case email:EmailRequestInfo => email.to.map(_.address) ++  email.cc.map(_.address) ++  email.bcc.map(_.address)
+
+    def destinations: Set[String] = request.channelInfo match {
+      case pn: PNRequestInfo => pn.deviceIds
+      case email: EmailRequestInfo => email.to.map(_.address) ++ email.cc.map(_.address) ++ email.bcc.map(_.address)
+      case sms: SmsRequestInfo => sms.receivers
       case _ => null
     }
-    def appName :String  =   request.channelInfo match {
-      case pn:PNRequestInfo => pn.appName
-      case email:EmailRequestInfo => email.appName
+
+    def appName: String = request.channelInfo match {
+      case pn: PNRequestInfo => pn.appName
+      case email: EmailRequestInfo => email.appName
+      case sms: SmsRequestInfo => sms.appName
       case _ => null
     }
-    def platform =  request.channelInfo match {
-      case pn:PNRequestInfo => pn.platform
+
+    def platform = request.channelInfo match {
+      case pn: PNRequestInfo => pn.platform
       case _ => null
     }
   }
+
 }

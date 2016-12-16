@@ -15,7 +15,7 @@ package com.flipkart.connekt.commons.helpers
 import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.ServiceFactory
-import com.flipkart.connekt.commons.iomodels.{CallbackEvent, EmailCallbackEvent, PNCallbackEvent}
+import com.flipkart.connekt.commons.iomodels.{CallbackEvent, EmailCallbackEvent, PNCallbackEvent, SmsCallbackEvent}
 import com.flipkart.connekt.commons.metrics.Instrumented
 
 object CallbackRecorder extends Instrumented {
@@ -35,6 +35,8 @@ object CallbackRecorder extends Instrumented {
             ServiceFactory.getCallbackService.persistCallbackEvents(Channel.PUSH, events.toList).get
           case _:EmailCallbackEvent =>
             ServiceFactory.getCallbackService.persistCallbackEvents(Channel.EMAIL, events.toList).get
+          case _:SmsCallbackEvent =>
+            ServiceFactory.getCallbackService.persistCallbackEvents(Channel.SMS, events.toList).get
 
         }
 

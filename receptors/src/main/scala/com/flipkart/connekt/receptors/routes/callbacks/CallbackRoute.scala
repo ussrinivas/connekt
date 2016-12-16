@@ -18,12 +18,13 @@ import akka.http.scaladsl.unmarshalling.Unmarshaller._
 import akka.stream.ActorMaterializer
 import com.fasterxml.jackson.databind.node.{BaseJsonNode, ObjectNode}
 import com.flipkart.connekt.commons.entities.Channel
+import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.entities.MobilePlatform._
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.utils.StringUtils._
-import com.flipkart.connekt.receptors.directives.MPlatformSegment
+import com.flipkart.connekt.receptors.directives.{ChannelSegment, MPlatformSegment}
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
 import com.flipkart.connekt.receptors.wire.ResponseUtils._
 import org.apache.commons.lang.RandomStringUtils
@@ -39,7 +40,7 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with
     authenticate {
       user =>
         pathPrefix("v1") {
-          pathPrefix("push") {
+          pathPrefix(ChannelSegment) { channel: Channel =>
             path("callback" / MPlatformSegment / Segment / Segment) {
               (appPlatform: MobilePlatform, appName: String, deviceId: String) =>
                 meteredResource(s"saveEvent.$appPlatform.$appName") {
@@ -98,40 +99,47 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with
                     }
                   }
                 }
-            }
-          } ~ pathPrefix("email") {
-            path("callbacks" / Segment / Segment) {
+            } ~ path("callbacks" / Segment / Segment) {
               (appName: String, providerName: String) =>
                 authorize(user, "ADD_EVENTS", s"ADD_EVENTS_$appName") {
-                  meteredResource(s"saveEvent.email.$appName") {
+                  meteredResource(s"saveEvent.$channel.$appName") {
                     extractRequestContext { ctx =>
                       (post | get) {
                         parameterMap { urlParams =>
 
-                          val payload : ObjectNode = ctx.request.entity.getString match {
-                            case x if x.isEmpty => Map( "get" ->  urlParams).getJsonNode
+                          val payload: ObjectNode = ctx.request.entity.getString match {
+                            case x if x.isEmpty => Map("get" -> urlParams).getJsonNode
                             case y => Map("post" -> y.getObj[BaseJsonNode]).getJsonNode
                           }
 
-                          val stencil =  stencilService.getStencilsByName(s"ckt-email-$providerName").find(_.component.equalsIgnoreCase("webhook")).get
-                          val rawEvents = stencilService.materialize(stencil, payload).asInstanceOf[java.util.ArrayList[EmailCallbackEvent]].asScala
+                          val stencil = stencilService.getStencilsByName(s"ckt-$channel-$providerName").find(_.component.equalsIgnoreCase("webhook")).get
 
-                          val validEvents = rawEvents.flatMap(event => {
-                            Try {
-                              val e = event.copy(messageId = Option(event.messageId).orEmpty, eventId = RandomStringUtils.randomAlphabetic(10), clientId = Option(event.clientId).getOrElse(user.userId), appName = appName, contextId = Option(event.contextId).orEmpty, eventType = Option(event.eventType).map(_.toLowerCase).orNull)
-                              e.validate()
-                              Some(e)
-                            }.getOrElse(None)
-                          }).toList
+                          val validEvents = channel match {
+                            case Channel.EMAIL =>
+                              stencilService.materialize(stencil, payload).asInstanceOf[java.util.ArrayList[EmailCallbackEvent]].asScala.flatMap(event => {
+                                Try {
+                                  val e = event.copy(messageId = Option(event.messageId).orEmpty, eventId = RandomStringUtils.randomAlphabetic(10), clientId = Option(event.clientId).getOrElse(user.userId), appName = appName, contextId = Option(event.contextId).orEmpty, eventType = Option(event.eventType).map(_.toLowerCase).orNull)
+                                  e.validate()
+                                  Some(e)
+                                }.getOrElse(None)
+                              }).toList
+                            case Channel.SMS => stencilService.materialize(stencil, payload).asInstanceOf[java.util.ArrayList[SmsCallbackEvent]].asScala.flatMap(event => {
+                              Try {
+                                val e = event.copy(messageId = Option(event.messageId).orEmpty, eventId = RandomStringUtils.randomAlphabetic(10), clientId = Option(event.clientId).getOrElse(user.userId), appName = event.appName, contextId = Option(event.contextId).orEmpty, eventType = Option(event.eventType).map(_.toLowerCase).orNull)
+                                e.validate()
+                                Some(e)
+                              }.getOrElse(None)
+                            }).toList
+                          }
 
                           validEvents.persist
 
                           validEvents.foreach(event => {
-                            ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, Some(event.contextId), None, Channel.EMAIL, event.appName, event.eventType)
+                            ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, Some(event.contextId), None, channel, event.appName, event.eventType)
                           })
 
                           ConnektLogger(LogFile.SERVICE).debug(s"Received callback events ${validEvents.getJson}")
-                          complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Email callbacks request recieved.", s"Events successfully ingested : ${validEvents.length}")))
+                          complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"${channel.toUpperCase} callbacks request recieved.", s"Events successfully ingested : ${validEvents.length}")))
 
                         }
                       }
@@ -139,8 +147,8 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with
                   }
                 }
             }
+
           }
         }
     }
-
 }

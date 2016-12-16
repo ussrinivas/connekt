@@ -15,7 +15,7 @@ package com.flipkart.connekt.commons.tests
 import com.flipkart.connekt.commons.dao.DaoFactory
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.{KafkaConsumerHelper, KafkaProducerHelper}
-import com.flipkart.connekt.commons.services.ConnektConfig
+import com.flipkart.connekt.commons.services.{ConnektConfig, EventsDaoContainer, RequestDaoContainer}
 import com.flipkart.connekt.commons.sync.SyncManager
 import com.flipkart.connekt.commons.tests.connections.MockConnectionProvider
 import com.flipkart.connekt.commons.utils.ConfigUtils
@@ -67,9 +67,12 @@ class CommonsBaseTest extends ConnektUTSpec {
 
     DaoFactory.initReportingDao(DaoFactory.getCouchbaseBucket("StatsReporting"))
 
-    ServiceFactory.initPNMessageService(DaoFactory.getPNRequestDao, DaoFactory.getUserConfigurationDao, getKafkaProducerHelper, getKafkaConsumerConf,null)
+    ServiceFactory.initPNMessageService(DaoFactory.getPNRequestDao, DaoFactory.getUserConfigurationDao, getKafkaProducerHelper, getKafkaConsumerConf, null)
     ServiceFactory.initEmailMessageService(DaoFactory.getEmailRequestDao, DaoFactory.getUserConfigurationDao, getKafkaProducerHelper, getKafkaConsumerConf)
-    ServiceFactory.initCallbackService(emailCallbackDao = DaoFactory.getEmailCallbackDao, pnCallbackDao = DaoFactory.getPNCallbackDao, pnRequestInfoDao = DaoFactory.getPNRequestDao, emailRequestDao = DaoFactory.getEmailRequestDao, queueProducerHelper = getKafkaProducerHelper)
+
+    val eventsDao = EventsDaoContainer(pnEventsDao = DaoFactory.getPNCallbackDao, emailEventsDao = DaoFactory.getEmailCallbackDao, smsEventsDao = DaoFactory.getSmsCallbackDao)
+    val requestDao = RequestDaoContainer(smsRequestDao = DaoFactory.getSmsRequestDao, pnRequestDao = DaoFactory.getPNRequestDao, emailRequestDao = DaoFactory.getEmailRequestDao)
+    ServiceFactory.initCallbackService(eventsDao, requestDao, getKafkaProducerHelper)
 
     ServiceFactory.initAuthorisationService(DaoFactory.getPrivDao, DaoFactory.getUserInfoDao)
     ServiceFactory.initStorageService(DaoFactory.getKeyChainDao)

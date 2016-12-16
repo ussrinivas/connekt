@@ -38,9 +38,11 @@ object DaoFactory {
 
     daoMap += DaoType.DEVICE_DETAILS -> DeviceDetailsDao("connekt-registry", hTableFactory)
     daoMap += DaoType.PN_REQUEST_INFO -> PNRequestDao(tableName = "fk-connekt-pn-info", hTableFactory = hTableFactory)
+    daoMap += DaoType.SMS_REQUEST_INFO -> SmsRequestDao(tableName = "fk-connekt-sms-info", hTableFactory = hTableFactory)
     daoMap += DaoType.EMAIL_REQUEST_INFO -> new EmailRequestDao(tableName = "fk-connekt-email-info", hTableFactory = hTableFactory)
     daoMap += DaoType.CALLBACK_PN -> PNCallbackDao("fk-connekt-events", hTableFactory)
     daoMap += DaoType.CALLBACK_EMAIL -> new EmailCallbackDao("fk-connekt-email-events", hTableFactory)
+    daoMap += DaoType.CALLBACK_SMS -> new SmsCallbackDao("fk-connekt-sms-events", hTableFactory)
   }
 
   def getHTableFactory = hTableFactory
@@ -63,11 +65,11 @@ object DaoFactory {
 
     daoMap += DaoType.USER_INFO -> UserInfoDao("USER_INFO", mysqlFactoryWrapper)
     daoMap += DaoType.USER_CONFIG -> UserConfigurationDao("USER_CONFIG", mysqlFactoryWrapper)
-    daoMap += DaoType.APP_CONFIG -> UserProjectConfigDao("APP_CONFIG", mysqlFactoryWrapper)
     daoMap += DaoType.PRIVILEGE -> PrivDao("RESOURCE_PRIV", mysqlFactoryWrapper)
     daoMap += DaoType.SUBSCRIPTION -> SubscriptionDao("SUBSCRIPTIONS", mysqlFactoryWrapper)
     daoMap += DaoType.STENCIL -> StencilDao("STENCIL_STORE", "STENCIL_HISTORY_STORE", "STENCILS_ENSEMBLE", "BUCKET_REGISTRY", mysqlFactoryWrapper)
     daoMap += DaoType.KEY_CHAIN -> KeyChainDao("DATA_STORE", mysqlFactoryWrapper)
+    daoMap += DaoType.APP_CONFIG -> UserProjectConfigDao("APP_CONFIG", mysqlFactoryWrapper)
   }
 
   def initCouchbaseCluster(config: Config) {
@@ -97,9 +99,13 @@ object DaoFactory {
 
   def getPNRequestDao: PNRequestDao = daoMap(DaoType.PN_REQUEST_INFO).asInstanceOf[PNRequestDao]
 
+  def getSmsRequestDao: SmsRequestDao = daoMap(DaoType.SMS_REQUEST_INFO).asInstanceOf[SmsRequestDao]
+
   def getPNCallbackDao: PNCallbackDao = daoMap(DaoType.CALLBACK_PN).asInstanceOf[PNCallbackDao]
 
   def getEmailCallbackDao: EmailCallbackDao = daoMap(DaoType.CALLBACK_EMAIL).asInstanceOf[EmailCallbackDao]
+
+  def getSmsCallbackDao: SmsCallbackDao = daoMap(DaoType.CALLBACK_SMS).asInstanceOf[SmsCallbackDao]
 
   def getEmailRequestDao: EmailRequestDao = daoMap(DaoType.EMAIL_REQUEST_INFO).asInstanceOf[EmailRequestDao]
 
@@ -125,7 +131,9 @@ object DaoType extends Enumeration {
   REQUEST_META,
   PN_REQUEST_INFO,
   EMAIL_REQUEST_INFO,
+  SMS_REQUEST_INFO,
   CALLBACK_EMAIL,
+  CALLBACK_SMS,
   CALLBACK_PN,
   PRIVILEGE,
   USER_INFO,
