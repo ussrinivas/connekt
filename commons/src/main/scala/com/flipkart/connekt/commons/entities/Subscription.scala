@@ -26,6 +26,9 @@ class Subscription {
   @Column(name = "name")
   var name: String = _
 
+  @Column(name = "source")
+  var source : String  = _
+
   @Column(name = "sink")
   var sink : EventSink  = _
 
@@ -47,17 +50,17 @@ class Subscription {
   @Column(name = "active")
   var active : Boolean = false
 
-  def this(sId: String, sName: String, endpoint: EventSink, createdBy: String,
+  def this(sId: String, sName: String, source:String, endpoint: EventSink, createdBy: String,
            stencilId:String, shutdownThreshold: Int) = {
     this
     this.id = sId
     this.name = sName
+    this.source = source
     this.sink = endpoint
     this.createdBy = createdBy
     this.stencilId = stencilId
     this.shutdownThreshold = shutdownThreshold
   }
 
-  override def toString =
-    s"Subscription($id, $name, ${sink.getJson}, $createdBy, ${createdTS.toString}, ${lastUpdatedTS.toString}, $stencilId, $shutdownThreshold)"
+  override def toString = s"Subscription(id=$id, name=$name, source=$source, sink=${sink.getJson}, createdBy=$createdBy, createdTS=$createdTS, lastUpdatedTS=$lastUpdatedTS, stencilId=$stencilId, shutdownThreshold=$shutdownThreshold, active=$active)"
 }

@@ -25,7 +25,7 @@ import com.typesafe.config.Config
 import scala.concurrent.Promise
 import scala.util.{Failure, Success}
 
-class ClientTopologyManager(kafkaConsumerConnConf: Config, spoutTopic: String, eventRelayRetryLimit: Int)(implicit am: ActorMaterializer, sys: ActorSystem) extends SyncDelegate {
+class ClientTopologyManager(kafkaConsumerConnConf: Config, eventRelayRetryLimit: Int)(implicit am: ActorMaterializer, sys: ActorSystem) extends SyncDelegate {
 
   SyncManager.get().addObserver(this, List(SyncType.SUBSCRIPTION))
 
@@ -36,7 +36,7 @@ class ClientTopologyManager(kafkaConsumerConnConf: Config, spoutTopic: String, e
   private def getTrigger(id: String): Promise[String] = triggers(id)
 
   private def startTopology(subscription: Subscription): Unit = {
-    val promise = new ClientTopology(spoutTopic, eventRelayRetryLimit, kafkaConsumerConnConf, subscription).start()
+    val promise = new ClientTopology(subscription.source, eventRelayRetryLimit, kafkaConsumerConnConf, subscription).start()
     triggers += subscription.id -> promise
     promise.future.onComplete( t =>  triggers -= subscription.id)(am.executionContext)
   }
@@ -78,10 +78,10 @@ class ClientTopologyManager(kafkaConsumerConnConf: Config, spoutTopic: String, e
 object ClientTopologyManager {
   var instance: ClientTopologyManager = null
 
-  def apply(kafkaConsumerConnConf: Config, spoutTopic: String, eventRelayRetryLimit: Int)(implicit am: ActorMaterializer, sys: ActorSystem) = {
+  def apply(kafkaConsumerConnConf: Config, eventRelayRetryLimit: Int)(implicit am: ActorMaterializer, sys: ActorSystem) = {
     if (null == instance)
       this.synchronized {
-        instance = new ClientTopologyManager(kafkaConsumerConnConf, spoutTopic, eventRelayRetryLimit)(am, sys)
+        instance = new ClientTopologyManager(kafkaConsumerConnConf, eventRelayRetryLimit)(am, sys)
         instance.restoreState()
       }
     instance

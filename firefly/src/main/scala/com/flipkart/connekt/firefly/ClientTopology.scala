@@ -32,15 +32,15 @@ import scala.concurrent.Promise
 
 class ClientTopology(topic: String, retryLimit: Int, kafkaConsumerConnConf: Config, subscription: Subscription)(implicit am: ActorMaterializer, sys: ActorSystem) {
 
-  implicit val ec = am.executionContext
+  private implicit val ec = am.executionContext
 
-  val stencilService = ServiceFactory.getStencilService
+  private val stencilService = ServiceFactory.getStencilService
 
-  lazy val stencil = Option(subscription.stencilId).map(stencilService.get(_)).getOrElse(List.empty)
+  private lazy val stencil = Option(subscription.stencilId).map(stencilService.get(_)).getOrElse(List.empty)
 
-  lazy val eventFilterStencil = stencil.find(_.component == "eventFilter")
-  lazy val eventHeaderTransformer = stencil.find(_.component == "header")
-  lazy val eventPayloadTransformer = stencil.find(_.component == "payload")
+  private lazy val eventFilterStencil = stencil.find(_.component == "eventFilter")
+  private lazy val eventHeaderTransformer = stencil.find(_.component == "header")
+  private lazy val eventPayloadTransformer = stencil.find(_.component == "payload")
 
   def start(): Promise[String] = {
 
@@ -49,9 +49,9 @@ class ClientTopology(topic: String, retryLimit: Int, kafkaConsumerConnConf: Conf
     val source = Source.fromGraph(kafkaCallbackSource).filter(evaluator).map(transform).filter(null != _.payload)
 
     subscription.sink match {
-      case http: HTTPEventSink => source.runWith(new HttpSink(subscription, retryLimit, topologyShutdownTrigger).getHttpSink)
+      case _: HTTPEventSink => source.runWith(new HttpSink(subscription, retryLimit, topologyShutdownTrigger).getHttpSink)
       case kafka: KafkaEventSink => source.runWith(new KafkaSink(kafka.topic, kafka.broker).getKafkaSink)
-      case specter: SpecterEventSink =>
+      case _: SpecterEventSink =>
         source.runWith(new SpecterSink().sink)
     }
 
@@ -63,7 +63,7 @@ class ClientTopology(topic: String, retryLimit: Int, kafkaConsumerConnConf: Conf
 
     eventFilterStencil match {
       case None => true
-      case Some(stencil) => stencilService.materialize(stencil, data.getJson.getObj[ObjectNode]).asInstanceOf[Boolean]
+      case Some(filterStencil) => stencilService.materialize(filterStencil, data.getJsonNode).asInstanceOf[Boolean]
     }
   }
 
@@ -71,10 +71,10 @@ class ClientTopology(topic: String, retryLimit: Int, kafkaConsumerConnConf: Conf
 
     SubscriptionEvent(header = eventHeaderTransformer match {
       case None => null
-      case Some(stencil) => stencilService.materialize(stencil, event.getJson.getObj[ObjectNode]).asInstanceOf[java.util.HashMap[String, String]].asScala.toMap
+      case Some(headerStencil) => stencilService.materialize(headerStencil, event.getJsonNode).asInstanceOf[java.util.HashMap[String, String]].asScala.toMap
     }, payload = eventPayloadTransformer match {
       case None => event.getJson
-      case Some(stencil) => stencilService.materialize(stencil, event.getJson.getObj[ObjectNode])
+      case Some(payloadStencil) => stencilService.materialize(payloadStencil, event.getJsonNode)
     })
   }
 }
