@@ -81,7 +81,8 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
       */
 
     val render = b.add(new RenderFlow().flow)
-    val tracking = b.add(new TrackingFlow().flow)
+    val trackEmailParallelism = ConnektConfig.getInt("topology.email.tracking.parallelism").get
+    val tracking = b.add(new TrackingFlow(trackEmailParallelism).flow)
     val fmtSMSParallelism = ConnektConfig.getInt("topology.sms.formatter.parallelism").get
     val smsFilter = b.add(Flow[ConnektRequest].filter(_.channelInfo.isInstanceOf[SmsRequestInfo]))
     val fmtSMS = b.add(new SmsChannelFormatter(fmtSMSParallelism)(ioDispatcher).flow)

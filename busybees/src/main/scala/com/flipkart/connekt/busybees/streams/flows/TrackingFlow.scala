@@ -12,8 +12,6 @@
  */
 package com.flipkart.connekt.busybees.streams.flows
 
-import akka.stream.Materializer
-import com.flipkart.concord.transformer.TURLTransformer
 import com.flipkart.connekt.busybees.streams.errors.ConnektStageException
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
@@ -26,10 +24,10 @@ import com.flipkart.connekt.commons.services.{ConnektConfig, TrackingService}
 import com.flipkart.connekt.commons.utils.IdentityURLTransformer
 import com.flipkart.connekt.commons.utils.StringUtils._
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContextExecutor, Future}
 
 
-class TrackingFlow(implicit m: Materializer, ec: ExecutionContext) extends MapAsyncFlowStage[ConnektRequest, ConnektRequest](96) with Instrumented {
+class TrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecutor) extends MapAsyncFlowStage[ConnektRequest, ConnektRequest](parallelism) with Instrumented {
 
   lazy private val projectConfigService = ServiceFactory.getUserProjectConfigService
   lazy private val defaultTrackingDomain = ConnektConfig.getString("tracking.default.domain").get
@@ -90,6 +88,7 @@ class TrackingFlow(implicit m: Materializer, ec: ExecutionContext) extends MapAs
         ConnektLogger(LogFile.PROCESSORS).error(s"TrackingFlow error", e)
         throw new ConnektStageException(input.id, input.clientId, input.destinations, InternalStatus.TrackingFailure, input.appName, input.channel, input.contextId.orEmpty, input.meta ++ input.stencilId.map("stencilId" -> _).toMap, s"TrackingFlow-${e.getMessage}", e)
     }
-  })(m.executionContext)
+  })(ec)
+
 
 }

@@ -271,7 +271,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                   case Failure(t) =>
                                     (Map(), smsRequestInfo.receivers)
                                 }
-                                GenericResponse(StatusCodes.Created.intValue, null, SendResponse("SMS Send Request Received", success.toMap, failure.toList)).respond
+                                GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse("SMS Send Request Received", success.toMap, failure.toList)).respond
                               }
                               else {
                                 ConnektLogger(LogFile.SERVICE).error(s"Request Validation Failed, $request ")

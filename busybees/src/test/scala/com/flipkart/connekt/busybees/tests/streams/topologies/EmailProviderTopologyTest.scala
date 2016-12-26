@@ -57,7 +57,7 @@ class EmailProviderTopologyTest extends TopologyUTSpec {
 
     val result = Source.single(cRequest)
       .via(new RenderFlow().flow)
-      .via(new TrackingFlow().flow)
+      .via(new TrackingFlow(4).flow)
       .via(new EmailChannelFormatter(64)(system.dispatchers.lookup("akka.actor.io-dispatcher")).flow)
       .via(new ChooseProvider(Channel.EMAIL).flow)
       .via(new EmailProviderPrepare().flow)
