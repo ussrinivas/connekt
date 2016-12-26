@@ -12,37 +12,41 @@
  */
 package com.flipkart.connekt.busybees.streams.flows
 
+import akka.stream.Materializer
 import com.flipkart.concord.transformer.TURLTransformer
 import com.flipkart.connekt.busybees.streams.errors.ConnektStageException
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
-import com.flipkart.connekt.commons.iomodels.{ConnektRequest, EmailRequestData, EmailRequestInfo}
+import com.flipkart.connekt.commons.iomodels._
+import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.services.TrackingService.TrackerOptions
 import com.flipkart.connekt.commons.services.{ConnektConfig, TrackingService}
 import com.flipkart.connekt.commons.utils.IdentityURLTransformer
 import com.flipkart.connekt.commons.utils.StringUtils._
 
+import scala.concurrent.{ExecutionContext, Future}
 
-class TrackingFlow extends MapFlowStage[ConnektRequest, ConnektRequest] {
+
+class TrackingFlow(implicit m: Materializer, ec: ExecutionContext) extends MapAsyncFlowStage[ConnektRequest, ConnektRequest](96) with Instrumented {
 
   lazy private val projectConfigService = ServiceFactory.getUserProjectConfigService
   lazy private val defaultTrackingDomain = ConnektConfig.getString("tracking.default.domain").get
 
-  override val map: (ConnektRequest) => List[ConnektRequest] = input => {
+  override val map: (ConnektRequest) => Future[List[ConnektRequest]] = input => Future(profile("map") {
     try {
       ConnektLogger(LogFile.PROCESSORS).debug("TrackingFlow received message: {}", supplier(input.id))
       ConnektLogger(LogFile.PROCESSORS).trace("TrackingFlow received message: {}", supplier(input.getJson))
 
-      val transformerClassName = projectConfigService.getProjectConfiguration(input.appName,"tracking-classname").get.map(_.value).getOrElse(classOf[IdentityURLTransformer].getName)
-      val transformer:TURLTransformer = Class.forName(transformerClassName).newInstance().asInstanceOf[TURLTransformer]
+      val transformerClassName = projectConfigService.getProjectConfiguration(input.appName, "tracking-classname").get.map(_.value).getOrElse(classOf[IdentityURLTransformer].getName)
+      val transformer: TURLTransformer = Class.forName(transformerClassName).newInstance().asInstanceOf[TURLTransformer]
 
-      val appDomain = projectConfigService.getProjectConfiguration(input.appName,"tracking-domain").get.map(_.value).getOrElse(defaultTrackingDomain)
+      val appDomain = projectConfigService.getProjectConfiguration(input.appName, "tracking-domain").get.map(_.value).getOrElse(defaultTrackingDomain)
 
       //identify payload and rewrite them with tracking.
       val updatedChannelData = input.channelData match {
-        case cData:EmailRequestData =>
+        case cData: EmailRequestData =>
 
           /**
             * I don't know how to individually track each recipient. Assuming simple email,
@@ -59,9 +63,21 @@ class TrackingFlow extends MapFlowStage[ConnektRequest, ConnektRequest] {
             appName = input.appName)
 
           EmailRequestData(subject = cData.subject,
-            html =  TrackingService.trackHTML(cData.html,trackerOptions  , transformer),
-            text =  TrackingService.trackText(cData.text,trackerOptions  , transformer)
+            html = TrackingService.trackHTML(cData.html, trackerOptions, transformer),
+            text = TrackingService.trackText(cData.text, trackerOptions, transformer)
           )
+
+        case sData: SmsRequestData =>
+          val destination = input.channelInfo.asInstanceOf[SmsRequestInfo].receivers.head
+          val trackerOptions = TrackerOptions(domain = appDomain,
+            channel = Channel.SMS,
+            messageId = input.id,
+            contextId = input.contextId,
+            destination = destination,
+            clientId = input.clientId,
+            appName = input.appName)
+
+          SmsRequestData(body = TrackingService.trackText(sData.body, trackerOptions, transformer))
 
         case unsupportedChannel =>
           ConnektLogger(LogFile.PROCESSORS).trace("TrackingFlow non-supported channel skipping for messageId: {}", supplier(input.id))
@@ -72,9 +88,8 @@ class TrackingFlow extends MapFlowStage[ConnektRequest, ConnektRequest] {
     } catch {
       case e: Throwable =>
         ConnektLogger(LogFile.PROCESSORS).error(s"TrackingFlow error", e)
-        throw new ConnektStageException(input.id, input.clientId,input.destinations, InternalStatus.TrackingFailure, input.appName, input.channel, input.contextId.orEmpty,  input.meta ++ input.stencilId.map("stencilId" -> _).toMap, s"TrackingFlow-${e.getMessage}", e)
+        throw new ConnektStageException(input.id, input.clientId, input.destinations, InternalStatus.TrackingFailure, input.appName, input.channel, input.contextId.orEmpty, input.meta ++ input.stencilId.map("stencilId" -> _).toMap, s"TrackingFlow-${e.getMessage}", e)
     }
-  }
-
+  })(m.executionContext)
 
 }

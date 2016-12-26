@@ -56,7 +56,7 @@ class ChooseProvider[T <: ProviderEnvelope](channel: Channel) extends MapFlowSta
     val remainingProviders = jsonObj.filterKeys(!alreadyTriedProviders.contains(_))
 
     val maxValue = remainingProviders.foldLeft(0)((a, b) => {
-      a + Try_(b._2.toString.toInt).getOrElse(0)
+      a + Try_(b._2.toInt).getOrElse(0)
     })
 
     val randomGenerator = new Random()
@@ -68,7 +68,7 @@ class ChooseProvider[T <: ProviderEnvelope](channel: Channel) extends MapFlowSta
     randomNumber match {
       case Success(s) =>
         val randomProvider = remainingProviders.keySet.toList.sorted.map(key => {
-          val providerShare = Try_(remainingProviders(key).toString.toInt).getOrElse(0)
+          val providerShare = Try_(remainingProviders(key).toInt).getOrElse(0)
           val compareValue = providerShare + counter
           counter += providerShare
           key -> compareValue

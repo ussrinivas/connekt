@@ -42,14 +42,14 @@ object TrackingService {
     }
   }
 
-  sealed case class TrackerOptions(domain: String, channel: Channel, messageId: String, contextId: Option[String], destination:String, clientId: String, appName: String){
-    def toMap:Map[String,AnyRef] = this.asMap.asInstanceOf[Map[String,AnyRef]]
+  sealed case class TrackerOptions(domain: String, channel: Channel, messageId: String, contextId: Option[String], destination: String, clientId: String, appName: String) {
+    def toMap: Map[String, AnyRef] = this.asMap.asInstanceOf[Map[String, AnyRef]]
   }
 
   def trackText(txt: String, trackerOptions: TrackerOptions, urlTransformer: TURLTransformer): String = {
     var message = txt
     val finalURLs = (for (url <- getAllUrls(message)) yield {
-      val deepLinkedUrl:String = urlTransformer.deeplink(url, trackerOptions.toMap).get
+      val deepLinkedUrl: String = urlTransformer.deeplink(url, trackerOptions.toMap).get
       val trackedURL = TrackedURL(
         domain = trackerOptions.domain,
         originalURL = deepLinkedUrl,
@@ -68,7 +68,7 @@ object TrackingService {
       ).toURL
       url -> urlTransformer.shorten(trackedURL).getOrElse(trackedURL)
     }).toMap
-    finalURLs.foreach{ case (originalURL , shortUrl) =>
+    finalURLs.foreach { case (originalURL, shortUrl) =>
       message = message.replaceAllLiterally(originalURL, shortUrl).toString
     }
     message
@@ -119,7 +119,7 @@ object TrackingService {
 
   private def processATag(tag: Element, trackerOptions: TrackerOptions, urlTransformer: TURLTransformer): CharSequence = {
     val attrMap = tag.getStartTag.getAttributes.asScala.toList.map(attr => attr.getKey -> attr.getValue).toMap
-    val lName:String = attrMap.getOrElse("lname", "-")
+    val lName: String = attrMap.getOrElse("lname", "-")
 
     val sb = new StringBuffer("<" + tag.getName)
     attrMap.foreach { case (name, value) =>
@@ -152,7 +152,7 @@ object TrackingService {
     sb
   }
 
-  def getMailOpenTracker(trackerOptions: TrackerOptions):String = {
+  def getMailOpenTracker(trackerOptions: TrackerOptions): String = {
 
     val url = TrackedURL(
       domain = trackerOptions.domain,

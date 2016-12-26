@@ -29,6 +29,8 @@ import scala.util.{Failure, Success, Try}
 
 sealed case class ProviderMeta(providerMessageId: String, provider: String, smsResponseMessage: String)
 
+sealed case class SMSCargoContainer(providerMessageId: String, provider: String, cargo: String)
+
 class SmsResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends SmsProviderResponseHandler[(Try[SmsResponse], SmsRequestTracker), SmsRequestTracker](96) with Instrumented {
   override val map: ((Try[SmsResponse], SmsRequestTracker)) => Future[List[Either[SmsRequestTracker, SmsCallbackEvent]]] = responseTrackerPair => Future({
 
@@ -53,7 +55,7 @@ class SmsResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends
             Right(smsResponse.responsePerReceivers.asScala.map(r => {
               ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.SMS, appName = requestTracker.appName, event = r.receiverStatus)
               SmsCallbackEvent(requestTracker.messageId, r.receiverStatus, r.receiver, requestTracker.clientId, requestTracker.appName, requestTracker.contextId,
-                r.cargo ++ ProviderMeta(r.providerMessageId, requestTracker.provider, smsResponse.message).asMap.getJson)
+                SMSCargoContainer(r.providerMessageId, requestTracker.provider, r.cargo).getJson)
             }).toList)
           case f if 4 == (f / 100) =>
             ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.SMS, appName = requestTracker.appName, event = SmsResponseStatus.AuthError, count = smsResponse.responsePerReceivers.size)

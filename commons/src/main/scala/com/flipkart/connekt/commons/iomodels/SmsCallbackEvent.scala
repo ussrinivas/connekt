@@ -26,7 +26,7 @@ case class SmsCallbackEvent(messageId: String,
                             timestamp: Long = System.currentTimeMillis(),
                             eventId: String = RandomStringUtils.randomAlphabetic(10)) extends CallbackEvent {
 
-  def this(messageId: String, providerMessageId: String, eventType: String, receiver: String, clientId: String, provider: String, appName: String, contextId: String, cargo: String) {
+  def this(messageId: String, eventType: String, receiver: String, clientId: String, appName: String, contextId: String, cargo: String) {
     this(messageId = messageId, clientId = clientId, receiver = receiver, eventType = eventType, appName = appName, contextId = contextId,
       cargo = cargo, timestamp = System.currentTimeMillis())
   }

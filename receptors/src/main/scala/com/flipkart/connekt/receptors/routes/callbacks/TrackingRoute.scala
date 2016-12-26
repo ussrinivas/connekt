@@ -17,7 +17,7 @@ import akka.stream.ActorMaterializer
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
-import com.flipkart.connekt.commons.iomodels.{CallbackEvent, EmailCallbackEvent}
+import com.flipkart.connekt.commons.iomodels.{CallbackEvent, EmailCallbackEvent, SmsCallbackEvent}
 import com.flipkart.connekt.commons.services.URLMessageTracker
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.receptors.routes.BaseHandler
@@ -69,6 +69,15 @@ class TrackingRoute(implicit am: ActorMaterializer) extends BaseHandler {
               EmailCallbackEvent(messageId = entity.messageId,
                 clientId = entity.clientId,
                 address = entity.destination,
+                eventType = "CLICK",
+                appName = entity.appName,
+                contextId = entity.contextId.orEmpty,
+                cargo = Map("name" -> entity.linkName, "url" -> entity.url).getJson)
+
+            case Channel.SMS =>
+              SmsCallbackEvent(messageId = entity.messageId,
+                clientId = entity.clientId,
+                receiver = entity.destination,
                 eventType = "CLICK",
                 appName = entity.appName,
                 contextId = entity.contextId.orEmpty,
