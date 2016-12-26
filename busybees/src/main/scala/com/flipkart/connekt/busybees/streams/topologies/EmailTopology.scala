@@ -96,7 +96,7 @@ class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCa
 
     val render = b.add(new RenderFlow().flow)
     val trackEmailParallelism = ConnektConfig.getInt("topology.email.tracking.parallelism").get
-    val tracking = b.add(new TrackingFlow(trackEmailParallelism).flow)
+    val tracking = b.add(new TrackingFlow(trackEmailParallelism)(ioDispatcher).flow)
     val fmtEmailParallelism = ConnektConfig.getInt("topology.email.formatter.parallelism").get
     val fmtEmail = b.add(new EmailChannelFormatter(fmtEmailParallelism)(ioDispatcher).flow)
 
