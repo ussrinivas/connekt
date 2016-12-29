@@ -12,7 +12,7 @@
  */
 package com.flipkart.connekt.commons.utils
 
-import java.nio.charset.Charset
+import java.nio.charset.{Charset, CharsetEncoder}
 
 import com.flipkart.connekt.commons.iomodels.SmsMeta
 import org.smpp.charset.Gsm7BitCharsetProvider
@@ -20,12 +20,23 @@ import org.smpp.charset.Gsm7BitCharsetProvider
 object SmsUtil {
 
   val GSM_CHARSET = new Gsm7BitCharsetProvider().charsetForName("X-Gsm7Bit")
+  val gsmCharsetEncoderThreadLocal = new ThreadLocal[CharsetEncoder]
   val USC2_CHARSET: Charset = Charset.forName("UTF-16")
-
-  private val gsm7Bit = GSM_CHARSET.newEncoder()
 
   private val GSM7BITEXT: Set[String] = Set("\f", "^", "{", "}", "\\", "[", "~", "]", "|", "€")
   private val GSM_7BIT_ESC: Char = '\u001b'
+
+  def encoderInstance(): CharsetEncoder = {
+    if (gsmCharsetEncoderThreadLocal.get() == null) {
+      this.synchronized {
+        if (gsmCharsetEncoderThreadLocal.get() == null) {
+          gsmCharsetEncoderThreadLocal.set(GSM_CHARSET.newEncoder())
+          gsmCharsetEncoderThreadLocal.get()
+        }
+      }
+    }
+    gsmCharsetEncoderThreadLocal.get()
+  }
 
   def isUnicode(charset: Charset): Boolean = {
     charset match {
@@ -35,6 +46,7 @@ object SmsUtil {
   }
 
   def getCharset(content: String): Charset = {
+    val gsm7Bit = encoderInstance()
     if (gsm7Bit.canEncode(content))
       GSM_CHARSET
     else

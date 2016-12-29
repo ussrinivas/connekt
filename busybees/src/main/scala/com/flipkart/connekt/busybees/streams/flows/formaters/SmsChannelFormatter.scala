@@ -49,9 +49,8 @@ class SmsChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecuto
 
       if (ttl > 0) {
         if (smsInfo.receivers.nonEmpty && rD.body.trim.nonEmpty) {
-          val meta = SmsMeta(smsMeta.smsParts, SmsUtil.getCharset(rD.body)).asMap
           val payload = SmsPayload(smsInfo.receivers, rD, senderMask, ttl.toString)
-          List(SmsPayloadEnvelope(message.id, message.clientId, message.stencilId.orEmpty, smsInfo.appName, message.contextId.orEmpty, payload, message.meta ++ meta))
+          List(SmsPayloadEnvelope(message.id, message.clientId, message.stencilId.orEmpty, smsInfo.appName, message.contextId.orEmpty, payload, message.meta ++ smsMeta.asMap))
         } else {
           ConnektLogger(LogFile.PROCESSORS).warn(s"SMSChannelFormatter dropping message with empty body or no receiver : ${message.id}")
           smsInfo.receivers.map(s => SmsCallbackEvent(message.id, InternalStatus.InvalidRequest, s, message.clientId, smsInfo.appName, Channel.SMS, message.contextId.orEmpty)).persist

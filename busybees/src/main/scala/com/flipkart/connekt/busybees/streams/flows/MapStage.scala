@@ -104,7 +104,7 @@ object StageSupervision {
       Supervision.Resume
 
     case cEx: ConnektStageException =>
-      Channel.withName(cEx.channel) match {
+      Channel.withName(cEx.channel.toLowerCase) match {
         case Channel.EMAIL =>
           ServiceFactory.getReportingService.recordChannelStatsDelta(cEx.client, Option(cEx.context), cEx.meta.get("stencilId").map(_.toString), Channel.EMAIL, cEx.appName, InternalStatus.StageError.toString)
           ConnektLogger(LogFile.PROCESSORS).warn("StageSupervision Handle ConnektEmailStageException")

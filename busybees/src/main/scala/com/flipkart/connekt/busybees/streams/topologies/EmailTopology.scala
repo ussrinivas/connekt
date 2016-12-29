@@ -16,7 +16,6 @@ import akka.NotUsed
 import akka.stream._
 import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl._
-import com.flipkart.connekt.busybees.BusyBeesBoot
 import com.flipkart.connekt.busybees.streams.ConnektTopology
 import com.flipkart.connekt.busybees.streams.flows.dispatchers._
 import com.flipkart.connekt.busybees.streams.flows.formaters._
@@ -35,7 +34,6 @@ import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.typesafe.config.Config
 
-import scala.collection.mutable.ListBuffer
 import scala.concurrent.Promise
 
 class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCallbackEvent] with SyncDelegate {
