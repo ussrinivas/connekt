@@ -38,7 +38,7 @@ class TrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecutor) exte
       ConnektLogger(LogFile.PROCESSORS).debug("TrackingFlow received message: {}", supplier(input.id))
       ConnektLogger(LogFile.PROCESSORS).trace("TrackingFlow received message: {}", supplier(input.getJson))
 
-      val transformerClassName = projectConfigService.getProjectConfiguration(input.appName, "tracking-classname").get.map(_.value).getOrElse(classOf[IdentityURLTransformer].getName)
+      val transformerClassName = projectConfigService.getProjectConfiguration(input.appName, s"tracking-classname-${input.channel.toLowerCase}").get.map(_.value).getOrElse(classOf[IdentityURLTransformer].getName)
       val transformer: TURLTransformer = Class.forName(transformerClassName).newInstance().asInstanceOf[TURLTransformer]
 
       val appDomain = projectConfigService.getProjectConfiguration(input.appName, "tracking-domain").get.map(_.value).getOrElse(defaultTrackingDomain)
