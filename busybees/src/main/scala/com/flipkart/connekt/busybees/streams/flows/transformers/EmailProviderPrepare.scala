@@ -12,11 +12,10 @@
  */
 package com.flipkart.connekt.busybees.streams.flows.transformers
 
-import akka.http.scaladsl.model.{HttpHeader, HttpRequest}
+import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.headers.RawHeader
 import com.flipkart.connekt.busybees.models.EmailRequestTracker
 import com.flipkart.connekt.busybees.streams.flows.MapFlowStage
-import com.flipkart.connekt.commons.entities.{Stencil, StencilEngine}
 import com.flipkart.connekt.commons.factories.ServiceFactory
 import com.flipkart.connekt.commons.iomodels.EmailPayloadEnvelope
 import com.flipkart.connekt.commons.services.KeyChainManager
@@ -40,6 +39,7 @@ class EmailProviderPrepare extends MapFlowStage[EmailPayloadEnvelope, (HttpReque
       appName = emailPayloadEnvelope.appName,
       contextId = emailPayloadEnvelope.contextId,
       provider = selectedProvider,
+      request = emailPayloadEnvelope,
       meta = emailPayloadEnvelope.meta)
 
     val providerStencil = stencilService.getStencilsByName(s"ckt-email-$selectedProvider").find(_.component.equalsIgnoreCase("prepare")).get

@@ -16,6 +16,7 @@ import akka.NotUsed
 import akka.stream._
 import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl._
+import com.flipkart.connekt.busybees.models.EmailRequestTracker
 import com.flipkart.connekt.busybees.streams.ConnektTopology
 import com.flipkart.connekt.busybees.streams.flows.dispatchers._
 import com.flipkart.connekt.busybees.streams.flows.formaters._
@@ -97,16 +98,24 @@ class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCa
     val tracking = b.add(new TrackingFlow(trackEmailParallelism)(ioDispatcher).flow)
     val fmtEmailParallelism = ConnektConfig.getInt("topology.email.formatter.parallelism").get
     val fmtEmail = b.add(new EmailChannelFormatter(fmtEmailParallelism)(ioDispatcher).flow)
-
+    val emailPayloadMerge = b.add(MergePreferred[EmailPayloadEnvelope](1))
+    val emailRetryMapper = b.add(Flow[EmailRequestTracker].map(_.request) /*.buffer(10, OverflowStrategy.backpressure)*/)
     val providerPicker = b.add(new ChooseProvider[EmailPayloadEnvelope](Channel.EMAIL).flow)
     val providerHttpPrepare = b.add(new EmailProviderPrepare().flow)
     val emailPoolFlow = b.add(HttpDispatcher.emailPoolClientFlow.timedAs("emailRTT"))
     val providerResponseFormatter = b.add(new EmailProviderResponseFormatter()(ioMat, ec).flow)
     val emailResponseHandle = b.add(new EmailResponseHandler().flow)
 
-    render.out ~> tracking ~> fmtEmail ~> providerPicker ~> providerHttpPrepare ~> emailPoolFlow ~> providerResponseFormatter ~> emailResponseHandle
+    val emailRetryPartition = b.add(new Partition[Either[EmailRequestTracker, EmailCallbackEvent]](2, {
+      case Right(_) => 0
+      case Left(_) => 1
+    }))
 
-    FlowShape(render.in, emailResponseHandle.out)
+    render.out ~> tracking ~> fmtEmail ~> emailPayloadMerge
+    emailPayloadMerge.out ~> providerPicker ~> providerHttpPrepare ~> emailPoolFlow ~> providerResponseFormatter ~> emailResponseHandle ~> emailRetryPartition.in
+    emailPayloadMerge.preferred <~ emailRetryMapper <~ emailRetryPartition.out(1).map(_.left.get).outlet
+
+    FlowShape(render.in, emailRetryPartition.out(0).map(_.right.get).outlet)
   })
 
   override def transformers: Map[CheckPointGroup, Flow[ConnektRequest, EmailCallbackEvent, NotUsed]] = {

@@ -22,49 +22,54 @@ import com.flipkart.connekt.commons.iomodels.MessageStatus.{EmailResponseStatus,
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.StringUtils._
 
-import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
-class EmailResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends EmailProviderResponseHandler[(Try[EmailResponse], EmailRequestTracker)](96) with Instrumented {
-  override val map: ((Try[EmailResponse], EmailRequestTracker)) => Future[List[EmailCallbackEvent]] = responseTrackerPair => Future({
+class EmailResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends EmailProviderResponseHandler[(Try[EmailResponse], EmailRequestTracker), EmailRequestTracker](96) with Instrumented {
+  override val map: ((Try[EmailResponse], EmailRequestTracker)) => Future[List[Either[EmailRequestTracker, EmailCallbackEvent]]] = responseTrackerPair => Future({
 
-    val tryResponse = responseTrackerPair._1
-    val requestTracker = responseTrackerPair._2
+    val (emailResponse, emailTracker) = responseTrackerPair
+    handleEmailResponse(emailResponse, emailTracker) match {
+      case Right(events) =>
+        events.toList.map(Right(_))
+      case Left(_) =>
+        List(Left(responseTrackerPair._2))
+    }
+  })(m.executionContext)
 
-    val events = ListBuffer[EmailCallbackEvent]()
+  private def handleEmailResponse(tryResponse: Try[EmailResponse], requestTracker: EmailRequestTracker): Either[Set[EmailCallbackEvent], Set[EmailCallbackEvent]] = {
 
-    tryResponse match {
+    val maybeEmailCallbackEvent = tryResponse match {
       case Success(emailResponse) =>
         ConnektLogger(LogFile.PROCESSORS).info(s"EmailResponseHandler received http response for: ${requestTracker.messageId} with provider messageId : ${emailResponse.messageId} / ${emailResponse.responseCode}")
         emailResponse.responseCode match {
           case s if 2 == (s / 100) =>
             //Good!
             ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.EMAIL, appName = requestTracker.appName, event = EmailResponseStatus.Received)
-            events ++= (requestTracker.to ++ requestTracker.cc).map(t => EmailCallbackEvent(requestTracker.messageId, requestTracker.clientId, t, EmailResponseStatus.Received, requestTracker.appName, requestTracker.contextId, s"${emailResponse.providerName}/${emailResponse.messageId}"))
+            Right((requestTracker.to ++ requestTracker.cc).map(t => EmailCallbackEvent(requestTracker.messageId, requestTracker.clientId, t, EmailResponseStatus.Received, requestTracker.appName, requestTracker.contextId, s"${emailResponse.providerName}/${emailResponse.messageId}")))
 
           case f if 4 == (f / 100) =>
             ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.EMAIL, appName = requestTracker.appName, event = EmailResponseStatus.AuthError)
-            events ++= (requestTracker.to ++ requestTracker.cc).map(t => EmailCallbackEvent(requestTracker.messageId, requestTracker.clientId, t, EmailResponseStatus.AuthError, requestTracker.appName, requestTracker.contextId, s"ProviderReponse : MessageId : ${emailResponse.messageId}, Message: ${emailResponse.message}"))
             ConnektLogger(LogFile.PROCESSORS).error(s"EmailResponseHandler http response - auth error for:  ${emailResponse.providerName}/${emailResponse.messageId} code: ${emailResponse.responseCode} response: ${emailResponse.message}")
+            Right((requestTracker.to ++ requestTracker.cc).map(t => EmailCallbackEvent(requestTracker.messageId, requestTracker.clientId, t, EmailResponseStatus.AuthError, requestTracker.appName, requestTracker.contextId, s"ProviderReponse : MessageId : ${emailResponse.messageId}, Message: ${emailResponse.message}")))
 
           case e if 5 == (e / 100) =>
             ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.EMAIL, appName = requestTracker.appName, event = EmailResponseStatus.InternalError)
-            events ++= (requestTracker.to ++ requestTracker.cc).map(t => EmailCallbackEvent(requestTracker.messageId, requestTracker.clientId, t, EmailResponseStatus.InternalError, requestTracker.appName, requestTracker.contextId, emailResponse.message))
             ConnektLogger(LogFile.PROCESSORS).error(s"EmailResponseHandler http response - the server encountered an error while trying to process the request for:  ${emailResponse.providerName}/${emailResponse.messageId}  code: ${emailResponse.responseCode} response: ${emailResponse.message}")
+            Left((requestTracker.to ++ requestTracker.cc).map(t => EmailCallbackEvent(requestTracker.messageId, requestTracker.clientId, t, EmailResponseStatus.InternalError, requestTracker.appName, requestTracker.contextId, emailResponse.message)))
           case w =>
             ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.EMAIL, appName = requestTracker.appName, event = EmailResponseStatus.Error)
-            events ++= (requestTracker.to ++ requestTracker.cc).map(t => EmailCallbackEvent(requestTracker.messageId, requestTracker.clientId, t, EmailResponseStatus.Error, requestTracker.appName, requestTracker.contextId, emailResponse.message))
             ConnektLogger(LogFile.PROCESSORS).error(s"OpenWebResponseHandler http response - response unhandled for: ${emailResponse.providerName}/${emailResponse.messageId}  code: ${emailResponse.responseCode} response: ${emailResponse.message}")
+            Left((requestTracker.to ++ requestTracker.cc).map(t => EmailCallbackEvent(requestTracker.messageId, requestTracker.clientId, t, EmailResponseStatus.Error, requestTracker.appName, requestTracker.contextId, emailResponse.message)))
         }
 
       case Failure(e) =>
         ConnektLogger(LogFile.PROCESSORS).error(s"EmailResponseHandler failed to send email for: ${requestTracker.messageId} due to: ${e.getClass.getSimpleName}, ${e.getMessage}", e)
         ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.EMAIL, appName = requestTracker.appName, event = InternalStatus.ProviderSendError)
-        events ++= (requestTracker.to ++ requestTracker.cc).map(t => EmailCallbackEvent(requestTracker.messageId, requestTracker.clientId, t, InternalStatus.ProviderSendError, requestTracker.appName, requestTracker.contextId, s"EmailResponseHandler-${e.getClass.getSimpleName}-${e.getMessage}"))
+        Left((requestTracker.to ++ requestTracker.cc).map(t => EmailCallbackEvent(requestTracker.messageId, requestTracker.clientId, t, InternalStatus.ProviderSendError, requestTracker.appName, requestTracker.contextId, s"EmailResponseHandler-${e.getClass.getSimpleName}-${e.getMessage}")))
     }
-    events.persist
+    maybeEmailCallbackEvent.merge.persist
+    maybeEmailCallbackEvent
 
-    events.toList
-  })(m.executionContext)
+  }
 }

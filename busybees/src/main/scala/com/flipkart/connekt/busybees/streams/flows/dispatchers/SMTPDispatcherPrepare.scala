@@ -24,7 +24,7 @@ class SMTPDispatcherPrepare extends MapFlowStage[EmailPayloadEnvelope, (EmailPay
     ConnektLogger(LogFile.PROCESSORS).debug("SMTPDispatcherPrepare received message: {}", supplier(message.messageId))
     ConnektLogger(LogFile.PROCESSORS).trace("SMTPDispatcherPrepare received message: {}", supplier(message))
 
-    val requestTrace = EmailRequestTracker(messageId = message.messageId, clientId = message.clientId, to = message.payload.to.map(_.address), cc = message.payload.cc.map(_.address), appName = message.appName, contextId = message.contextId, provider = "smtp" , meta = message.meta)
+    val requestTrace = EmailRequestTracker(messageId = message.messageId, clientId = message.clientId, to = message.payload.to.map(_.address), cc = message.payload.cc.map(_.address), appName = message.appName, contextId = message.contextId, provider = "smtp", request = message, meta = message.meta)
 
     List(message -> requestTrace)
 

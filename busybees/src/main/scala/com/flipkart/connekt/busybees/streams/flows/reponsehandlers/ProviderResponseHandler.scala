@@ -21,6 +21,6 @@ abstract class PNProviderResponseErrorHandler[I, O1](parallelism: Int = 128) ext
 
 abstract class PNProviderResponseHandler[I](parallelism: Int = 128) extends MapAsyncFlowStage[I, PNCallbackEvent](parallelism) with ProviderResponseHandler
 
-abstract class EmailProviderResponseHandler[I](parallelism: Int = 128) extends MapAsyncFlowStage[I, EmailCallbackEvent](parallelism) with ProviderResponseHandler
+abstract class EmailProviderResponseHandler[I, O1](parallelism: Int = 128) extends MapAsyncFlowStage[I, Either[O1, EmailCallbackEvent]](parallelism) with ProviderResponseHandler
 
 abstract class SmsProviderResponseHandler[I, O1](parallelism: Int = 128) extends MapAsyncFlowStage[I, Either[O1, SmsCallbackEvent]](parallelism) with ProviderResponseHandler

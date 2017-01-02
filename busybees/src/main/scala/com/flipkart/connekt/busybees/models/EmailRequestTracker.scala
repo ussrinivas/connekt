@@ -12,4 +12,6 @@
  */
 package com.flipkart.connekt.busybees.models
 
-case class EmailRequestTracker(messageId: String, clientId: String, to: Set[String], cc:Set[String], appName: String, contextId: String, provider:String, meta: Map[String, Any]) extends RequestTracker
+import com.flipkart.connekt.commons.iomodels.EmailPayloadEnvelope
+
+case class EmailRequestTracker(messageId: String, clientId: String, to: Set[String], cc:Set[String], appName: String, contextId: String, provider:String, request: EmailPayloadEnvelope, meta: Map[String, Any]) extends RequestTracker
