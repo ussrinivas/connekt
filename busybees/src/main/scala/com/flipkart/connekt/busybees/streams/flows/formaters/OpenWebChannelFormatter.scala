@@ -56,7 +56,7 @@ class OpenWebChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExe
           if (device.token != null && device.token.nonEmpty && device.token.isValidUrl) {
             val token = device.token.replace("https://android.googleapis.com/gcm/send", "https://gcm-http.googleapis.com/gcm")
             val headers = scala.collection.mutable.Map("TTL" -> ttl.toString)
-            val appDataWithId = stencilService.materialize(openWebStencil, message.channelData.asInstanceOf[PNRequestData].data).asInstanceOf[String].getObj[ObjectNode].put("messageId", message.id).getJson
+            val appDataWithId = stencilService.materialize(openWebStencil, message.channelData.asInstanceOf[PNRequestData].data).asInstanceOf[String].getObj[ObjectNode].put("messageId", message.id).put("deviceId", device.deviceId).getJson
 
             if (token.startsWith("https://gcm-http.googleapis.com/gcm"))
               headers += ("Authorization" -> s"key=${KeyChainManager.getGoogleCredential(message.appName).get.apiKey}")
