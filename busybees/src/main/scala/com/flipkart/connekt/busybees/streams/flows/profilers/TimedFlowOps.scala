@@ -22,7 +22,7 @@ import com.flipkart.connekt.commons.metrics.Instrumented
 
 import scala.collection.JavaConverters._
 import scala.util.Try
-
+import com.flipkart.connekt.commons.utils.StringUtils._
 object TimedFlowOps {
 
   implicit class TimedFlow[I, O,  T <: RequestTracker, M](dispatchFlow: Flow[(I, T), (Try[O], T), M]) extends Instrumented {
@@ -42,7 +42,7 @@ object TimedFlowOps {
           startTimes.get(httpRequestTracker).map(start => {
             startTimes.remove(httpRequestTracker)
             System.currentTimeMillis() - start
-          }).foreach(registry.timer(getMetricName(apiName)).update(_, TimeUnit.MILLISECONDS))
+          }).foreach(registry.timer(getMetricName(apiName + Option(httpRequestTracker.provider).orEmpty)).update(_, TimeUnit.MILLISECONDS))
 
           (response, httpRequestTracker)
       })

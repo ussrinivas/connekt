@@ -12,4 +12,6 @@
  */
 package com.flipkart.connekt.busybees.models
 
-abstract class RequestTracker
+abstract class RequestTracker {
+  def provider:String = null
+}
