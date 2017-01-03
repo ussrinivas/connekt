@@ -42,7 +42,7 @@ object TimedFlowOps {
           startTimes.get(httpRequestTracker).map(start => {
             startTimes.remove(httpRequestTracker)
             System.currentTimeMillis() - start
-          }).foreach(registry.timer(getMetricName(apiName + Option(httpRequestTracker.provider).orEmpty)).update(_, TimeUnit.MILLISECONDS))
+          }).foreach(registry.timer(getMetricName(apiName + Option(httpRequestTracker.provider).map("."+_).orEmpty)).update(_, TimeUnit.MILLISECONDS))
 
           (response, httpRequestTracker)
       })
