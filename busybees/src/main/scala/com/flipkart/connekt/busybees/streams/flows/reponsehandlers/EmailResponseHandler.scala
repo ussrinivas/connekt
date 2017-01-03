@@ -41,7 +41,7 @@ class EmailResponseHandler(implicit m: Materializer, ec: ExecutionContext) exten
 
     val maybeEmailCallbackEvent = tryResponse match {
       case Success(emailResponse) =>
-        counter(s"${requestTracker.provider}.${emailResponse.responseCode}")
+        meter(s"${requestTracker.provider}.${emailResponse.responseCode}")
         ConnektLogger(LogFile.PROCESSORS).info(s"EmailResponseHandler received http response for: ${requestTracker.messageId} with provider messageId : ${emailResponse.messageId} / ${emailResponse.responseCode}")
         emailResponse.responseCode match {
           case s if 2 == (s / 100) =>
@@ -65,7 +65,7 @@ class EmailResponseHandler(implicit m: Materializer, ec: ExecutionContext) exten
         }
 
       case Failure(e) =>
-        counter(s"${requestTracker.provider}.exception")
+        meter(s"${requestTracker.provider}.exception")
         ConnektLogger(LogFile.PROCESSORS).error(s"EmailResponseHandler failed to send email for: ${requestTracker.messageId} due to: ${e.getClass.getSimpleName}, ${e.getMessage}", e)
         ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.EMAIL, appName = requestTracker.appName, event = InternalStatus.ProviderSendError)
         Left((requestTracker.to ++ requestTracker.cc).map(t => EmailCallbackEvent(requestTracker.messageId, requestTracker.clientId, t, InternalStatus.ProviderSendError, requestTracker.appName, requestTracker.contextId, s"EmailResponseHandler-${e.getClass.getSimpleName}-${e.getMessage}")))
