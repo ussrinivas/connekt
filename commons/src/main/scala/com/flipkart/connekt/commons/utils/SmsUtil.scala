@@ -19,7 +19,8 @@ import org.smpp.charset.Gsm7BitCharsetProvider
 
 object SmsUtil {
 
-  val GSM_CHARSET = new Gsm7BitCharsetProvider().charsetForName("X-Gsm7Bit")
+//  val GSM_CHARSET = new Gsm7BitCharsetProvider().charsetForName("X-Gsm7Bit")
+  val GSM_CHARSET = Charset.forName("ISO-8859-1") // TODO Gsm7BitCharsetProvider fix
   val gsmCharsetEncoderThreadLocal = new ThreadLocal[CharsetEncoder]
   val USC2_CHARSET: Charset = Charset.forName("UTF-16")
 
