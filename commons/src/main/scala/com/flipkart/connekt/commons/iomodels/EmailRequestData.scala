@@ -12,4 +12,6 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
-case class EmailRequestData(subject: String, html: String, text:String) extends ChannelRequestData
+case class Attachment(base64Data:String, name:String, mime:String)
+
+case class EmailRequestData(subject: String, html: String, text:String, attachments:List[Attachment]) extends ChannelRequestData

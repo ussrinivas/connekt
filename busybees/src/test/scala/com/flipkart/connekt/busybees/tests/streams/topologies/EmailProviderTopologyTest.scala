@@ -33,16 +33,20 @@ class EmailProviderTopologyTest extends TopologyUTSpec {
 
     lazy implicit val poolClientFlow = Http().superPool[EmailRequestTracker]()
 
-
     val cRequest = s"""
                       |{ "id" : "123456789",
                       |	"channel": "EMAIL",
                       |	"sla": "H",
                       |	"channelData": {
                       |		"type": "EMAIL",
-                      |		"subject": "Hello Kinshuk with url. GoodLuck!",
+                      |		"subject": "Hello Kinshuk with url and attachment. GoodLuck!",
                       |		"text": "Text",
-                      |    "html" : "<b>html</b>  <a href='http://www.google.com'>link</a>"
+                      |   "html" : "<b>html</b>  <a href='http://www.google.com'>link</a>",
+                      |    "attachments" : [{
+                      |       "base64Data" : "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+                      |       "name" : "one.png",
+                      |       "mime" : "image/png"
+                      |    }]
                       |	},
                       |	"channelInfo" : {
                       |	    "type" : "EMAIL",

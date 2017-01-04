@@ -23,6 +23,7 @@ import scala.reflect.runtime.universe._
 class EmailRequestDao(tableName: String, hTableFactory: THTableFactory) extends RequestDao(tableName: String, hTableFactory: THTableFactory) {
 
   val SET_EMAIL_TYPETAG =  typeTag[Set[EmailAddress]]
+  val SET_ATTACHMENTS_TYPETAG =  typeTag[List[Attachment]]
 
   override protected def channelRequestInfoMap(channelRequestInfo: ChannelRequestInfo): Map[String, Array[Byte]] = {
     val requestInfo = channelRequestInfo.asInstanceOf[EmailRequestInfo]
@@ -53,7 +54,7 @@ class EmailRequestDao(tableName: String, hTableFactory: THTableFactory) extends 
   override protected def channelRequestDataMap(channelRequestData: ChannelRequestData): Map[String, Array[Byte]] = {
     Option(channelRequestData).map(d => {
       val requestData = d.asInstanceOf[EmailRequestData]
-      Map("subject" -> requestData.subject.getUtf8Bytes, "html" -> requestData.html.getUtf8Bytes, "text" -> requestData.text.getUtf8Bytes)
+      Map("subject" -> requestData.subject.getUtf8Bytes, "html" -> requestData.html.getUtf8Bytes, "text" -> requestData.text.getUtf8Bytes , "attachments" -> requestData.attachments.getJson.getUtf8Bytes )
     }).orNull
   }
 
@@ -61,7 +62,8 @@ class EmailRequestDao(tableName: String, hTableFactory: THTableFactory) extends 
     EmailRequestData(
       subject = reqDataProps.getS("subject"),
       html = reqDataProps.getS("html"),
-      text = reqDataProps.getS("text")
+      text = reqDataProps.getS("text"),
+      attachments = Option(reqDataProps.getS("attachments")).map(_.getObj(SET_ATTACHMENTS_TYPETAG)).orNull
     )
   }
 

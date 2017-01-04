@@ -63,7 +63,8 @@ class TrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecutor) exte
 
           EmailRequestData(subject = cData.subject,
             html = TrackingService.trackHTML(cData.html, trackerOptions, transformer),
-            text = TrackingService.trackText(cData.text, trackerOptions, transformer)
+            text = TrackingService.trackText(cData.text, trackerOptions, transformer),
+            attachments = cData.attachments
           )
 
         case sData: SmsRequestData =>
