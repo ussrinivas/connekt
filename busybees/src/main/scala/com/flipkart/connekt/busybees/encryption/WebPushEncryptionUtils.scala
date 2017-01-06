@@ -13,15 +13,18 @@
 package com.flipkart.connekt.busybees.encryption
 
 import java.io.ByteArrayOutputStream
+import java.math.BigInteger
 import java.nio.charset.StandardCharsets
 import java.security._
-import java.security.interfaces.ECPublicKey
 import java.util
 import java.util.Base64
 import javax.crypto._
 import javax.crypto.spec.{GCMParameterSpec, SecretKeySpec}
 
 import com.google.common.primitives.Bytes
+import org.bouncycastle.jce.ECNamedCurveTable
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.bouncycastle.jce.spec.{ECPrivateKeySpec, ECPublicKeySpec}
 
 sealed case class WebPushEncryptionResult(salt: Array[Byte], serverPublicKey: Array[Byte], encodedData: Array[Byte])
 
@@ -32,7 +35,7 @@ object WebPushEncryptionUtils {
   def encrypt(userPublicKey: String, userAuth: String, payload: String): WebPushEncryptionResult = {
     val salt = generateSalt()
     val serverKeys = EllipticCurveKeyUtils.generateServerKeyPair()
-    val serverPublicKeyBytes = EllipticCurveKeyUtils.publicKeyToBytes(serverKeys.getPublic.asInstanceOf[ECPublicKey])
+    val serverPublicKeyBytes = EllipticCurveKeyUtils.publicKeyToBytes(serverKeys.getPublic.asInstanceOf[java.security.interfaces.ECPublicKey])
     val publicKey = EllipticCurveKeyUtils.loadP256Dh(userPublicKey)
     val auth = Base64.getUrlDecoder.decode(userAuth)
     val sharedSecret = EllipticCurveKeyUtils.generateSharedSecret(serverKeys, publicKey)
@@ -94,5 +97,30 @@ object WebPushEncryptionUtils {
     val salt = Array.ofDim[Byte](16)
     SecureRandom.getInstance("SHA1PRNG").nextBytes(salt)
     salt
+  }
+
+  def loadPublicKey(encodedPublicKey: String): PublicKey = {
+    val decodedPublicKey = base64Decode(encodedPublicKey)
+    val kf = KeyFactory.getInstance("ECDH", BouncyCastleProvider.PROVIDER_NAME)
+    val ecSpec = ECNamedCurveTable.getParameterSpec("prime256v1") // prime256v1 is NIST P-256
+    val point = ecSpec.getCurve.decodePoint(decodedPublicKey)
+    val pubSpec = new ECPublicKeySpec(point, ecSpec)
+    kf.generatePublic(pubSpec)
+  }
+
+  def loadPrivateKey(encodedPrivateKey: String): PrivateKey = {
+    val decodedPrivateKey = base64Decode(encodedPrivateKey)
+    val params = ECNamedCurveTable.getParameterSpec("prime256v1") // prime256v1 is NIST P-256
+    val prvkey = new ECPrivateKeySpec(new BigInteger(decodedPrivateKey), params)
+    val kf = KeyFactory.getInstance("ECDH", BouncyCastleProvider.PROVIDER_NAME)
+    kf.generatePrivate(prvkey)
+  }
+
+  private def base64Decode(base64Encoded: String): Array[Byte] = {
+    if (base64Encoded.contains("+") || base64Encoded.contains("/")) {
+      Base64.getDecoder.decode(base64Encoded)
+    } else {
+      Base64.getUrlDecoder.decode(base64Encoded)
+    }
   }
 }

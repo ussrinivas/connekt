@@ -69,6 +69,7 @@ class OpenWebTopologyTest extends TopologyUTSpec {
 
     val cRequest = s"""
                       |{
+                      | "id" : "lorem-ipsum",
                       |	"channel": "PN",
                       |	"sla": "H",
                       |	"channelData": {
@@ -79,21 +80,18 @@ class OpenWebTopologyTest extends TopologyUTSpec {
                       |		}
                       |	},
                       |	"channelInfo": {
-                      | "platform" : "openweb",
-                      |		"appName": "fklite",
+                      |   "platform" : "openweb",
+                      |		"appName": "fkweb",
                       |		"type": "PN",
-                      |		"ackRequired": true,
-                      |		"delayWhileIdle": true,
-                      |		"deviceIds": ["$deviceId3" , "$deviceId1" , "$deviceId2"]
+                      |		"deviceIds": ["kinshuk4"]
                       |	},
-                      |	"meta": {
-                      |	}
+                      | "clientId" : "lorem"
                       |}
                       |""".stripMargin.getObj[ConnektRequest]
 
     val openWebPoolClientFlow = Http().superPool[OpenWebRequestTracker]()
 
-    val result = Source.repeat(cRequest)
+    val result = Source.single(cRequest)
       .via(new RenderFlow().flow)
       .via(new OpenWebChannelFormatter(64)(system.dispatchers.lookup("akka.actor.io-dispatcher")).flow)
       .via(new OpenWebDispatcherPrepare().flow)

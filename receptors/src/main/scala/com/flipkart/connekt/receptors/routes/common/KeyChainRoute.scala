@@ -95,6 +95,27 @@ class KeyChainRoute(implicit am: ActorMaterializer) extends BaseHandler with Fil
                           complete(GenericResponse(StatusCodes.NotFound.intValue, null, Response("Not Found.", null)))
                       }
                     }
+
+                  case OPENWEB =>
+                    post {
+                      //TODO : Fix when the issue is resolved.
+                      //formFields('appId, 'appKey) { (appId, appKey) =>
+                      extractFormData { postMap =>
+                        val publicKey: String = postMap("publicKey").left.get
+                        val privateKey: String = postMap("privateKey").left.get
+
+                        val credential = KeyPairCredential(publicKey, privateKey)
+                        KeyChainManager.addKeyPairCredential(appName, credential)
+                        complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Succesfully stored $platform / $appName", credential)))
+                      }
+                    } ~ get {
+                      KeyChainManager.getKeyPairCredential(appName) match {
+                        case Some(x) =>
+                          complete(GenericResponse(StatusCodes.OK.intValue, null, Response("Credentials Found.", x)))
+                        case None =>
+                          complete(GenericResponse(StatusCodes.NotFound.intValue, null, Response("Not Found.", null)))
+                      }
+                    }
                   case WINDOWS =>
                     post {
                       //TODO : Fix when the issue is resolved.
