@@ -12,6 +12,9 @@
  */
 package com.flipkart.connekt.busybees.streams.flows.formaters
 
+import java.net.URL
+import java.util.{Base64, Date}
+
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.flipkart.connekt.busybees.encryption.WebPushEncryptionUtils
 import com.flipkart.connekt.busybees.streams.errors.ConnektPNStageException
@@ -23,7 +26,10 @@ import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.services.{DeviceDetailsService, KeyChainManager}
+import com.flipkart.connekt.commons.utils.NetworkUtils.URLFunctions
 import com.flipkart.connekt.commons.utils.StringUtils._
+import org.bouncycastle.jce.interfaces.ECPublicKey
+import org.jose4j.jws.{AlgorithmIdentifiers, JsonWebSignature}
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
@@ -31,7 +37,7 @@ import scala.util.{Failure, Success, Try}
 
 class OpenWebChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecutor) extends NIOFlow[ConnektRequest, OpenWebStandardPayloadEnvelope](parallelism)(ec) {
 
-  lazy val stencilService = ServiceFactory.getStencilService
+  private lazy val stencilService = ServiceFactory.getStencilService
 
   override def map: ConnektRequest => List[OpenWebStandardPayloadEnvelope] = message => {
 
@@ -58,17 +64,37 @@ class OpenWebChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExe
             val headers = scala.collection.mutable.Map("TTL" -> ttl.toString)
             val appDataWithId = stencilService.materialize(openWebStencil, message.channelData.asInstanceOf[PNRequestData].data).asInstanceOf[String].getObj[ObjectNode].put("messageId", message.id).put("deviceId", device.deviceId).getJson
 
-            if (token.startsWith("https://fcm.googleapis.com/fcm") || token.startsWith("https://gcm-http.googleapis.com/gcm"))
-              headers += ("Authorization" -> s"key=${KeyChainManager.getGoogleCredential(message.appName).get.apiKey}")
+            val vapIdKeyPair = KeyChainManager.getKeyPairCredential(message.appName).get
 
             if (device.keys != null && device.keys.nonEmpty) {
               Try(WebPushEncryptionUtils.encrypt(device.keys("p256dh"), device.keys("auth"), appDataWithId)) match {
                 case Success(data) =>
-                  headers +=(
-                    "Crypto-Key" -> WebPushEncryptionUtils.createCryptoKeyHeader(data.serverPublicKey),
+                  headers += (
                     "Encryption" -> WebPushEncryptionUtils.createEncryptionHeader(data.salt),
                     "Content-Encoding" -> "aesgcm"
-                    )
+                  )
+
+                  val jws = new JsonWebSignature()
+                  jws.setHeader("typ", "JWT")
+                  jws.setPayload(Map(
+                    "sub" -> "mailto:connekt-dev@flipkart.com",
+                    "aud" -> new URL(token).origin,
+                    "exp" -> (new Date(System.currentTimeMillis() + 6.hours.toMillis).getTime / 1000)
+                  ).getJson)
+                  jws.setKey(WebPushEncryptionUtils.loadPrivateKey(vapIdKeyPair.privateKey))
+                  jws.setAlgorithmHeaderValue(AlgorithmIdentifiers.ECDSA_USING_P256_CURVE_AND_SHA256)
+                  val compactJws = jws.getCompactSerialization.stripSuffix("=")
+
+                  val publicKey = WebPushEncryptionUtils.loadPublicKey(vapIdKeyPair.publicKey).asInstanceOf[ECPublicKey].getQ.getEncoded(false)
+
+                  headers +=(
+                    "Crypto-Key" -> s"${WebPushEncryptionUtils.createCryptoKeyHeader(data.serverPublicKey)};p256ecdsa=${Base64.getUrlEncoder.encodeToString(publicKey).stripSuffix("=")}",
+                    "Authorization" -> s"WebPush $compactJws"
+                  )
+
+                  if (token.startsWith("https://gcm-http.googleapis.com/gcm")) //pre-chrome-52.
+                    headers += ("Authorization" -> s"key=${KeyChainManager.getGoogleCredential(message.appName).get.apiKey}")
+
                   List(OpenWebStandardPayloadEnvelope(message.id, message.clientId, device.deviceId, pnInfo.appName,
                     message.contextId.orEmpty, token, OpenWebStandardPayload(data.encodedData), headers.toMap, message.meta))
                 case Failure(e) =>

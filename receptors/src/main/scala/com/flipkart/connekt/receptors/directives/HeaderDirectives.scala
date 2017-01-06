@@ -20,6 +20,8 @@ import scala.util.Try
 
 trait HeaderDirectives {
 
+  def getHeader(key: String, h: Seq[HttpHeader]): Option[String] = h.find(_.is(key.toLowerCase)).flatMap(w => Option(w.value()))
+
   def sniffHeaders: Directive1[Seq[HttpHeader]] = BasicDirectives.extract[Seq[HttpHeader]](_.request.headers)
 
   def sniffXHeaders = BasicDirectives.extract[Seq[HttpHeader]](_.request.headers.filter(_.lowercaseName().startsWith("x-")))

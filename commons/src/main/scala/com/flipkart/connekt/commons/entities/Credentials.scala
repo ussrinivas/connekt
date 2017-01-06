@@ -75,24 +75,23 @@ object AppleCredential {
 
 
 case class MicrosoftCredential(clientId: String, clientSecret: String) extends Credential {
-
   def this() {
     this(null, null)
   }
-
 }
 
 case class GoogleCredential(projectId: String, apiKey: String) extends Credential {
-
   def this() {
     this(null, null)
   }
+}
 
+case class KeyPairCredential(publicKey:String, privateKey:String) extends Credential{
+  def this() {
+    this(null, null)
+  }
 }
 
 object Credentials {
-
   val EMPTY = SimpleCredential(ApacheStringUtils.EMPTY, ApacheStringUtils.EMPTY)
-
-
 }

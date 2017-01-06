@@ -21,7 +21,7 @@ import com.flipkart.connekt.receptors.wire.JsonToEntityMarshaller
 
 import scala.collection.immutable.Seq
 
-abstract class BaseHandler extends Directives with HeaderDirectives with AuthenticationDirectives with AuthorizationDirectives with MetricsDirectives with AsyncDirectives with PredefinedFromEntityUnmarshallers with PredefinedToEntityMarshallers with JsonToEntityMarshaller {
+abstract class BaseHandler extends Directives with HeaderDirectives with AuthenticationDirectives with AuthorizationDirectives with MetricsDirectives with AsyncDirectives with IdempotentDirectives with PredefinedFromEntityUnmarshallers with PredefinedToEntityMarshallers with JsonToEntityMarshaller {
 
   /**
    *

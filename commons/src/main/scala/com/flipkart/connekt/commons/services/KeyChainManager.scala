@@ -29,6 +29,8 @@ object KeyChainManager {
     storage.put(name, bytes)
   }
 
+
+
   @throws[Exception]
   def getSimpleCredential(name: String): Option[SimpleCredential] = {
     LocalCacheManager.getCache(LocalCacheType.AppCredential).get[SimpleCredential](name).orElse{
@@ -82,6 +84,22 @@ object KeyChainManager {
     LocalCacheManager.getCache(LocalCacheType.AppCredential).get[GoogleCredential](key).orElse{
       val credential = storage.get(key).get.map(KryoSerializer.deserialize[GoogleCredential])
       credential.foreach(LocalCacheManager.getCache(LocalCacheType.AppCredential).put[GoogleCredential](key, _))
+      credential
+    }
+  }
+
+  def addKeyPairCredential(name: String, credential: KeyPairCredential) = {
+    val bytes = KryoSerializer.serialize(credential)
+    storage.put( getNameSpacedKey(MobilePlatform.OPENWEB, name), bytes)
+  }
+
+  @throws[Exception]
+  def getKeyPairCredential(name: String): Option[KeyPairCredential] = {
+    val key = getNameSpacedKey(MobilePlatform.OPENWEB, name)
+
+    LocalCacheManager.getCache(LocalCacheType.AppCredential).get[KeyPairCredential](key).orElse{
+      val credential = storage.get(key).get.map(KryoSerializer.deserialize[KeyPairCredential])
+      credential.foreach(LocalCacheManager.getCache(LocalCacheType.AppCredential).put[KeyPairCredential](key, _))
       credential
     }
   }

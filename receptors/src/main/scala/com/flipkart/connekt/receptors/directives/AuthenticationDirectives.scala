@@ -22,9 +22,7 @@ import com.flipkart.connekt.commons.entities.AppUser
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.receptors.service.AuthenticationService
 
-trait AuthenticationDirectives {
-
-  private def getHeader(key: String, h: Seq[HttpHeader]): Option[String] = h.find(_.is(key.toLowerCase)).flatMap(w => Option(w.value()))
+trait AuthenticationDirectives extends HeaderDirectives {
 
   case class TokenAuthenticationFailedRejection(message: String) extends Rejection
 
