@@ -14,7 +14,7 @@ package fkint.mp.connekt
 
 import com.flipkart.concord.publisher.TPublishRequest
 
-case class SmsCallbackEvent(messageId: String, clientId: String, appName: String, contextId: String, eventType: String, cargo: String, receiver: String, timestamp: String) extends TPublishRequest {
+case class SmsCallbackEvent(messageId: String, appName: String, contextId: String, eventType: String, cargo: String, receiver: String, timestamp: String) extends TPublishRequest {
   override def validate(): Boolean = true
 
   override def schemaVersion(): String = "1.0"
