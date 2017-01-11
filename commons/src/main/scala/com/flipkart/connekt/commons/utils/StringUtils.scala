@@ -16,6 +16,7 @@ import java.io.InputStream
 import java.lang.reflect.{ParameterizedType, Type => JType}
 import java.math.BigInteger
 import java.security.SecureRandom
+import java.util.UUID
 
 import akka.http.scaladsl.model.HttpEntity
 import akka.stream.Materializer
@@ -43,6 +44,8 @@ object StringUtils {
   private val urlValidator = new UrlValidator(Array("http","https"))
 
   implicit def enum2String(enumValue: Enumeration#Value): String = enumValue.toString
+
+  implicit def generateUUID: String = UUID.randomUUID().toString
 
   implicit class StringHandyFunctions(val s: String) {
     def getUtf8Bytes = s.getBytes(CharEncoding.UTF_8)

@@ -39,7 +39,7 @@ class MessageService(requestDao: TRequestDao, userConfigurationDao: TUserConfigu
 
   override def saveRequest(request: ConnektRequest, requestBucket: String, isCrucial: Boolean): Try[String] = {
     try {
-      val reqWithId = request.copy(id = generateId)
+      val reqWithId = request.copy(id = generateUUID)
       messageDao.saveRequest(reqWithId.id, reqWithId)
 
       request.scheduleTs match {

@@ -15,6 +15,7 @@ package com.flipkart.connekt.firefly.sinks.specter
 import akka.stream.scaladsl.Sink
 import com.flipkart.connekt.commons.entities.SubscriptionEvent
 import com.flipkart.connekt.commons.entities.bigfoot.PublishSupport
+import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels.CallbackEvent
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.services.BigfootService
@@ -30,8 +31,9 @@ class SpecterSink extends Instrumented {
 
       callbackEvent match {
         case bfSupported: PublishSupport =>
-          BigfootService.ingestEvent(bfSupported.toPublishFormat, callbackEvent.namespace)
           meter(s"firefly.specter.bf.ingested").mark()
+          BigfootService.ingestEvent(bfSupported.toPublishFormat, callbackEvent.namespace)
+          ConnektLogger(LogFile.SERVICE).debug(s"SpecterSink message published to specter: ${bfSupported.toPublishFormat}")
         case _ => meter(s"firefly.specter.bf.skipped").mark()
       }
     })
