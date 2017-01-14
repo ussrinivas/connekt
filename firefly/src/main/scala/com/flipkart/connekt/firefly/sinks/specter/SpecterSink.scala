@@ -31,10 +31,12 @@ class SpecterSink extends Instrumented {
 
       callbackEvent match {
         case bfSupported: PublishSupport =>
-          meter(s"firefly.specter.bf.ingested").mark()
           BigfootService.ingestEvent(bfSupported.toPublishFormat, callbackEvent.namespace)
-          ConnektLogger(LogFile.SERVICE).debug(s"SpecterSink message published to specter: ${bfSupported.toPublishFormat}")
-        case _ => meter(s"firefly.specter.bf.skipped").mark()
+          ConnektLogger(LogFile.SERVICE).trace(s"SpecterSink message delivered: $bfSupported")
+          meter(s"firefly.specter.bf.ingested").mark()
+        case _ =>
+          meter(s"firefly.specter.bf.skipped").mark()
+          ConnektLogger(LogFile.SERVICE).trace(s"SpecterSink message discard")
       }
     })
   }
