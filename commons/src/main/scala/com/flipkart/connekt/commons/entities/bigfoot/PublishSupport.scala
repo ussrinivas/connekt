@@ -10,14 +10,13 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.commons.cache
+package com.flipkart.connekt.commons.entities.bigfoot
 
-trait CacheType extends Enumeration
+import com.flipkart.concord.publisher.TPublishRequest
 
-object DistributedCacheType extends CacheType {
-  val Default, DeviceDetails, TransientUsers, IdempotentCheck = Value
-}
+trait PublishSupport {
 
-object LocalCacheType extends CacheType {
-  val Default, UserInfo, UserGroups, ResourcePriv, UserConfiguration, WnsAccessToken, Stencils, StencilsBucket, StencilsEnsemble, AppCredential, EngineFabrics , Subscription = Value
+  def namespace: String
+
+  def toPublishFormat: TPublishRequest
 }

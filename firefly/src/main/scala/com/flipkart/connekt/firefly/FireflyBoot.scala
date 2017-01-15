@@ -65,7 +65,7 @@ object FireflyBoot extends BaseApp {
 
       HttpDispatcher.apply(ConnektConfig.getConfig("react").get)
 
-      ClientTopologyManager(kafkaConnConf, ConnektConfig.getString("firefly.kafka.topic").get, ConnektConfig.getInt("firefly.retry.limit").get)
+      ClientTopologyManager(kafkaConnConf, ConnektConfig.getInt("firefly.retry.limit").get)
 
       ConnektLogger(LogFile.SERVICE).info("Started `Firefly` app")
     }
@@ -81,6 +81,7 @@ object FireflyBoot extends BaseApp {
   }
 
   def main(args: Array[String]) {
+    System.setProperty("log4j.configurationFile", "log4j2-test.xml")
     start()
   }
 }

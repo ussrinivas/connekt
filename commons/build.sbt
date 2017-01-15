@@ -25,7 +25,7 @@ libraryDependencies ++= Seq(
 
 libraryDependencies ++= Seq(
   "com.flipkart.connekt" %% "concord" % "0.2.0",
-  "com.flipkart.connekt" %% "connekt-concord" % "0.2.0" excludeAll ExclusionRule(organization = "com.google.guava", name = "guava"),
+  "com.flipkart.connekt" %% "connekt-concord" % "0.2.0" excludeAll ExclusionRule(organization = "com.google.guava", name = "guava") ,
   /* Logging Dependencies.Since we want to use log4j2 */
   "com.lmax" % "disruptor" % "3.3.4",
   "org.apache.logging.log4j" % "log4j-api" % "2.5",
@@ -93,7 +93,7 @@ libraryDependencies ++= Seq(
     ),
   "joda-time" % "joda-time" % "2.3",
   "com.flipkart" %% "espion" % "1.0.1",
-  "com.flipkart" %% "util-http" % "0.0.1-SNAPSHOT",
+  "com.flipkart" %% "util-http" % "0.0.6",
   "commons-validator" % "commons-validator" % "1.5.0" excludeAll ExclusionRule("commons-beanutils", "commons-beanutils"),
   "org.bouncycastle" % "bcprov-jdk15on" % "1.54",
   "chronosQ" % "chronosQ-client" % "1.1-SNAPSHOT" excludeAll(
@@ -112,7 +112,8 @@ libraryDependencies ++= Seq(
     ExclusionRule("org.apache.curator"),
     ExclusionRule(organization = "org.mockito", name = "mockito-all"),
     ExclusionRule(organization = "org.hamcrest", name = "hamcrest-core")
-    )
+    ),
+    "com.rabbitmq" % "amqp-client" % "4.0.1" withSources()
 )
 
 

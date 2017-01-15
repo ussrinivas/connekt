@@ -26,10 +26,10 @@ import akka.stream.ActorMaterializer
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels.{GenericResponse, Response}
 import com.flipkart.connekt.commons.services.ConnektConfig
-import com.flipkart.connekt.receptors.directives.{AccessLogDirective, CORSDirectives}
+import com.flipkart.connekt.receptors.directives.{AccessLogDirective, CORSDirectives, IdempotentRequestFailedRejection}
 import com.flipkart.connekt.receptors.routes.{BaseJsonHandler, RouteRegistry}
 import com.flipkart.connekt.receptors.wire.ResponseUtils._
-import com.typesafe.config.{ConfigFactory, Config}
+import com.typesafe.config.{Config, ConfigFactory}
 
 import scala.collection.immutable
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -63,6 +63,9 @@ object ReceptorsServer extends BaseJsonHandler with AccessLogDirective with CORS
       }
       case TokenAuthenticationFailedRejection(msg) => logTimedRequestResult {
         complete(GenericResponse(StatusCodes.Forbidden.intValue, null, Response("Secure Code Validation Failed.", msg)))
+      }
+      case IdempotentRequestFailedRejection(requestId) => logTimedRequestResult {
+        complete(GenericResponse(StatusCodes.NotAcceptable.intValue, null, Response(s"Dropping idempotent message with requestId `$requestId`", Map("requestId" -> requestId))))
       }
     }.handleAll[MethodRejection] { methodRejections =>
       val names = methodRejections.map(_.supported.name)

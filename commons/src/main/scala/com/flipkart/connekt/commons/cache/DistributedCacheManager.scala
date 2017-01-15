@@ -19,6 +19,7 @@ import com.flipkart.connekt.commons.dao.DaoFactory
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.utils.StringUtils._
 import rx.lang.scala.Observable
+
 import scala.collection.{Map, concurrent}
 import scala.concurrent.duration.DurationInt
 import scala.reflect.runtime.universe._
@@ -27,6 +28,7 @@ object DistributedCacheManager extends CacheManager {
 
   private var cacheTTLMap: Map[DistributedCacheType.Value, CacheProperty] = Map[DistributedCacheType.Value, CacheProperty]()
   cacheTTLMap += DistributedCacheType.TransientUsers -> CacheProperty(0, 6.hours)
+  cacheTTLMap += DistributedCacheType.IdempotentCheck -> CacheProperty(0, 1.day)
   cacheTTLMap += DistributedCacheType.Default -> CacheProperty(0, 24.hours)
   cacheTTLMap += DistributedCacheType.DeviceDetails -> CacheProperty(0, 0.seconds)
 

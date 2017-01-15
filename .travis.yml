@@ -1,0 +1,41 @@
+language: scala
+scala:
+   - 2.11.7
+jdk:
+  - oraclejdk8
+  
+cache:
+  directories:
+  - "$HOME/.ivy2"
+  - "$HOME/.sbt"
+  - "$HOME/downloads"
+
+notifications:
+  email:
+    recipients:
+      - connekt-dev@flipkart.com
+      - kinshuk.bairagi@flipkart.com
+env:
+  global:
+    - CI_HOME=`pwd`
+
+branches:
+  only:
+    - master
+
+before_install:
+  - csq=`mktemp -d -t csq.XXX` 
+  - pushd $csq > /dev/null
+  - git clone --depth=10 --branch=hbase1.2 https://github.com/kingster/chronosq chronosq
+  - cd chronosq
+  - mvn install -DskipTests=true -B -V
+  - cd ..
+  - git clone https://gist.github.com/a8040d74a167e1754a35af623adc580e.git ckt-concord
+  - cd ckt-concord
+  - sbt publishM2
+  - popd > /dev/null
+
+script:
+  - sbt ++$TRAVIS_SCALA_VERSION assembly
+
+

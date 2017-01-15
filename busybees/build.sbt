@@ -13,7 +13,8 @@ libraryDependencies ++= Seq(
   "com.relayrides" % "pushy" % "0.7.2" excludeAll ExclusionRule("io.netty"),
   "io.netty" % "netty-tcnative-openssl102" % "1.1.33.Fork14" classifier "linux-x86_64",
   "io.netty" % "netty-tcnative" % "1.1.33.Fork14" classifier "osx-x86_64",
-  "org.eclipse.jetty.alpn" % "alpn-api" % "1.1.2.v20150522"
+  "org.eclipse.jetty.alpn" % "alpn-api" % "1.1.2.v20150522",
+  "org.bitbucket.b_c" % "jose4j" % "0.5.4"
   /** pushy dependecy ends **/
 )
 

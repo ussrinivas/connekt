@@ -13,8 +13,10 @@
 package com.flipkart.connekt.commons.utils
 
 import java.io.{BufferedReader, InputStreamReader}
-import java.net.{Inet6Address, NetworkInterface}
+import java.net.{Inet6Address, NetworkInterface, URL}
+
 import org.slf4j.LoggerFactory
+
 import scala.collection.JavaConverters._
 
 
@@ -82,5 +84,11 @@ object NetworkUtils {
     }
 
     ip
+  }
+
+  implicit class URLFunctions(val url: URL) {
+    def origin:String = {
+      s"${url.getProtocol}://${url.getAuthority}"
+    }
   }
 }

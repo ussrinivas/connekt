@@ -20,6 +20,7 @@ import com.flipkart.connekt.commons.cache.{LocalCacheManager, LocalCacheType}
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.utils.http.HttpClient
 import com.flipkart.utils.http.HttpClient._
+import com.flipkart.utils.http.models.HttpClientConfig
 import org.apache.http.NameValuePair
 import org.apache.http.client.entity.UrlEncodedFormEntity
 import org.apache.http.client.methods.HttpPost
@@ -36,14 +37,14 @@ object WindowsOAuthService extends TWindowsOAuthService {
 
   val tokenRefreshURI = ConnektConfig.getString("windows.access.token.endpoint").getOrElse("https://login.live.com/accesstoken.srf")
 
-  val client = new HttpClient(
+  val client = new HttpClient(HttpClientConfig(
     name = "windows-token-client",
     ttlInMillis = ConnektConfig.getInt("http.apache.ttlInMillis").getOrElse(60000).toLong,
     maxConnections = ConnektConfig.getInt("http.apache.maxConnections").getOrElse(100),
     processQueueSize = ConnektConfig.getInt("http.apache.processQueueSize").getOrElse(100),
     connectionTimeoutInMillis = ConnektConfig.getInt("http.apache.connectionTimeoutInMillis").getOrElse(30000).toInt,
     socketTimeoutInMillis = ConnektConfig.getInt("http.apache.socketTimeoutInMillis").getOrElse(60000).toInt
-  )
+  ))
 
   val rwl = new ReentrantReadWriteLock()
 

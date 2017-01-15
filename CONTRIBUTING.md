@@ -2,11 +2,6 @@
 
 In case of questions about the contribution process or for discussion of specific issues please visit the [flipkart/connekt gitter chat](https://gitter.im/Flipkart/connekt).
 
-## Infrastructure
-
-* [Issue Tracker](https://jira.fkinternal.com/projects/CNKT/issues)
-* [CI](http://usercrm-automation-qa-0001.nm.flipkart.com:8080/)
-
 ## General Workflow
 
 This is the process for committing code into master. There are of course exceptions to these rules, for example minor changes to comments and documentation, fixing a broken build etc.
@@ -52,7 +47,7 @@ If these requirements are not met then the code should **not** be merged into ma
 
 ## Continuous Integration
 
-Each project should be configured to use a continuous integration (CI) tool (i.e. a build server à la Jenkins). Connekt has a [Jenkins server farm](http://usercrm-automation-qa-0001.nm.flipkart.com:8080/) that can be used. The CI tool should, on each push to master, build the **full** distribution and run **all** tests, and if something fails it should email out a notification with the failure report to the committer and the core team. The CI tool should also be used in conjunction with a Pull Request validator (discussed below).
+Each project should be configured to use a continuous integration (CI) tool (i.e. a build server à la Jenkins). Connekt has a Jenkins server farm that can be used. The CI tool should, on each push to master, build the **full** distribution and run **all** tests, and if something fails it should email out a notification with the failure report to the committer and the core team. The CI tool should also be used in conjunction with a Pull Request validator (discussed below).
 
 ## External Dependencies
 
@@ -103,7 +98,7 @@ Example:
 ## How To Enforce These Guidelines?
 
 ### Make Use of Pull Request Validator
-Connekt uses [Jenkins pull request builder](http://usercrm-automation-qa-0001.nm.flipkart.com:8080/view/Connekt/job/Connekt_pull_request_build/) 
+Connekt uses Jenkins pull request builder
 that automatically merges the code, builds it, runs the tests and sends out status mailer. TODO: Auto comment on the PR iteself.
 
 ## Source style
