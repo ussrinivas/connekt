@@ -53,6 +53,10 @@ class SmsResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends
         ConnektLogger(LogFile.PROCESSORS).info(s"SmsResponseHandler received http response for: messageId : ${requestTracker.messageId} code: ${smsResponse.responseCode}")
         smsResponse.responseCode match {
           case s if 2 == (s / 100) =>
+            //Update expense
+            val expenseType = ServiceFactory.getExpensesService.classifyExpense(Channel.SMS, requestTracker.provider, requestTracker.getJsonNode)
+            ServiceFactory.getExpensesService.addExpense(requestTracker.clientId, requestTracker.appName,Channel.SMS, requestTracker.provider,expenseType, requestTracker.meta("smsParts").asInstanceOf[Int] * smsResponse.responsePerReceivers.size )
+
             Right(smsResponse.responsePerReceivers.asScala.map(r => {
               ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.SMS, appName = requestTracker.appName, event = r.receiverStatus)
               SmsCallbackEvent(requestTracker.messageId, r.receiverStatus, r.receiver, requestTracker.clientId, requestTracker.appName, requestTracker.contextId,

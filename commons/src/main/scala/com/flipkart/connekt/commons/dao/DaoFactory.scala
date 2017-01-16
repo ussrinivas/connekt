@@ -16,6 +16,7 @@ import com.couchbase.client.java.Bucket
 import com.flipkart.connekt.commons.connections.TConnectionProvider
 import com.flipkart.connekt.commons.factories.{HTableFactory, MySQLFactory, THTableFactory, TMySQLFactory}
 import com.typesafe.config.Config
+import scala.concurrent.duration._
 
 object DaoFactory {
 
@@ -95,6 +96,11 @@ object DaoFactory {
     daoMap += DaoType.STATS_REPORTING -> StatsReportingDao(bucket)
   }
 
+  def initExpenseReportingDao(bucket: Bucket): Unit = {
+    //0 ttl means forever with couchbase backed stats dao.
+    daoMap += DaoType.EXPENSE_REPORTING -> new StatsReportingDao(bucket, 0.seconds)
+  }
+
   def getDeviceDetailsDao: DeviceDetailsDao = daoMap(DaoType.DEVICE_DETAILS).asInstanceOf[DeviceDetailsDao]
 
   def getPNRequestDao: PNRequestDao = daoMap(DaoType.PN_REQUEST_INFO).asInstanceOf[PNRequestDao]
@@ -123,6 +129,8 @@ object DaoFactory {
 
   def getStatsReportingDao: StatsReportingDao = daoMap(DaoType.STATS_REPORTING).asInstanceOf[StatsReportingDao]
 
+  def getExpenseReportingDao: StatsReportingDao = daoMap(DaoType.EXPENSE_REPORTING).asInstanceOf[StatsReportingDao]
+
   def getSubscriptionDao: TSubscriptionDao = daoMap(DaoType.SUBSCRIPTION).asInstanceOf[SubscriptionDao]
 }
 
@@ -141,6 +149,7 @@ object DaoType extends Enumeration {
   APP_CONFIG,
   STENCIL,
   STATS_REPORTING,
+  EXPENSE_REPORTING,
   SUBSCRIPTION,
   KEY_CHAIN = Value
 }

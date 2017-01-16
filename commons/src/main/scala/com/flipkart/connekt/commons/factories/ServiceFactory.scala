@@ -52,7 +52,7 @@ object ServiceFactory {
   }
 
   def initStatsReportingService(dao: StatsReportingDao): Unit = {
-    val instance = new ReportingService(dao)
+    val instance = new ClientReportingService(dao)
     instance.init()
     serviceCache += ServiceType.STATS_REPORTING -> instance
   }
@@ -60,6 +60,12 @@ object ServiceFactory {
   def initSchedulerService(hConnection: Connection): Unit = {
     val instance = new SchedulerService(hConnection)
     serviceCache += ServiceType.SCHEDULER -> instance
+  }
+
+  def initExpenseReportingService(dao: StatsReportingDao): Unit = {
+    val instance = new ExpenseTrackingService(dao)
+    instance.init()
+    serviceCache += ServiceType.EXPENSES_REPORTING -> instance
   }
 
   def initStencilService(dao: TStencilDao) = serviceCache += ServiceType.STENCIL -> new StencilService(dao)
@@ -80,7 +86,9 @@ object ServiceFactory {
 
   def getKeyChainService = serviceCache(ServiceType.KEY_CHAIN).asInstanceOf[TStorageService]
 
-  def getReportingService = serviceCache(ServiceType.STATS_REPORTING).asInstanceOf[ReportingService]
+  def getReportingService = serviceCache(ServiceType.STATS_REPORTING).asInstanceOf[ClientReportingService]
+
+  def getExpensesService = serviceCache(ServiceType.EXPENSES_REPORTING).asInstanceOf[ExpenseTrackingService]
 
   def getStencilService = serviceCache(ServiceType.STENCIL).asInstanceOf[TStencilService]
 
@@ -89,5 +97,5 @@ object ServiceFactory {
 }
 
 object ServiceType extends Enumeration {
-  val PN_MESSAGE, TEMPLATE, CALLBACK, USER_INFO, AUTHORISATION, KEY_CHAIN, STATS_REPORTING, SCHEDULER, STENCIL, SMS_MESSAGE, EMAIL_MESSAGE, APP_CONFIG = Value
+  val PN_MESSAGE, TEMPLATE, CALLBACK, USER_INFO, AUTHORISATION, KEY_CHAIN, STATS_REPORTING, EXPENSES_REPORTING, SCHEDULER, STENCIL, SMS_MESSAGE, EMAIL_MESSAGE, APP_CONFIG = Value
 }

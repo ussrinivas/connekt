@@ -74,6 +74,7 @@ object BusyBeesBoot extends BaseApp {
       DaoFactory.initCouchbaseCluster(couchbaseCf)
 
       DaoFactory.initReportingDao(DaoFactory.getCouchbaseBucket("StatsReporting"))
+      DaoFactory.initExpenseReportingDao(DaoFactory.getCouchbaseBucket("ExpenseReporting"))
 
       ServiceFactory.initStorageService(DaoFactory.getKeyChainDao)
       ServiceFactory.initProjectConfigService(DaoFactory.getUserProjectConfigDao)
@@ -95,6 +96,7 @@ object BusyBeesBoot extends BaseApp {
 
       ServiceFactory.initStatsReportingService(DaoFactory.getStatsReportingDao)
       ServiceFactory.initStencilService(DaoFactory.getStencilDao)
+      ServiceFactory.initExpenseReportingService(DaoFactory.getExpenseReportingDao)
 
       DeviceDetailsService.bootstrap()
 
