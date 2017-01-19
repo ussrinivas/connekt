@@ -32,7 +32,7 @@ class ChooseProvider[T <: ProviderEnvelope](channel: Channel) extends MapFlowSta
   override val map: (T) => List[T] = payload => {
     try {
       val selectedProvider = pickProvider(payload.provider.toList, channel, payload.appName)
-      payload.provider += selectedProvider
+      payload.provider.enqueue(selectedProvider)
       List(payload)
     } catch {
       case e: Throwable =>

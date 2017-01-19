@@ -23,7 +23,7 @@ import com.flipkart.connekt.busybees.streams.flows.formaters._
 import com.flipkart.connekt.busybees.streams.flows.profilers.TimedFlowOps._
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers._
 import com.flipkart.connekt.busybees.streams.flows.transformers.{SmsProviderPrepare, SmsProviderResponseFormatter}
-import com.flipkart.connekt.busybees.streams.flows.{ChooseProvider, FlowMetrics, RenderFlow, TrackingFlow}
+import com.flipkart.connekt.busybees.streams.flows._
 import com.flipkart.connekt.busybees.streams.sources.KafkaSource
 import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.entities.Channel
@@ -82,7 +82,7 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
 
     val render = b.add(new RenderFlow().flow)
     val trackSmsParallelism = ConnektConfig.getInt("topology.sms.tracking.parallelism").get
-    val tracking = b.add(new TrackingFlow(trackSmsParallelism)(ioDispatcher).flow)
+    val tracking = b.add(new SMSTrackingFlow(trackSmsParallelism)(ioDispatcher).flow)
     val fmtSMSParallelism = ConnektConfig.getInt("topology.sms.formatter.parallelism").get
     val smsFilter = b.add(Flow[ConnektRequest].filter(_.channelInfo.isInstanceOf[SmsRequestInfo]))
     val fmtSMS = b.add(new SmsChannelFormatter(fmtSMSParallelism)(ioDispatcher).flow)

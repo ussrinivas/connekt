@@ -18,7 +18,7 @@ import com.flipkart.connekt.busybees.models.EmailRequestTracker
 import com.flipkart.connekt.busybees.streams.flows.formaters.EmailChannelFormatter
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers.EmailResponseHandler
 import com.flipkart.connekt.busybees.streams.flows.transformers.{EmailProviderPrepare, EmailProviderResponseFormatter}
-import com.flipkart.connekt.busybees.streams.flows.{ChooseProvider, RenderFlow, TrackingFlow}
+import com.flipkart.connekt.busybees.streams.flows.{ChooseProvider, EmailTrackingFlow, RenderFlow, TrackingFlow}
 import com.flipkart.connekt.busybees.tests.streams.TopologyUTSpec
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.iomodels.ConnektRequest
@@ -58,10 +58,9 @@ class EmailProviderTopologyTest extends TopologyUTSpec {
                       |}
                    """.stripMargin.getObj[ConnektRequest]
 
-
     val result = Source.single(cRequest)
       .via(new RenderFlow().flow)
-      .via(new TrackingFlow(4).flow)
+      .via(new EmailTrackingFlow(4).flow)
       .via(new EmailChannelFormatter(64)(system.dispatchers.lookup("akka.actor.io-dispatcher")).flow)
       .via(new ChooseProvider(Channel.EMAIL).flow)
       .via(new EmailProviderPrepare().flow)

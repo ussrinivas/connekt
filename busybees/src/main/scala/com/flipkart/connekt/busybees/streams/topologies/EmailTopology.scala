@@ -23,7 +23,7 @@ import com.flipkart.connekt.busybees.streams.flows.formaters._
 import com.flipkart.connekt.busybees.streams.flows.profilers.TimedFlowOps._
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers._
 import com.flipkart.connekt.busybees.streams.flows.transformers.{EmailProviderPrepare, EmailProviderResponseFormatter}
-import com.flipkart.connekt.busybees.streams.flows.{ChooseProvider, FlowMetrics, RenderFlow, TrackingFlow}
+import com.flipkart.connekt.busybees.streams.flows._
 import com.flipkart.connekt.busybees.streams.sources.KafkaSource
 import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.entities.Channel
@@ -95,7 +95,7 @@ class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCa
 
     val render = b.add(new RenderFlow().flow)
     val trackEmailParallelism = ConnektConfig.getInt("topology.email.tracking.parallelism").get
-    val tracking = b.add(new TrackingFlow(trackEmailParallelism)(ioDispatcher).flow)
+    val tracking = b.add(new EmailTrackingFlow(trackEmailParallelism)(ioDispatcher).flow)
     val fmtEmailParallelism = ConnektConfig.getInt("topology.email.formatter.parallelism").get
     val fmtEmail = b.add(new EmailChannelFormatter(fmtEmailParallelism)(ioDispatcher).flow)
     val emailPayloadMerge = b.add(MergePreferred[EmailPayloadEnvelope](1))

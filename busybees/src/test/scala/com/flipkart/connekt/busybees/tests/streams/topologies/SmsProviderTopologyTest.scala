@@ -18,7 +18,7 @@ import com.flipkart.connekt.busybees.models.SmsRequestTracker
 import com.flipkart.connekt.busybees.streams.flows.formaters.SmsChannelFormatter
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers.SmsResponseHandler
 import com.flipkart.connekt.busybees.streams.flows.transformers.{SmsProviderPrepare, SmsProviderResponseFormatter}
-import com.flipkart.connekt.busybees.streams.flows.{ChooseProvider, RenderFlow, TrackingFlow}
+import com.flipkart.connekt.busybees.streams.flows.{ChooseProvider, RenderFlow, SMSTrackingFlow, TrackingFlow}
 import com.flipkart.connekt.busybees.tests.streams.TopologyUTSpec
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.iomodels.ConnektRequest
@@ -58,7 +58,7 @@ class SmsProviderTopologyTest extends TopologyUTSpec {
 
     val result = Source.single(cRequest)
       .via(new RenderFlow().flow)
-      .via(new TrackingFlow(4).flow)
+      .via(new SMSTrackingFlow(4).flow)
       .via(new SmsChannelFormatter(64)(system.dispatchers.lookup("akka.actor.io-dispatcher")).flow)
       .via(new ChooseProvider(Channel.SMS).flow)
       .via(new SmsProviderPrepare().flow)
