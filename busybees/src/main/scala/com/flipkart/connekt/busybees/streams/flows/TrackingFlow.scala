@@ -42,10 +42,11 @@ class TrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecutor) exte
       val transformer: TURLTransformer = Class.forName(transformerClassName).newInstance().asInstanceOf[TURLTransformer]
 
       val appDomain = projectConfigService.getProjectConfiguration(input.appName, "tracking-domain").get.map(_.value).getOrElse(defaultTrackingDomain)
+      val trackingEnabled = projectConfigService.getProjectConfiguration(input.appName, s"tracking-enabled").get.map(_.value).getOrElse("true").toBoolean
 
       //identify payload and rewrite them with tracking.
       val updatedChannelData = input.channelData match {
-        case cData: EmailRequestData =>
+        case cData: EmailRequestData if trackingEnabled =>
 
           /**
             * I don't know how to individually track each recipient. Assuming simple email,
@@ -67,7 +68,7 @@ class TrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecutor) exte
             attachments = cData.attachments
           )
 
-        case sData: SmsRequestData =>
+        case sData: SmsRequestData if trackingEnabled =>
           val destination = input.channelInfo.asInstanceOf[SmsRequestInfo].receivers.head
           val trackerOptions = TrackerOptions(domain = appDomain,
             channel = Channel.SMS,
@@ -79,11 +80,10 @@ class TrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecutor) exte
 
           SmsRequestData(body = TrackingService.trackText(sData.body, trackerOptions, transformer))
 
-        case unsupportedChannel =>
-          ConnektLogger(LogFile.PROCESSORS).trace("TrackingFlow non-supported channel skipping for messageId: {}", supplier(input.id))
+        case _ =>
+          ConnektLogger(LogFile.PROCESSORS).trace("TrackingFlow non-supported channel or tracking-disabled skipping for messageId: {}", supplier(input.id))
           input.channelData
       }
-
       List(input.copy(channelData = updatedChannelData))
     } catch {
       case e: Throwable =>
