@@ -12,7 +12,7 @@
  */
 package com.flipkart.connekt.busybees.streams.flows.transformers
 
-import akka.http.scaladsl.model.HttpResponse
+import akka.http.scaladsl.model.{ContentTypes, HttpResponse}
 import akka.stream.Materializer
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.flipkart.connekt.busybees.models.{SmsRequestTracker, SmsResponse}
@@ -23,7 +23,7 @@ import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.StringUtils._
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 
 class SmsProviderResponseFormatter(implicit m: Materializer, ec: ExecutionContext) extends MapAsyncFlowStage[(Try[HttpResponse], SmsRequestTracker), (Try[SmsResponse], SmsRequestTracker)](96) with Instrumented {
@@ -37,9 +37,10 @@ class SmsProviderResponseFormatter(implicit m: Materializer, ec: ExecutionContex
     val smsResponse = responseTrackerPair._1.flatMap(hR => Try_ {
 
       val stringBody = hR.entity.getString
-      val body = Try(stringBody.getObj[ObjectNode]) match {
-        case Success(b) => b
-        case Failure(_) => stringBody
+      val body = if (hR.entity.contentType == ContentTypes.`application/json`) {
+        stringBody.getObj[ObjectNode]
+      } else {
+        stringBody
       }
 
       val result = stencilService.materialize(providerResponseHandlerStencil, Map("statusCode" -> hR._1.intValue(),
