@@ -84,7 +84,6 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
     val trackSmsParallelism = ConnektConfig.getInt("topology.sms.tracking.parallelism").get
     val tracking = b.add(new TrackingFlow(trackSmsParallelism)(ioDispatcher).flow)
     val fmtSMSParallelism = ConnektConfig.getInt("topology.sms.formatter.parallelism").get
-    val smsFilter = b.add(Flow[ConnektRequest].filter(_.channelInfo.isInstanceOf[SmsRequestInfo]))
     val fmtSMS = b.add(new SmsChannelFormatter(fmtSMSParallelism)(ioDispatcher).flow)
     val smsPayloadMerge = b.add(MergePreferred[SmsPayloadEnvelope](1))
     val smsRetryMapper = b.add(Flow[SmsRequestTracker].map(_.request) /*.buffer(10, OverflowStrategy.backpressure)*/)
@@ -99,7 +98,7 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
       case Left(_) => 1
     }))
 
-    render.out ~> tracking ~> smsFilter ~> fmtSMS ~> smsPayloadMerge
+    render.out ~> tracking ~> fmtSMS ~> smsPayloadMerge
     smsPayloadMerge.out ~> chooseProvider ~> smsPrepare ~> smsHttpPoolFlow ~> smsResponseFormatter ~> smsResponseHandler ~> smsRetryPartition.in
     smsPayloadMerge.preferred <~ smsRetryMapper <~ smsRetryPartition.out(1).map(_.left.get).outlet
 
