@@ -18,13 +18,14 @@ import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl._
 import com.flipkart.connekt.busybees.models.SmsRequestTracker
 import com.flipkart.connekt.busybees.streams.ConnektTopology
+import com.flipkart.connekt.busybees.streams.flows._
 import com.flipkart.connekt.busybees.streams.flows.dispatchers._
 import com.flipkart.connekt.busybees.streams.flows.formaters._
 import com.flipkart.connekt.busybees.streams.flows.profilers.TimedFlowOps._
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers._
 import com.flipkart.connekt.busybees.streams.flows.transformers.{SmsProviderPrepare, SmsProviderResponseFormatter}
-import com.flipkart.connekt.busybees.streams.flows._
 import com.flipkart.connekt.busybees.streams.sources.KafkaSource
+import com.flipkart.connekt.busybees.streams.topologies.SmsTopology._
 import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
@@ -35,7 +36,7 @@ import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.typesafe.config.Config
 
-import scala.concurrent.Promise
+import scala.concurrent.{ExecutionContextExecutor, Promise}
 
 class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallbackEvent] with SyncDelegate {
 
@@ -69,15 +70,45 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
 
   }
 
-  def smsTransformFlow = Flow.fromGraph(GraphDSL.create() { implicit b =>
+  override def sink: Sink[SmsCallbackEvent, NotUsed] = Sink.fromGraph(GraphDSL.create() { implicit b =>
+
+    val metrics = b.add(new FlowMetrics[SmsCallbackEvent](Channel.SMS).flow)
+    metrics ~> Sink.ignore
+
+    SinkShape(metrics.in)
+  })
+
+  override def shutdown() = {
+    /* terminate in top-down approach from all Source(s) */
+    sourceSwitches.foreach(_.success("SmsTopology signal source shutdown"))
+  }
+
+  override def onUpdate(_type: SyncType, args: List[AnyRef]): Any = {
+    _type match {
+      case SyncType.CLIENT_QUEUE_CREATE => Try_ {
+        ConnektLogger(LogFile.SERVICE).info(s"SmsTopology Restart for CLIENT_QUEUE_CREATE Client: ${args.head}, New Topic: ${args.last} ")
+        restart
+      }
+      case _ =>
+    }
+  }
+
+  override def transformers: Map[CheckPointGroup, Flow[ConnektRequest, SmsCallbackEvent, NotUsed]] = {
+    Map(Channel.SMS.toString -> smsTransformFlow(ioMat,ioDispatcher))
+  }
+}
+
+object SmsTopology {
+
+  def smsTransformFlow(implicit m: Materializer, ioDispatcher:  ExecutionContextExecutor): Flow[ConnektRequest, SmsCallbackEvent, NotUsed] = Flow.fromGraph(GraphDSL.create() { implicit b  =>
 
     /**
       * Sms Topology
       *
-      *                      +---------------+     +-------------------+        +----------+     +-----------------+      +-----------------------+     +---------------------+     +----------------+     +----------------------------+     +---------------------+     +-------------------------+      +--..
-      *  ConnektRequest ---> | SmsFilter     | --> |SmsChannelFormatter| |----> |  Merger  | --> | ChooseProvider  |  --> | SeparateIntlReceivers | --> |  SmsProviderPrepare | --> |  SmsDispatcher | --> |SmsProviderResponseFormatter| --> |  SmsResponseHandler | --> |Response / Error Splitter| -+-> |Merger
-      *                      +---------------+     +-------------------+ |      +----------+     +-----------------+      +-----------------------+     +---------------------+     +----------------+     +----------------------------+     +---------------------+     +-------------------------+  |   +-----
-      *                                                                  +---------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------+
+      *                     +-------------------+        +----------+     +-----------------+      +-----------------------+     +---------------------+     +----------------+     +----------------------------+     +---------------------+     +-------------------------+      +--..
+      *  ConnektRequest --> |SmsChannelFormatter| |----> |  Merger  | --> | ChooseProvider  |  --> | SeparateIntlReceivers | --> |  SmsProviderPrepare | --> |  SmsDispatcher | --> |SmsProviderResponseFormatter| --> |  SmsResponseHandler | --> |Response / Error Splitter| -+-> |Merger
+      *                     +-------------------+ |      +----------+     +-----------------+      +-----------------------+     +---------------------+     +----------------+     +----------------------------+     +---------------------+     +-------------------------+  |   +-----
+      *                                           +-------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------------------------------------------------------+
       */
 
     val render = b.add(new RenderFlow().flow)
@@ -106,30 +137,5 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
   })
 
 
-  override def sink: Sink[SmsCallbackEvent, NotUsed] = Sink.fromGraph(GraphDSL.create() { implicit b =>
 
-    val metrics = b.add(new FlowMetrics[SmsCallbackEvent](Channel.SMS).flow)
-    metrics ~> Sink.ignore
-
-    SinkShape(metrics.in)
-  })
-
-  override def shutdown() = {
-    /* terminate in top-down approach from all Source(s) */
-    sourceSwitches.foreach(_.success("SmsTopology signal source shutdown"))
-  }
-
-  override def onUpdate(_type: SyncType, args: List[AnyRef]): Any = {
-    _type match {
-      case SyncType.CLIENT_QUEUE_CREATE => Try_ {
-        ConnektLogger(LogFile.SERVICE).info(s"SmsTopology Restart for CLIENT_QUEUE_CREATE Client: ${args.head}, New Topic: ${args.last} ")
-        restart
-      }
-      case _ =>
-    }
-  }
-
-  override def transformers: Map[CheckPointGroup, Flow[ConnektRequest, SmsCallbackEvent, NotUsed]] = {
-    Map(Channel.SMS.toString -> smsTransformFlow)
-  }
 }

@@ -18,13 +18,14 @@ import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl._
 import com.flipkart.connekt.busybees.models.EmailRequestTracker
 import com.flipkart.connekt.busybees.streams.ConnektTopology
+import com.flipkart.connekt.busybees.streams.flows._
 import com.flipkart.connekt.busybees.streams.flows.dispatchers._
 import com.flipkart.connekt.busybees.streams.flows.formaters._
 import com.flipkart.connekt.busybees.streams.flows.profilers.TimedFlowOps._
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers._
 import com.flipkart.connekt.busybees.streams.flows.transformers.{EmailProviderPrepare, EmailProviderResponseFormatter}
-import com.flipkart.connekt.busybees.streams.flows._
 import com.flipkart.connekt.busybees.streams.sources.KafkaSource
+import com.flipkart.connekt.busybees.streams.topologies.EmailTopology._
 import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
@@ -35,7 +36,7 @@ import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.typesafe.config.Config
 
-import scala.concurrent.Promise
+import scala.concurrent.{ExecutionContextExecutor, Promise}
 
 class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCallbackEvent] with SyncDelegate {
 
@@ -91,7 +92,15 @@ class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCa
     sourceSwitches.foreach(_.success("EmailTopology signal source shutdown"))
   }
 
-  private def emailHTTPTransformFlow = Flow.fromGraph(GraphDSL.create() { implicit b =>
+
+  override def transformers: Map[CheckPointGroup, Flow[ConnektRequest, EmailCallbackEvent, NotUsed]] = {
+    Map(Channel.EMAIL.toString -> emailHTTPTransformFlow(ioMat,ioDispatcher))
+  }
+}
+
+object EmailTopology {
+
+  def emailHTTPTransformFlow(implicit ioMat:ActorMaterializer, ioDispatcher:  ExecutionContextExecutor): Flow[ConnektRequest, EmailCallbackEvent, NotUsed] = Flow.fromGraph(GraphDSL.create() { implicit b =>
 
     val render = b.add(new RenderFlow().flow)
     val trackEmailParallelism = ConnektConfig.getInt("topology.email.tracking.parallelism").get
@@ -103,7 +112,7 @@ class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCa
     val providerPicker = b.add(new ChooseProvider[EmailPayloadEnvelope](Channel.EMAIL).flow)
     val providerHttpPrepare = b.add(new EmailProviderPrepare().flow)
     val emailPoolFlow = b.add(HttpDispatcher.emailPoolClientFlow.timedAs("emailRTT"))
-    val providerResponseFormatter = b.add(new EmailProviderResponseFormatter()(ioMat, ec).flow)
+    val providerResponseFormatter = b.add(new EmailProviderResponseFormatter()(ioMat,ioDispatcher).flow)
     val emailResponseHandle = b.add(new EmailResponseHandler().flow)
 
     val emailRetryPartition = b.add(new Partition[Either[EmailRequestTracker, EmailCallbackEvent]](2, {
@@ -118,7 +127,5 @@ class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCa
     FlowShape(render.in, emailRetryPartition.out(0).map(_.right.get).outlet)
   })
 
-  override def transformers: Map[CheckPointGroup, Flow[ConnektRequest, EmailCallbackEvent, NotUsed]] = {
-    Map(Channel.EMAIL.toString -> emailHTTPTransformFlow)
-  }
+
 }
