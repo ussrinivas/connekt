@@ -27,7 +27,7 @@ import scala.concurrent.duration._
 
 class EmailChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecutor) extends NIOFlow[ConnektRequest, EmailPayloadEnvelope](parallelism)(ec) {
 
-  lazy val projectConfigService = ServiceFactory.getUserProjectConfigService
+  private lazy val projectConfigService = ServiceFactory.getUserProjectConfigService
 
   override def map: ConnektRequest => List[EmailPayloadEnvelope] = message => {
 
@@ -43,17 +43,14 @@ class EmailChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecu
       val bcc = Option(emailInfo.bcc).getOrElse(Set.empty)
 
       if (emailInfo.to.nonEmpty && ttl > 0) {
+        val fromAddress = Option(emailInfo.from).getOrElse(projectConfigService.getProjectConfiguration(emailInfo.appName,"default-from-email").get.get.value.getObj[EmailAddress])
         val payload = EmailPayload(
           to = emailInfo.to,
           cc = cc,
           bcc = bcc,
           data = message.channelData.asInstanceOf[EmailRequestData],
-          from = {
-            Option(emailInfo.from).getOrElse(projectConfigService.getProjectConfiguration(emailInfo.appName,"default-from-email").get.get.value.getObj[EmailAddress])
-          },
-          replyTo = {
-            Option(emailInfo.replyTo).getOrElse(projectConfigService.getProjectConfiguration(emailInfo.appName,"default-replyTo-email").get.get.value.getObj[EmailAddress])
-          }
+          from = fromAddress,
+          replyTo =  Option(emailInfo.replyTo).getOrElse(fromAddress)
         )
         List(EmailPayloadEnvelope( messageId = message.id, appName = emailInfo.appName, contextId = message.contextId.orEmpty, clientId = message.clientId, payload = payload, meta = message.meta) )
       } else if (emailInfo.to.nonEmpty) {
