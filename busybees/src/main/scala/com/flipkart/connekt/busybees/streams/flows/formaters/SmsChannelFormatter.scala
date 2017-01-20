@@ -20,6 +20,7 @@ import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.iomodels._
+import com.flipkart.connekt.commons.services.ExclusionService
 import com.flipkart.connekt.commons.utils.SmsUtil
 import com.flipkart.connekt.commons.utils.StringUtils._
 
@@ -49,8 +50,19 @@ class SmsChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecuto
 
       if (ttl > 0) {
         if (smsInfo.receivers.nonEmpty && rD.body.trim.nonEmpty) {
-          val payload = SmsPayload(smsInfo.receivers, rD, senderMask, ttl.toString)
-          List(SmsPayloadEnvelope(message.id, message.clientId, message.stencilId.orEmpty, smsInfo.appName, message.contextId.orEmpty, payload, message.meta ++ smsMeta.asMap))
+
+          val (filteredNumbers, excludedNumbers) = smsInfo.receivers.partition { r => ExclusionService.lookup(message.channel, message.appName, r).getOrElse(false) }
+          excludedNumbers.map(ex => SmsCallbackEvent(message.id, InternalStatus.ExcludedRequest, ex, message.clientId, smsInfo.appName, Channel.SMS, message.contextId.orEmpty)).persist
+          ServiceFactory.getReportingService.recordChannelStatsDelta(message.clientId, message.contextId, message.meta.get("stencilId").map(_.toString), Channel.SMS, message.appName, InternalStatus.ExcludedRequest, excludedNumbers.size)
+
+          val payload = SmsPayload(filteredNumbers, rD, senderMask, ttl.toString)
+
+          if (payload.receivers.nonEmpty)
+            List(SmsPayloadEnvelope(message.id, message.clientId, message.stencilId.orEmpty, smsInfo.appName, message.contextId.orEmpty, payload, message.meta ++ smsMeta.asMap))
+          else {
+            ConnektLogger(LogFile.PROCESSORS).warn(s"SMSChannelFormatter dropping message with no valid receiver : ${message.id}")
+            List.empty
+          }
         } else {
           ConnektLogger(LogFile.PROCESSORS).warn(s"SMSChannelFormatter dropping message with empty body or no receiver : ${message.id}")
           smsInfo.receivers.map(s => SmsCallbackEvent(message.id, InternalStatus.InvalidRequest, s, message.clientId, smsInfo.appName, Channel.SMS, message.contextId.orEmpty)).persist

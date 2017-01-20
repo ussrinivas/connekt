@@ -37,6 +37,7 @@ object DaoFactory {
     hTableFactory = new HTableFactory(hConnectionConfig, connectionProvider)
 
     daoMap += DaoType.DEVICE_DETAILS -> DeviceDetailsDao("connekt-registry", hTableFactory)
+    daoMap += DaoType.EXCLUSION_DETAILS -> ExclusionDao("fk-connekt-exclusions", hTableFactory)
     daoMap += DaoType.PN_REQUEST_INFO -> PNRequestDao(tableName = "fk-connekt-pn-info", hTableFactory = hTableFactory)
     daoMap += DaoType.SMS_REQUEST_INFO -> SmsRequestDao(tableName = "fk-connekt-sms-info", hTableFactory = hTableFactory)
     daoMap += DaoType.EMAIL_REQUEST_INFO -> new EmailRequestDao(tableName = "fk-connekt-email-info", hTableFactory = hTableFactory)
@@ -97,6 +98,8 @@ object DaoFactory {
 
   def getDeviceDetailsDao: DeviceDetailsDao = daoMap(DaoType.DEVICE_DETAILS).asInstanceOf[DeviceDetailsDao]
 
+  def getExclusionDao: ExclusionDao = daoMap(DaoType.EXCLUSION_DETAILS).asInstanceOf[ExclusionDao]
+
   def getPNRequestDao: PNRequestDao = daoMap(DaoType.PN_REQUEST_INFO).asInstanceOf[PNRequestDao]
 
   def getSmsRequestDao: SmsRequestDao = daoMap(DaoType.SMS_REQUEST_INFO).asInstanceOf[SmsRequestDao]
@@ -129,6 +132,7 @@ object DaoFactory {
 object DaoType extends Enumeration {
   val DEVICE_DETAILS,
   REQUEST_META,
+  EXCLUSION_DETAILS,
   PN_REQUEST_INFO,
   EMAIL_REQUEST_INFO,
   SMS_REQUEST_INFO,
