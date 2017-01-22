@@ -37,11 +37,11 @@ class SuppressionsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                   (exclusionType: ExclusionType) =>
                     path(Segment) {
                       (destination: String) =>
-                        (put| get) {
+                        (put | get) {
                           extractRequestContext { ctx =>
                             parameterMap { urlParams =>
                               val stringBody = ctx.request.entity.getString
-                              val payload = if(stringBody.isEmpty)  urlParams.getJson else stringBody
+                              val payload = if (stringBody.isEmpty) urlParams.getJson else stringBody
                               val eD = ExclusionDetails(ExclusionType.withName(exclusionType), metaInfo = payload)
                               ExclusionService.add(ExclusionEntity(channel, appName.toLowerCase, destination.trim, eD)).get
                               complete(GenericResponse(StatusCodes.Created.intValue, null, Response(s"Suppression request received for destination : $destination", null)))
@@ -52,8 +52,10 @@ class SuppressionsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                           complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Suppression remove request received for destination : $destination", null)))
                         }
                     } ~ pathEnd {
-                      val results = ExclusionService.getAll(channel, appName.toLowerCase, exclusionType).get
-                      complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Get Suppression list for channel `$channel`, appname `$appName` and exclusionType `$exclusionType`", results)))
+                      get {
+                        val results = ExclusionService.getAll(channel, appName.toLowerCase, exclusionType).get
+                        complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Get Suppression list for channel `$channel`, appname `$appName` and exclusionType `$exclusionType`", results)))
+                      }
                     }
                 } ~ path(Segment) {
                   (destination: String) =>
