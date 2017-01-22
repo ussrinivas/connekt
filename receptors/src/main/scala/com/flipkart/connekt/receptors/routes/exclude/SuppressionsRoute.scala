@@ -47,9 +47,6 @@ class SuppressionsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                               complete(GenericResponse(StatusCodes.Created.intValue, null, Response(s"Suppression request received for destination : $destination", null)))
                             }
                           }
-                        } ~ delete {
-                          ExclusionService.delete(channel, appName.toLowerCase, destination.trim).get
-                          complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Suppression remove request received for destination : $destination", null)))
                         }
                     } ~ pathEnd {
                       get {

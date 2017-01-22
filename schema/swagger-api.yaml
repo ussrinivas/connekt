@@ -1074,25 +1074,10 @@ paths:
           description: Unexpected error
           schema:
             $ref: '#/definitions/Error'
-    delete:
-      summary: Delete destination from suppression list
-      description: |
-       Delete destination from suppression list
-      tags:
-        - Suppressions
-      parameters:
-        - $ref: '#/parameters/api-key'
-        - $ref: '#/parameters/channel'
-        - $ref: '#/parameters/appName'
-        - $ref: '#/parameters/suppressionType'
-        - $ref: '#/parameters/destination'
-      responses:
-        '200':
-          description: Device deleted succesfully
   /suppressions/{channel}/{appName}/{suppressionType}:
     get:
       tags:
-      - "Suppressions"
+      -  "Suppressions"
       operationId: "getAllDestinationInSuppressionType"
       summary: "Fetch all destinations in suppression type"
       description: "Fetch all destinations in suppression type for channel and appname"
@@ -1123,6 +1108,20 @@ paths:
       responses:
         200:
           description: "Suppression get request received for destination"
+    delete:
+      summary: Delete destination from suppression list
+      description: |
+       Delete destination from suppression list
+      tags:
+        - Suppressions
+      parameters:
+        - $ref: '#/parameters/api-key'
+        - $ref: '#/parameters/channel'
+        - $ref: '#/parameters/appName'
+        - $ref: '#/parameters/destination'
+      responses:
+        '200':
+          description: Device deleted succesfully
 
 definitions:
   DeviceDetails:
