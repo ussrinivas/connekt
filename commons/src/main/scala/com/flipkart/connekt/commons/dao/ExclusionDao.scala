@@ -105,7 +105,7 @@ class ExclusionDao(tableName: String, hTableFactory: THTableFactory) extends Dao
       val reqProps: Option[HbaseDao.ColumnData] = rowData.get(columnFamily)
       val eD = reqProps.map(fields => {
         ExclusionDetails(
-          exclusionType = ExclusionType.withName(fields.get("exclusionType").map(v => v.getString).orNull),
+          exclusionType = fields.get("exclusionType").map(v => v.getString).map(ExclusionType.withName).orNull,
           metaInfo = fields.get("metaInfo").map(v => v.getString).orNull
         )
       })
