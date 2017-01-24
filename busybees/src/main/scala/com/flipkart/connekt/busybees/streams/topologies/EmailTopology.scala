@@ -71,7 +71,7 @@ class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCa
 
   override def sources: Map[CheckPointGroup, Source[ConnektRequest, NotUsed]] = {
     List(Channel.EMAIL).flatMap {value =>
-      ServiceFactory.getEmailMessageService.getTopicNames(Channel.EMAIL, None).get match {
+      ServiceFactory.getMessageService(Channel.EMAIL).getTopicNames(Channel.EMAIL, None).get match {
         case platformTopics if platformTopics.nonEmpty => Option(value.toString -> createMergedSource(value, platformTopics))
         case _ => None
       }

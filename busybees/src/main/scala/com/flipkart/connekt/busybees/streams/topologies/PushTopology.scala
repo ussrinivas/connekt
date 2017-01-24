@@ -61,7 +61,7 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
 
   override def sources: Map[CheckPointGroup, Source[ConnektRequest, NotUsed]] = {
     List(MobilePlatform.ANDROID, MobilePlatform.IOS, MobilePlatform.WINDOWS, MobilePlatform.OPENWEB).flatMap {platform =>
-      ServiceFactory.getPNMessageService.getTopicNames(Channel.PUSH, Option(platform)).get match {
+      ServiceFactory.getMessageService(Channel.PUSH).getTopicNames(Channel.PUSH, Option(platform)).get match {
         case platformTopics if platformTopics.nonEmpty => Option(platform.toString -> createMergedSource(platform, platformTopics))
         case _ => None
       }

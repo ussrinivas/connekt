@@ -62,7 +62,7 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
   override def sources: Map[CheckPointGroup, Source[ConnektRequest, NotUsed]] = {
 
     List(Channel.SMS).flatMap {value =>
-      ServiceFactory.getSMSMessageService.getTopicNames(Channel.SMS, None).get match {
+      ServiceFactory.getMessageService(Channel.SMS).getTopicNames(Channel.SMS, None).get match {
         case platformTopics if platformTopics.nonEmpty => Option(value.toString -> createMergedSource(value, platformTopics))
         case _ => None
       }
