@@ -13,6 +13,8 @@
 package com.flipkart.connekt.commons.factories
 
 import com.flipkart.connekt.commons.dao._
+import com.flipkart.connekt.commons.entities.Channel
+import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.helpers.KafkaProducerHelper
 import com.flipkart.connekt.commons.services.{KeyChainService, _}
 import com.typesafe.config.Config
@@ -67,16 +69,18 @@ object ServiceFactory {
     instance.init()
     serviceCache += ServiceType.EXPENSES_REPORTING -> instance
   }
+  
+  def getMessageService(channel: Channel): TMessageService = {
+    channel match {
+      case Channel.PUSH => serviceCache(ServiceType.PN_MESSAGE).asInstanceOf[TMessageService]
+      case Channel.EMAIL => serviceCache(ServiceType.EMAIL_MESSAGE).asInstanceOf[TMessageService]
+      case Channel.SMS => serviceCache(ServiceType.SMS_MESSAGE).asInstanceOf[TMessageService]
+    }
+  }
 
   def initStencilService(dao: TStencilDao) = serviceCache += ServiceType.STENCIL -> new StencilService(dao)
 
   def getSchedulerService = serviceCache(ServiceType.SCHEDULER).asInstanceOf[SchedulerService]
-
-  def getPNMessageService = serviceCache(ServiceType.PN_MESSAGE).asInstanceOf[TMessageService]
-
-  def getEmailMessageService = serviceCache(ServiceType.EMAIL_MESSAGE).asInstanceOf[TMessageService]
-
-  def getSMSMessageService = serviceCache(ServiceType.SMS_MESSAGE).asInstanceOf[TMessageService]
 
   def getCallbackService = serviceCache(ServiceType.CALLBACK).asInstanceOf[TCallbackService]
 

@@ -32,13 +32,8 @@ class ChooseProvider[T <: ProviderEnvelope](channel: Channel) extends MapFlowSta
   override val map: (T) => List[T] = payload => {
     try {
       val selectedProvider = pickProvider(payload.provider.toList, channel, payload.appName)
-      val out = payload match {
-        case email: EmailPayloadEnvelope =>
-          email.copy(provider = email.provider :+ selectedProvider)
-        case sms: SmsPayloadEnvelope =>
-          sms.copy(provider = sms.provider :+ selectedProvider)
-      }
-      List(out.asInstanceOf[T])
+      payload.provider.enqueue(selectedProvider)
+      List(payload)
     } catch {
       case e: Throwable =>
         ConnektLogger(LogFile.PROCESSORS).error(s"ChooseProvider error", e)

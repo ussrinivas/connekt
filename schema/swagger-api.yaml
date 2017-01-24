@@ -24,6 +24,9 @@ tags:
   description: "Debugger"
 - name: "Stencil"
   description: "Stencil"
+- name: "Suppression"
+  description: "manage adding, removing, viewing of `destination` in suppression list"
+
 produces:
   - application/json
 parameters:
@@ -35,6 +38,30 @@ parameters:
     type: string
     format: string
     default: "sandbox-key-01"
+  channel:
+    name: channel
+    in: path
+    description: Channel
+    required: true
+    type: string
+    format: string
+    default: "sms"
+  destination:
+    name: destination
+    in: path
+    description: destination
+    required: true
+    type: string
+    format: string
+    default: "+917760947384"
+  suppressionType:
+    name: suppressionType
+    in: path
+    description: suppressionType
+    required: true
+    type: string
+    format: string
+    default: "blacklist"
   secure-code:
     name: x-secure-code
     in: header
@@ -129,7 +156,7 @@ parameters:
     required: true
     type: string
     format: string
-  
+
 paths:
   /registration/push/{MPlatform}/{appName}/{deviceId}:
     put:
@@ -155,6 +182,31 @@ paths:
           description:  Device details created
         '200':
           description: Device details update
+        default:
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Error'
+    patch:
+      tags:
+        - "Registration"
+      summary: Update some fields of registered device
+      description: |
+        Update some fields of registered device like userid , token.
+      parameters:
+        - $ref: '#/parameters/api-key'
+        - $ref: '#/parameters/secure-code'
+        - $ref: '#/parameters/MPlatform'
+        - $ref: '#/parameters/appName'
+        - $ref: '#/parameters/deviceId'
+        - name: deviceData
+          in: body
+          description: deviceData Defination.
+          required: true
+          schema:
+            $ref: '#/definitions/DeviceDetails'
+      responses:
+        '200':
+          description:  Device details update
         default:
           description: Unexpected error
           schema:
@@ -261,7 +313,30 @@ paths:
     post:
       summary: Send Emails to User(s)
       description: |
-        Send a new push notification all devices of given user and platform.
+        Send emails to multiple addresses.
+      parameters:
+        - $ref: '#/parameters/api-key'
+        - $ref: '#/parameters/appName'
+        - name: ConnektRequest
+          in: body
+          description: ConnektRequest.
+          required: true
+          schema:
+            $ref: '#/definitions/ConnektRequest'
+      tags:
+        - "Send"
+      responses:
+        '202':
+          description:  Request Accepted
+        default:
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Error'
+  /send/sms/{appName}:
+    post:
+      summary: Send Sms to User(s)
+      description: |
+        Send sms to multiple numbers.
       parameters:
         - $ref: '#/parameters/api-key'
         - $ref: '#/parameters/appName'
@@ -330,6 +405,25 @@ paths:
       - "Callback"
       summary: "email provider callback events of a connekt request"
       description: "email callback events of a connekt request. Dynamic payload is accepted in this method, which are transformed via providerId webhook stencil."
+      produces:
+      - "application/json"
+      parameters:
+        - $ref: '#/parameters/api-key'
+        - $ref: '#/parameters/appName'
+        - name: providerId
+          in: path
+          description: providerName.
+          required: true
+          type: string
+      responses:
+        200:
+          description: "callback events accepted for messageId."
+  /sms/callback/{appName}/{providerId}:
+    post:
+      tags:
+      - "Callback"
+      summary: "sms provider callback events of a connekt request"
+      description: "sms callback events of a connekt request. Dynamic payload is accepted in this method, which are transformed via providerId webhook stencil."
       produces:
       - "application/json"
       parameters:
@@ -935,6 +1029,99 @@ paths:
           schema:
             $ref: '#/definitions/Error'
 
+  /suppressions/{channel}/{appName}/{suppressionType}/{destination}:
+    put:
+      tags:
+        - "Suppressions"
+      summary: Add destination to suppression list
+      description: |
+        Adding destination to suppression list, to restrict sending communication to destination
+      parameters:
+        - $ref: '#/parameters/api-key'
+        - $ref: '#/parameters/channel'
+        - $ref: '#/parameters/appName'
+        - $ref: '#/parameters/suppressionType'
+        - $ref: '#/parameters/destination'
+        - name: metaInfo
+          in: body
+          description: reason for adding destination to suppression list.
+          required: true
+          schema:
+            $ref: '#/definitions/Suppressions'
+      responses:
+        '201':
+          description:  Suppression request received for destination
+        default:
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Error'
+    get:
+      tags:
+        - "Suppressions"
+      summary: Add destination to suppression list
+      description: |
+        Adding destination to suppression list, to restrict sending communication to destination
+      parameters:
+        - $ref: '#/parameters/api-key'
+        - $ref: '#/parameters/channel'
+        - $ref: '#/parameters/appName'
+        - $ref: '#/parameters/suppressionType'
+        - $ref: '#/parameters/destination'
+      responses:
+        '201':
+          description:  Suppression request received for destination
+        default:
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Error'
+  /suppressions/{channel}/{appName}/{suppressionType}:
+    get:
+      tags:
+      -  "Suppressions"
+      operationId: "getAllDestinationInSuppressionType"
+      summary: "Fetch all destinations in suppression type"
+      description: "Fetch all destinations in suppression type for channel and appname"
+      produces:
+      - "application/json"
+      parameters:
+        - $ref: '#/parameters/api-key'
+        - $ref: '#/parameters/channel'
+        - $ref: '#/parameters/appName'
+        - $ref: '#/parameters/suppressionType'
+      responses:
+        200:
+          description: "Get Suppression list for channel `{channel}`, appname `{appname}` and exclusionType `{exclusionType}`"
+  /suppressions/{channel}/{appName}/{destination}:
+    get:
+      tags:
+      - "Suppressions"
+      operationId: "getAllSuppressionTypeForDestination"
+      summary: "Fetch all suppression type for destination"
+      description: "Fetch all suppression type for destination, channel and appname"
+      produces:
+      - "application/json"
+      parameters:
+        - $ref: '#/parameters/api-key'
+        - $ref: '#/parameters/channel'
+        - $ref: '#/parameters/appName'
+        - $ref: '#/parameters/destination'
+      responses:
+        200:
+          description: "Suppression get request received for destination"
+    delete:
+      summary: Delete destination from suppression list
+      description: |
+       Delete destination from suppression list
+      tags:
+        - Suppressions
+      parameters:
+        - $ref: '#/parameters/api-key'
+        - $ref: '#/parameters/channel'
+        - $ref: '#/parameters/appName'
+        - $ref: '#/parameters/destination'
+      responses:
+        '200':
+          description: Device deleted succesfully
 
 definitions:
   DeviceDetails:
@@ -1116,6 +1303,32 @@ definitions:
       components:
         type: string
         description: ensemble components
-
-
-
+  Suppressions:
+    type: object
+    properties:
+      channel:
+        type: string
+        description: Channel (EMAIL/SMS)
+        default: "SMS"
+        enum:
+          - SMS
+          - EMAIL
+      suppressionType:
+        type: string
+        description: ExclusionType (BLACKLIST/SHORT_TERM_FAILURE/LONG_TERM_FAILURE/INTERMEDIATE_TERM_FAILURE/SPAM)
+        default: "BLACKLIST"
+        enum:
+          - BLACKLIST
+          - SHORT_TERM_FAILURE
+          - LONG_TERM_FAILURE
+          - INTERMEDIATE_TERM_FAILURE
+          - SPAM
+      appName:
+        type: string
+        description: Appname
+      metaInfo:
+        type: string
+        description: metaInfo to store reason for suppression list
+      destination:
+        type: string
+        description: destination to add in exclusion type

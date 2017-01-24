@@ -15,13 +15,16 @@ package com.flipkart.connekt.busybees.tests.streams.topologies
 import akka.http.scaladsl.Http
 import akka.stream.scaladsl.{Sink, Source}
 import com.flipkart.connekt.busybees.models.EmailRequestTracker
+import com.flipkart.connekt.busybees.streams.flows.dispatchers.HttpDispatcher
 import com.flipkart.connekt.busybees.streams.flows.formaters.EmailChannelFormatter
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers.EmailResponseHandler
 import com.flipkart.connekt.busybees.streams.flows.transformers.{EmailProviderPrepare, EmailProviderResponseFormatter}
-import com.flipkart.connekt.busybees.streams.flows.{ChooseProvider, RenderFlow, TrackingFlow}
+import com.flipkart.connekt.busybees.streams.flows.{ChooseProvider, EmailTrackingFlow, RenderFlow, TrackingFlow}
+import com.flipkart.connekt.busybees.streams.topologies.EmailTopology
 import com.flipkart.connekt.busybees.tests.streams.TopologyUTSpec
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.iomodels.ConnektRequest
+import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.utils.StringUtils._
 
 import scala.concurrent.Await
@@ -31,7 +34,7 @@ class EmailProviderTopologyTest extends TopologyUTSpec {
 
   "Email Provider Topology Test" should "run" in {
 
-    lazy implicit val poolClientFlow = Http().superPool[EmailRequestTracker]()
+    HttpDispatcher.init(ConnektConfig.getConfig("react").get)
 
     val cRequest = s"""
                       |{ "id" : "123456789",
@@ -58,23 +61,18 @@ class EmailProviderTopologyTest extends TopologyUTSpec {
                       |}
                    """.stripMargin.getObj[ConnektRequest]
 
-
     val result = Source.single(cRequest)
-      .via(new RenderFlow().flow)
-      .via(new TrackingFlow(4).flow)
-      .via(new EmailChannelFormatter(64)(system.dispatchers.lookup("akka.actor.io-dispatcher")).flow)
-      .via(new ChooseProvider(Channel.EMAIL).flow)
-      .via(new EmailProviderPrepare().flow)
-      .via(poolClientFlow)
-      .via(new EmailProviderResponseFormatter().flow)
-      .via(new EmailResponseHandler().flow)
-      .runWith(Sink.foreach(println))
+      .via(EmailTopology.emailHTTPTransformFlow)
+      .runWith(Sink.head)
 
-    val response = Await.result(result, 80.seconds)
+    val response = Await.result(result, 120.seconds)
 
     println(response)
 
     assert(response != null)
   }
+
+
+
 
 }

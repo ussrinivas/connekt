@@ -46,7 +46,7 @@ class ReportsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                     meteredResource(s"reportsPushContactEvents.$appName") {
                       parameters("startTs" ? 0L) { (startTs) =>
                         val events = ServiceFactory.getCallbackService.fetchCallbackEventByContactId(s"${appName.toLowerCase}$contactId", Channel.PUSH, startTs, System.currentTimeMillis()).getOrElse(Nil)
-                        val messages = events.flatMap(e => ServiceFactory.getPNMessageService.getRequestInfo(e._1.asInstanceOf[PNCallbackEvent].messageId).getOrElse(None))
+                        val messages = events.flatMap(e => ServiceFactory.getMessageService(Channel.PUSH).getRequestInfo(e._1.asInstanceOf[PNCallbackEvent].messageId).getOrElse(None))
                         val finalTs = events.map(_._2).reduceLeftOption(_ max _).getOrElse(System.currentTimeMillis)
 
                         complete(GenericResponse(StatusCodes.OK.intValue, Map("contactId" -> contactId, "appName" -> appName, "startTs" -> startTs), Response(s"messages fetched for $appName / $contactId", Map("messages" -> messages, "endTs" -> finalTs, "count" -> messages.size))))
@@ -74,11 +74,7 @@ class ReportsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
               (channel: Channel, messageId: String) =>
                 get {
                   meteredResource("reportsMessage") {
-                    val data =  ( channel match  {
-                      case Channel.PUSH => ServiceFactory.getPNMessageService
-                      case Channel.EMAIL => ServiceFactory.getEmailMessageService
-                      case Channel.SMS => ServiceFactory.getSMSMessageService
-                    }) .getRequestInfo(messageId).get
+                    val data = ServiceFactory.getMessageService(channel).getRequestInfo(messageId).get
                     data match {
                       case None =>
                         complete(GenericResponse(StatusCodes.NotFound.intValue, Map("messageId" -> messageId), Response(s"No Message found for messageId $messageId.", null)))
@@ -88,7 +84,7 @@ class ReportsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                   }
                 }
             }
-            } ~ path("date" / Segment) {
+          } ~ path("date" / Segment) {
             (date: String) =>
               get {
                 parameters('clientId, 'contextId ?, 'appName ?, 'stencilId ?) { (clientId, contextId, appName, stencilId) =>

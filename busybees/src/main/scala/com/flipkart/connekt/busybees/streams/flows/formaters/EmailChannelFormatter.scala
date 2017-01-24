@@ -20,6 +20,7 @@ import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.iomodels._
+import com.flipkart.connekt.commons.services.ExclusionService
 import com.flipkart.connekt.commons.utils.StringUtils._
 
 import scala.concurrent.ExecutionContextExecutor
@@ -27,7 +28,7 @@ import scala.concurrent.duration._
 
 class EmailChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecutor) extends NIOFlow[ConnektRequest, EmailPayloadEnvelope](parallelism)(ec) {
 
-  lazy val projectConfigService = ServiceFactory.getUserProjectConfigService
+  private lazy val projectConfigService = ServiceFactory.getUserProjectConfigService
 
   override def map: ConnektRequest => List[EmailPayloadEnvelope] = message => {
 
@@ -43,19 +44,34 @@ class EmailChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecu
       val bcc = Option(emailInfo.bcc).getOrElse(Set.empty)
 
       if (emailInfo.to.nonEmpty && ttl > 0) {
+
+        val emailReceivers = emailInfo.to ++ cc ++ bcc
+        val excludedAddress = emailReceivers.filterNot { e => ExclusionService.lookup(message.channel, message.appName, e.address).getOrElse(false) }
+        excludedAddress.map(ex => EmailCallbackEvent(message.id, InternalStatus.ExcludedRequest, ex.address, message.clientId, emailInfo.appName, Channel.EMAIL, message.contextId.orEmpty)).persist
+        ServiceFactory.getReportingService.recordChannelStatsDelta(message.clientId, message.contextId, message.meta.get("stencilId").map(_.toString), Channel.EMAIL, message.appName, InternalStatus.ExcludedRequest, excludedAddress.size)
+
+        val filteredTo = emailInfo.to.diff(excludedAddress)
+        val filteredCC = cc.diff(excludedAddress)
+        val filteredBcc = bcc.diff(excludedAddress)
+        val fromAddress = Option(emailInfo.from).getOrElse(projectConfigService.getProjectConfiguration(emailInfo.appName,"default-from-email").get.get.value.getObj[EmailAddress])
+
         val payload = EmailPayload(
-          to = emailInfo.to,
-          cc = cc,
-          bcc = bcc,
+          to = filteredTo,
+          cc = filteredCC,
+          bcc = filteredBcc,
           data = message.channelData.asInstanceOf[EmailRequestData],
-          from = {
-            Option(emailInfo.from).getOrElse(projectConfigService.getProjectConfiguration(emailInfo.appName,"default-from-email").get.get.value.getObj[EmailAddress])
-          },
-          replyTo = {
-            Option(emailInfo.replyTo).getOrElse(projectConfigService.getProjectConfiguration(emailInfo.appName,"default-replyTo-email").get.get.value.getObj[EmailAddress])
-          }
+          from = fromAddress,
+          replyTo =  Option(emailInfo.replyTo).getOrElse(fromAddress)
         )
-        List(EmailPayloadEnvelope( messageId = message.id, appName = emailInfo.appName, contextId = message.contextId.orEmpty, clientId = message.clientId, payload = payload, meta = message.meta) )
+
+        if (payload.to.nonEmpty)
+          List(EmailPayloadEnvelope(messageId = message.id, appName = emailInfo.appName, contextId = message.contextId.orEmpty, clientId = message.clientId, payload = payload, meta = message.meta))
+        else {
+          ConnektLogger(LogFile.PROCESSORS).warn(s"EmailChannelFormatter dropping message due to suppressed address passed in `to` : ${message.id}")
+          emailInfo.cc.map(e => EmailCallbackEvent(message.id, message.clientId, e.address, InternalStatus.Rejected, emailInfo.appName, message.contextId.orEmpty, "`to` cannot be empty.")).persist
+          ServiceFactory.getReportingService.recordChannelStatsDelta(message.clientId, message.contextId, message.meta.get("stencilId").map(_.toString), Channel.EMAIL, message.appName, InternalStatus.Rejected, emailInfo.cc.size)
+          List.empty
+        }
       } else if (emailInfo.to.nonEmpty) {
         ConnektLogger(LogFile.PROCESSORS).warn(s"EmailChannelFormatter dropping ttl-expired message: ${message.id}")
         emailInfo.to.map(e => EmailCallbackEvent(message.id, message.clientId, e.address, InternalStatus.TTLExpired, emailInfo.appName, message.contextId.orEmpty)).persist

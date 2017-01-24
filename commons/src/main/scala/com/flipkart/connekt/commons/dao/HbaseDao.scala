@@ -29,15 +29,16 @@ import org.apache.hadoop.hbase.util.Bytes
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
+import scala.concurrent.duration.Duration
 
 trait HbaseDao extends Instrumented {
 
-  lazy val scanFetchSize:Int = ConnektConfig.get("receptors.hbase.scan-fetch-size").getOrElse("100").toInt
-  lazy val getBatchSize:Int = ConnektConfig.get("receptors.hbase.get-batch-size").getOrElse("100").toInt
+  lazy val scanFetchSize: Int = ConnektConfig.get("receptors.hbase.scan-fetch-size").getOrElse("100").toInt
+  lazy val getBatchSize: Int = ConnektConfig.get("receptors.hbase.get-batch-size").getOrElse("100").toInt
 
   @throws[IOException]
   @Timed("asyncAdd")
-  def asyncAddRow(rowKey: String, data: RowData)(implicit hMutator: BufferedMutator) = {
+  def asyncAddRow(rowKey: String, data: RowData, ttl: Option[Long] = None)(implicit hMutator: BufferedMutator) = {
 
     val put: Put = new Put(rowKey.getBytes(CharEncoding.UTF_8))
     data.foreach { case (colFamily, v) =>
@@ -45,13 +46,13 @@ trait HbaseDao extends Instrumented {
         put.addColumn(colFamily.getUtf8Bytes, colQualifier.getUtf8Bytes, d)
       }
     }
-
+    ttl.foreach(put.setTTL)
     hMutator.mutate(put)
   }
 
   @throws[IOException]
   @Timed("add")
-  def addRow(rowKey: String, data: RowData)(implicit hTable: Table) = {
+  def addRow(rowKey: String, data: RowData, ttl: Option[Long] = None)(implicit hTable: Table) = {
 
     val put: Put = new Put(rowKey.getBytes(CharEncoding.UTF_8))
     data.foreach { case (colFamily, v) =>
@@ -59,7 +60,7 @@ trait HbaseDao extends Instrumented {
         put.addColumn(colFamily.getUtf8Bytes, colQualifier.getUtf8Bytes, d)
       }
     }
-
+    ttl.foreach(put.setTTL)
     hTable.put(put)
   }
 
@@ -106,26 +107,26 @@ trait HbaseDao extends Instrumented {
   }
 
   /**
-   *
-   * @param rowStartKeyPrefix
-   * @param rowStopKeyPrefix
-   * @param colFamilies
-   * @param timeRange
-   * @param maxRowLimit If not Defined, defaults to Int.MaxValue
-   * @param hTable
-   * @return
-   */
+    *
+    * @param rowStartKeyPrefix
+    * @param rowStopKeyPrefix
+    * @param colFamilies
+    * @param timeRange
+    * @param maxRowLimit If not Defined, defaults to Int.MaxValue
+    * @param hTable
+    * @return
+    */
   @throws[IOException]
   @Timed("scan")
   def fetchRows(rowStartKeyPrefix: String, rowStopKeyPrefix: String, colFamilies: List[String], timeRange: Option[(Long, Long)] = None, maxRowLimit: Option[Int] = None)(implicit hTable: Table): Map[String, HRowData] = {
-      val scan = new Scan()
-      scan.setStartRow(rowStartKeyPrefix.getBytes(CharEncoding.UTF_8))
-      scan.setStopRow(rowStopKeyPrefix.getBytes(CharEncoding.UTF_8))
+    val scan = new Scan()
+    scan.setStartRow(rowStartKeyPrefix.getBytes(CharEncoding.UTF_8))
+    scan.setStopRow(rowStopKeyPrefix.getBytes(CharEncoding.UTF_8))
 
-      if (timeRange.isDefined)
-        scan.setTimeRange(timeRange.get._1, timeRange.get._2)
+    if (timeRange.isDefined)
+      scan.setTimeRange(timeRange.get._1, timeRange.get._2)
 
-      scan.setCaching(scanFetchSize)
+    scan.setCaching(scanFetchSize)
 
     val resultScanner = hTable.getScanner(scan)
     try {
@@ -142,11 +143,10 @@ trait HbaseDao extends Instrumented {
   @throws[IOException]
   @Timed("hmget")
   def fetchMultiRows(rowKeys: List[String], colFamilies: List[String])(implicit hTable: Table): Map[String, RowData] = {
-
     rowKeys
       .filter(rowKey => rowKey != null && rowKey.nonEmpty)
-      .grouped(getBatchSize).map( groupedRowKeys => {
-      val gets:List[Get] = groupedRowKeys.map(rowKey => {
+      .grouped(getBatchSize).map(groupedRowKeys => {
+      val gets: List[Get] = groupedRowKeys.map(rowKey => {
         val get = new Get(rowKey.getBytes(CharEncoding.UTF_8))
         colFamilies.foreach(cF => get.addFamily(cF.getBytes(CharEncoding.UTF_8)))
         get
@@ -175,7 +175,8 @@ object HbaseDao {
 
   type ColumnData = scala.collection.immutable.Map[String, Array[Byte]]
   // ColumnQualifer -> Data
-  type RowData = scala.collection.immutable.Map[String, ColumnData] // ColumnFamily -> ColumnData
+  type RowData = scala.collection.immutable.Map[String, ColumnData]
+  // ColumnFamily -> ColumnData
 
   private[connekt] case class HRowData(data: RowData, timestamp: Long)
 
@@ -215,6 +216,10 @@ object HbaseDao {
     def getL(key: String) = m.get(key).map(Bytes.toLong).getOrElse(null)
 
     def getKV(key: String): ObjectNode = m.get(key).map(_.getString).map(objMapper.readValue[ObjectNode]).orNull
+  }
+
+  implicit class durationFunctions(val duration:Duration){
+    def toTTL: Option[Long] = if (duration.isFinite()) Some(duration.toMillis) else None
   }
 
 }

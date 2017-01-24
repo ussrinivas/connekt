@@ -92,6 +92,7 @@ object MessageStatus {
     val OpenWebResponseHandleError = Value("connekt_openweb_response_handle_error")
     val TTLExpired = Value("connekt_ttl_expired")
     val InvalidRequest = Value("connekt_invalid_request")
+    val ExcludedRequest = Value("connekt_excluded_request")
     val StageError = Value("connekt_stage_error")
     val EncryptionError = Value("connekt_encryption_error")
     val ProviderSendError = Value("connekt_provider_send_error")

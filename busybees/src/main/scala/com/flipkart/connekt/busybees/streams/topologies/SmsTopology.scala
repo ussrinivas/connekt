@@ -18,13 +18,14 @@ import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl._
 import com.flipkart.connekt.busybees.models.SmsRequestTracker
 import com.flipkart.connekt.busybees.streams.ConnektTopology
+import com.flipkart.connekt.busybees.streams.flows._
 import com.flipkart.connekt.busybees.streams.flows.dispatchers._
 import com.flipkart.connekt.busybees.streams.flows.formaters._
 import com.flipkart.connekt.busybees.streams.flows.profilers.TimedFlowOps._
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers._
 import com.flipkart.connekt.busybees.streams.flows.transformers.{SmsProviderPrepare, SmsProviderResponseFormatter}
-import com.flipkart.connekt.busybees.streams.flows.{ChooseProvider, FlowMetrics, RenderFlow, TrackingFlow}
 import com.flipkart.connekt.busybees.streams.sources.KafkaSource
+import com.flipkart.connekt.busybees.streams.topologies.SmsTopology._
 import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
@@ -35,7 +36,7 @@ import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.typesafe.config.Config
 
-import scala.concurrent.Promise
+import scala.concurrent.{ExecutionContextExecutor, Promise}
 
 class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallbackEvent] with SyncDelegate {
 
@@ -61,51 +62,13 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
   override def sources: Map[CheckPointGroup, Source[ConnektRequest, NotUsed]] = {
 
     List(Channel.SMS).flatMap {value =>
-      ServiceFactory.getSMSMessageService.getTopicNames(Channel.SMS, None).get match {
+      ServiceFactory.getMessageService(Channel.SMS).getTopicNames(Channel.SMS, None).get match {
         case platformTopics if platformTopics.nonEmpty => Option(value.toString -> createMergedSource(value, platformTopics))
         case _ => None
       }
     }.toMap
 
   }
-
-  def smsTransformFlow = Flow.fromGraph(GraphDSL.create() { implicit b =>
-
-    /**
-      * Sms Topology
-      *
-      *                      +---------------+     +-------------------+        +----------+     +-----------------+      +-----------------------+     +---------------------+     +----------------+     +----------------------------+     +---------------------+     +-------------------------+      +--..
-      *  ConnektRequest ---> | SmsFilter     | --> |SmsChannelFormatter| |----> |  Merger  | --> | ChooseProvider  |  --> | SeparateIntlReceivers | --> |  SmsProviderPrepare | --> |  SmsDispatcher | --> |SmsProviderResponseFormatter| --> |  SmsResponseHandler | --> |Response / Error Splitter| -+-> |Merger
-      *                      +---------------+     +-------------------+ |      +----------+     +-----------------+      +-----------------------+     +---------------------+     +----------------+     +----------------------------+     +---------------------+     +-------------------------+  |   +-----
-      *                                                                  +---------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------+
-      */
-
-    val render = b.add(new RenderFlow().flow)
-    val trackSmsParallelism = ConnektConfig.getInt("topology.sms.tracking.parallelism").get
-    val tracking = b.add(new TrackingFlow(trackSmsParallelism)(ioDispatcher).flow)
-    val fmtSMSParallelism = ConnektConfig.getInt("topology.sms.formatter.parallelism").get
-    val smsFilter = b.add(Flow[ConnektRequest].filter(_.channelInfo.isInstanceOf[SmsRequestInfo]))
-    val fmtSMS = b.add(new SmsChannelFormatter(fmtSMSParallelism)(ioDispatcher).flow)
-    val smsPayloadMerge = b.add(MergePreferred[SmsPayloadEnvelope](1))
-    val smsRetryMapper = b.add(Flow[SmsRequestTracker].map(_.request) /*.buffer(10, OverflowStrategy.backpressure)*/)
-    val chooseProvider = b.add(new ChooseProvider[SmsPayloadEnvelope](Channel.SMS).flow)
-    val smsPrepare = b.add(new SmsProviderPrepare().flow)
-    val smsHttpPoolFlow = b.add(HttpDispatcher.smsPoolClientFlow.timedAs("smsRTT"))
-    val smsResponseFormatter = b.add(new SmsProviderResponseFormatter().flow)
-    val smsResponseHandler = b.add(new SmsResponseHandler().flow)
-
-    val smsRetryPartition = b.add(new Partition[Either[SmsRequestTracker, SmsCallbackEvent]](2, {
-      case Right(_) => 0
-      case Left(_) => 1
-    }))
-
-    render.out ~> tracking ~> smsFilter ~> fmtSMS ~> smsPayloadMerge
-    smsPayloadMerge.out ~> chooseProvider ~> smsPrepare ~> smsHttpPoolFlow ~> smsResponseFormatter ~> smsResponseHandler ~> smsRetryPartition.in
-    smsPayloadMerge.preferred <~ smsRetryMapper <~ smsRetryPartition.out(1).map(_.left.get).outlet
-
-    FlowShape(render.in, smsRetryPartition.out(0).map(_.right.get).outlet)
-  })
-
 
   override def sink: Sink[SmsCallbackEvent, NotUsed] = Sink.fromGraph(GraphDSL.create() { implicit b =>
 
@@ -131,6 +94,48 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
   }
 
   override def transformers: Map[CheckPointGroup, Flow[ConnektRequest, SmsCallbackEvent, NotUsed]] = {
-    Map(Channel.SMS.toString -> smsTransformFlow)
+    Map(Channel.SMS.toString -> smsTransformFlow(ioMat,ioDispatcher))
   }
+}
+
+object SmsTopology {
+
+  def smsTransformFlow(implicit m: Materializer, ioDispatcher:  ExecutionContextExecutor): Flow[ConnektRequest, SmsCallbackEvent, NotUsed] = Flow.fromGraph(GraphDSL.create() { implicit b  =>
+
+    /**
+      * Sms Topology
+      *
+      *                     +-------------------+        +----------+     +-----------------+      +-----------------------+     +---------------------+     +----------------+     +----------------------------+     +---------------------+     +-------------------------+      +--..
+      *  ConnektRequest --> |SmsChannelFormatter| |----> |  Merger  | --> | ChooseProvider  |  --> | SeparateIntlReceivers | --> |  SmsProviderPrepare | --> |  SmsDispatcher | --> |SmsProviderResponseFormatter| --> |  SmsResponseHandler | --> |Response / Error Splitter| -+-> |Merger
+      *                     +-------------------+ |      +----------+     +-----------------+      +-----------------------+     +---------------------+     +----------------+     +----------------------------+     +---------------------+     +-------------------------+  |   +-----
+      *                                           +-------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------------------------------------------------------+
+      */
+
+    val render = b.add(new RenderFlow().flow)
+    val trackSmsParallelism = ConnektConfig.getInt("topology.sms.tracking.parallelism").get
+    val tracking = b.add(new SMSTrackingFlow(trackSmsParallelism)(ioDispatcher).flow)
+    val fmtSMSParallelism = ConnektConfig.getInt("topology.sms.formatter.parallelism").get
+    val fmtSMS = b.add(new SmsChannelFormatter(fmtSMSParallelism)(ioDispatcher).flow)
+    val smsPayloadMerge = b.add(MergePreferred[SmsPayloadEnvelope](1))
+    val smsRetryMapper = b.add(Flow[SmsRequestTracker].map(_.request) /*.buffer(10, OverflowStrategy.backpressure)*/)
+    val chooseProvider = b.add(new ChooseProvider[SmsPayloadEnvelope](Channel.SMS).flow)
+    val smsPrepare = b.add(new SmsProviderPrepare().flow)
+    val smsHttpPoolFlow = b.add(HttpDispatcher.smsPoolClientFlow.timedAs("smsRTT"))
+    val smsResponseFormatter = b.add(new SmsProviderResponseFormatter().flow)
+    val smsResponseHandler = b.add(new SmsResponseHandler().flow)
+
+    val smsRetryPartition = b.add(new Partition[Either[SmsRequestTracker, SmsCallbackEvent]](2, {
+      case Right(_) => 0
+      case Left(_) => 1
+    }))
+
+    render.out ~> tracking ~> fmtSMS ~> smsPayloadMerge
+    smsPayloadMerge.out ~> chooseProvider ~> smsPrepare ~> smsHttpPoolFlow ~> smsResponseFormatter ~> smsResponseHandler ~> smsRetryPartition.in
+    smsPayloadMerge.preferred <~ smsRetryMapper <~ smsRetryPartition.out(1).map(_.left.get).outlet
+
+    FlowShape(render.in, smsRetryPartition.out(0).map(_.right.get).outlet)
+  })
+
+
+
 }

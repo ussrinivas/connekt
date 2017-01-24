@@ -17,6 +17,7 @@ import akka.stream.ActorMaterializer
 import com.flipkart.connekt.receptors.directives.AuthenticationDirectives
 import com.flipkart.connekt.receptors.routes.callbacks.{CallbackRoute, SubscriptionsRoute, TrackingRoute}
 import com.flipkart.connekt.receptors.routes.common._
+import com.flipkart.connekt.receptors.routes.exclude.SuppressionsRoute
 import com.flipkart.connekt.receptors.routes.push.{FetchRoute, RegistrationRoute, SendRoute}
 import com.flipkart.connekt.receptors.routes.reports.ReportsRoute
 import com.flipkart.connekt.receptors.routes.status.SystemStatus
@@ -39,7 +40,8 @@ class RouteRegistry(implicit mat: ActorMaterializer) extends AuthenticationDirec
   private val admin = new AdminRoute().route
   private val subscription = new SubscriptionsRoute().route
   private val projectConfig = new ProjectConfigRoute().route
+  private val exclusionRoute = new SuppressionsRoute().route
 
   val allRoutes =
-    health ~ clientAuth ~ tracking ~ send ~ registration ~ callback ~ report ~ fetch ~ stencil ~ client ~ keyChain ~ projectConfig ~ debugger ~ admin ~ subscription
+    health ~ clientAuth ~ tracking ~ send ~ registration ~ callback ~ report ~ fetch ~ stencil ~ client ~ keyChain ~ projectConfig ~ debugger ~ admin ~ subscription ~ exclusionRoute
 }

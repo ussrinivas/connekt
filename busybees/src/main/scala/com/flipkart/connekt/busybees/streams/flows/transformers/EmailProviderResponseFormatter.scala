@@ -16,7 +16,7 @@ import akka.http.scaladsl.model.HttpResponse
 import akka.stream.Materializer
 import com.flipkart.connekt.busybees.models.{EmailRequestTracker, EmailResponse}
 import com.flipkart.connekt.busybees.streams.flows.MapAsyncFlowStage
-import com.flipkart.connekt.commons.entities.{Stencil, StencilEngine}
+import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.factories.ServiceFactory
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.StringUtils._
@@ -24,12 +24,11 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.Try
-import com.flipkart.connekt.commons.core.Wrappers._
 
 
 class EmailProviderResponseFormatter(implicit m: Materializer, ec: ExecutionContext) extends MapAsyncFlowStage[(Try[HttpResponse], EmailRequestTracker), (Try[EmailResponse], EmailRequestTracker)](96) with Instrumented {
 
-  lazy implicit val stencilService = ServiceFactory.getStencilService
+  private lazy implicit val stencilService = ServiceFactory.getStencilService
 
   override val map: ((Try[HttpResponse], EmailRequestTracker)) => Future[List[(Try[EmailResponse], EmailRequestTracker)]] = responseTrackerPair => Future(profile("map") {
 
@@ -46,6 +45,6 @@ class EmailProviderResponseFormatter(implicit m: Materializer, ec: ExecutionCont
     })
 
     List(emailResponse -> responseTrackerPair._2)
-  })(m.executionContext)
+  })(ec)
 
 }

@@ -12,16 +12,12 @@
  */
 package com.flipkart.connekt.busybees.tests.streams.topologies
 
-import akka.http.scaladsl.Http
 import akka.stream.scaladsl.{Sink, Source}
-import com.flipkart.connekt.busybees.models.SmsRequestTracker
-import com.flipkart.connekt.busybees.streams.flows.formaters.SmsChannelFormatter
-import com.flipkart.connekt.busybees.streams.flows.reponsehandlers.SmsResponseHandler
-import com.flipkart.connekt.busybees.streams.flows.transformers.{SmsProviderPrepare, SmsProviderResponseFormatter}
-import com.flipkart.connekt.busybees.streams.flows.{ChooseProvider, RenderFlow, TrackingFlow}
+import com.flipkart.connekt.busybees.streams.flows.dispatchers.HttpDispatcher
+import com.flipkart.connekt.busybees.streams.topologies.SmsTopology
 import com.flipkart.connekt.busybees.tests.streams.TopologyUTSpec
-import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.iomodels.ConnektRequest
+import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.utils.StringUtils._
 
 import scala.concurrent.Await
@@ -31,8 +27,7 @@ class SmsProviderTopologyTest extends TopologyUTSpec {
 
   "SMS Provider Topology Test" should "run" in {
 
-    lazy implicit val poolClientFlow = Http().superPool[SmsRequestTracker]()
-
+    HttpDispatcher.init(ConnektConfig.getConfig("react").get)
 
     val cRequest = s"""
                       |{
@@ -57,17 +52,10 @@ class SmsProviderTopologyTest extends TopologyUTSpec {
 
 
     val result = Source.single(cRequest)
-      .via(new RenderFlow().flow)
-      .via(new TrackingFlow(4).flow)
-      .via(new SmsChannelFormatter(64)(system.dispatchers.lookup("akka.actor.io-dispatcher")).flow)
-      .via(new ChooseProvider(Channel.SMS).flow)
-      .via(new SmsProviderPrepare().flow)
-      .via(poolClientFlow)
-      .via(new SmsProviderResponseFormatter().flow)
-      .via(new SmsResponseHandler().flow)
-      .runWith(Sink.foreach(println))
+      .via(SmsTopology.smsTransformFlow)
+      .runWith(Sink.head)
 
-    val response = Await.result(result, 800.seconds)
+    val response = Await.result(result, 120.seconds)
     println(response)
 
     assert(response != null)
