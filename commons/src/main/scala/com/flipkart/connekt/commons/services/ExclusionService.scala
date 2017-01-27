@@ -67,10 +67,9 @@ object ExclusionService extends Instrumented {
   }
 
   @Timed("delete")
-  def delete(channel: String, appName: String, destination: String): Try[Boolean] = {
-    dao.delete(channel, appName, destination).transform[Boolean](result => Try_#(message = "ExclusionService.delete Failed") {
-      DistributedCacheManager.getCache(DistributedCacheType.ExclusionDetails).put[String](cacheKey(channel, appName, destination), null, Duration.Inf)
-    }, Failure(_))
+  def delete(channel: String, appName: String, destination: String): Try[Unit] = {
+    DistributedCacheManager.getCache(DistributedCacheType.ExclusionDetails).put[String](cacheKey(channel, appName, destination), null, Duration.Inf)
+    dao.delete(channel, appName, destination)
   }
 
   private def cacheKey(channel: String, appName: String, destination: String): String = channel.toLowerCase + "_" + appName.toLowerCase + "_" + destination.sha256.hash.hex
