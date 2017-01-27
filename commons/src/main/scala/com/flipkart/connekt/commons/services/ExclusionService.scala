@@ -44,7 +44,8 @@ object ExclusionService extends Instrumented {
       val eType = dao.lookup(channel, appName, destination) match {
         case Success(exDetails) =>
           val eD = exDetails.getOrElse(ExclusionDetails(null))
-          DistributedCacheManager.getCache(DistributedCacheType.ExclusionDetails).put[String](cacheKey(channel, appName, destination), eD.exclusionType, eD.ttl)
+          val eT = Option(eD.exclusionType).map(_.toString).orNull
+          DistributedCacheManager.getCache(DistributedCacheType.ExclusionDetails).put[String](cacheKey(channel, appName, destination), eT, eD.ttl)
           Option(eD.exclusionType).map(_.toString)
         case Failure(_) =>
           ConnektLogger(LogFile.SERVICE).error(s"ExclusionService.get Failed for id : $id")

@@ -36,6 +36,4 @@ object ExclusionType extends Enumeration {
     case ExclusionType.SPAM => Duration.Inf
     case _ => Duration.Inf
   }
-
-  def getAll: List[ExclusionType] = List(BLACKLIST, LONG_TERM_FAILURE, INTERMEDIATE_TERM_FAILURE, SHORT_TERM_FAILURE, SPAM)
 }
