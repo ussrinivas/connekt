@@ -100,7 +100,7 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
 
 object SmsTopology {
 
-  def smsTransformFlow(implicit m: Materializer, ioDispatcher:  ExecutionContextExecutor): Flow[ConnektRequest, SmsCallbackEvent, NotUsed] = Flow.fromGraph(GraphDSL.create() { implicit b  =>
+  def smsTransformFlow(implicit ioMat:ActorMaterializer, ioDispatcher:  ExecutionContextExecutor): Flow[ConnektRequest, SmsCallbackEvent, NotUsed] = Flow.fromGraph(GraphDSL.create() { implicit b  =>
 
     /**
       * Sms Topology
@@ -121,8 +121,8 @@ object SmsTopology {
     val chooseProvider = b.add(new ChooseProvider[SmsPayloadEnvelope](Channel.SMS).flow)
     val smsPrepare = b.add(new SmsProviderPrepare().flow)
     val smsHttpPoolFlow = b.add(HttpDispatcher.smsPoolClientFlow.timedAs("smsRTT"))
-    val smsResponseFormatter = b.add(new SmsProviderResponseFormatter().flow)
-    val smsResponseHandler = b.add(new SmsResponseHandler().flow)
+    val smsResponseFormatter = b.add(new SmsProviderResponseFormatter()(ioMat,ioDispatcher).flow)
+    val smsResponseHandler = b.add(new SmsResponseHandler()(ioMat,ioDispatcher).flow)
 
     val smsRetryPartition = b.add(new Partition[Either[SmsRequestTracker, SmsCallbackEvent]](2, {
       case Right(_) => 0

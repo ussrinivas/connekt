@@ -167,7 +167,7 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
     //providers [standard]
     val openWebHttpPrepare = b.add(new OpenWebDispatcherPrepare().flow)
     val openWebPoolFlow = b.add(HttpDispatcher.openWebPoolClientFlow.timedAs("openWebRTT"))
-    val openWebResponseHandle = b.add(new OpenWebResponseHandler().flow)
+    val openWebResponseHandle = b.add(new OpenWebResponseHandler()(ioMat, ioDispatcher).flow)
 
     render.out ~> openWebFilter ~> fmtOpenWeb ~> openWebHttpPrepare ~> openWebPoolFlow ~> openWebResponseHandle
 
