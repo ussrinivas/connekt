@@ -32,7 +32,7 @@ class SmsProviderPrepare extends MapFlowStage[SmsPayloadEnvelope, (HttpRequest, 
 
   lazy implicit val stencilService = ServiceFactory.getStencilService
 
-  override val map: (SmsPayloadEnvelope) => List[(HttpRequest, SmsRequestTracker)] = smsPayloadEnvelope => {
+  override val map: (SmsPayloadEnvelope) => List[(HttpRequest, SmsRequestTracker)] = smsPayloadEnvelope => profile("map") {
 
     try {
       val selectedProvider = smsPayloadEnvelope.provider.last

@@ -17,11 +17,13 @@ import java.io.IOException
 import com.flipkart.connekt.commons.dao.HbaseDao.ColumnData
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, THTableFactory}
 import com.flipkart.connekt.commons.iomodels.{CallbackEvent, ChannelRequestInfo}
+import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.StringUtils.JSONMarshallFunctions
+import com.flipkart.metrics.Timed
 import com.roundeights.hasher.Implicits._
 import org.apache.hadoop.hbase.client.BufferedMutator
 
-abstract class CallbackDao(tableName: String, hTableFactory: THTableFactory) extends TCallbackDao with HbaseDao {
+abstract class CallbackDao(tableName: String, hTableFactory: THTableFactory) extends TCallbackDao with HbaseDao with Instrumented {
   private val hTableConnFactory = hTableFactory
   private val hTableName = tableName
   private implicit lazy val hTableMutator: BufferedMutator = hTableFactory.getBufferedMutator(tableName)
@@ -36,6 +38,7 @@ abstract class CallbackDao(tableName: String, hTableFactory: THTableFactory) ext
     Option(hTableMutator).foreach(_.close())
   }
 
+  @Timed("asyncSaveCallbackEvents")
   override def asyncSaveCallbackEvents(events: List[CallbackEvent]): List[String] = {
     val rowKeys = events.map(e => {
       val rowKey = s"${e.contactId.sha256.hash.hex}:${e.messageId}:${e.eventId}"
@@ -53,6 +56,7 @@ abstract class CallbackDao(tableName: String, hTableFactory: THTableFactory) ext
     rowKeys
   }
 
+  @Timed("saveCallbackEvents")
   override def saveCallbackEvents(events: List[CallbackEvent]): List[String] = {
     implicit val hTableInterface = hTableConnFactory.getTableInterface(hTableName)
     try {
@@ -74,6 +78,7 @@ abstract class CallbackDao(tableName: String, hTableFactory: THTableFactory) ext
     }
   }
 
+  @Timed("fetchCallbackEvents")
   def fetchCallbackEvents(requestId: String, contactId: String, timestampRange: Option[(Long, Long)], maxRowsLimit: Option[Int]): List[(CallbackEvent, Long)] = {
     val colFamiliesReqd = List(columnFamily)
     implicit val hTableInterface = hTableConnFactory.getTableInterface(hTableName)
@@ -94,6 +99,7 @@ abstract class CallbackDao(tableName: String, hTableFactory: THTableFactory) ext
     }
   }
 
+  @Timed("deleteCallbackEvents")
   def deleteCallbackEvents(requestId: String, forContact: String): List[CallbackEvent] = {
     val colFamiliesReqd = List(columnFamily)
     implicit val hTableInterface = hTableConnFactory.getTableInterface(hTableName)

@@ -31,8 +31,8 @@ import org.apache.commons.codec.CharEncoding
 import org.apache.commons.validator.routines.UrlValidator
 
 import scala.collection.JavaConversions._
-import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext}
 import scala.reflect.runtime.universe._
 import scala.reflect.{ClassTag, _}
 
@@ -41,7 +41,7 @@ object StringUtils {
 
   val currentMirror = runtimeMirror(getClass.getClassLoader)
 
-  private val urlValidator = new UrlValidator(Array("http","https"))
+  private val urlValidator = new UrlValidator(Array("http", "https"))
 
   implicit def enum2String(enumValue: Enumeration#Value): String = enumValue.toString
 
@@ -58,7 +58,7 @@ object StringUtils {
 
     def isValidUrl = urlValidator.isValid(s)
 
-    def stripNewLines = s.replaceAll("\n", "").replaceAll("\r","")
+    def stripNewLines = s.replaceAll("\n", "").replaceAll("\r", "")
 
   }
 
@@ -79,8 +79,7 @@ object StringUtils {
   }
 
 
-
-  implicit class ObjectHandyFunction (val obj:AnyRef){
+  implicit class ObjectHandyFunction(val obj: AnyRef) {
     def asMap: Map[String, Any] = {
       val fieldsAsPairs = for (field <- obj.getClass.getDeclaredFields) yield {
         field.setAccessible(true)
@@ -143,10 +142,12 @@ object StringUtils {
 
   implicit class HttpEntity2String(val entity: HttpEntity) {
     def getString(implicit mat: Materializer): String = {
-      Await.result(entity.dataBytes.runFold(ByteString.empty)(_ ++ _)(mat).map(bb => new String(bb.toArray))(mat.executionContext), 60.seconds)
+      import akka.http.scaladsl.unmarshalling._
+      implicit val ec = mat.executionContext
+      val futureString = Unmarshal(entity).to[String]
+      Await.result(futureString, 30.seconds)
     }
   }
-
 
   def isNullOrEmpty(o: Any): Boolean = o match {
     case m: Map[_, _] => m.isEmpty

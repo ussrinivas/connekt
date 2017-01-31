@@ -26,7 +26,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 class EmailResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends EmailProviderResponseHandler[(Try[EmailResponse], EmailRequestTracker), EmailRequestTracker](96) with Instrumented {
-  override val map: ((Try[EmailResponse], EmailRequestTracker)) => Future[List[Either[EmailRequestTracker, EmailCallbackEvent]]] = responseTrackerPair => Future({
+  override val map: ((Try[EmailResponse], EmailRequestTracker)) => Future[List[Either[EmailRequestTracker, EmailCallbackEvent]]] = responseTrackerPair => Future(profile("map"){
 
     val (emailResponse, emailTracker) = responseTrackerPair
     handleEmailResponse(emailResponse, emailTracker) match {
