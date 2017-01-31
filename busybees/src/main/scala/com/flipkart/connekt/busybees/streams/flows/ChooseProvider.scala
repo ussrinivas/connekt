@@ -72,7 +72,7 @@ class ChooseProvider[T <: ProviderEnvelope](channel: Channel) extends MapFlowSta
 
         randomProvider.toLowerCase
       case Failure(f) =>
-        meter(s"$channel.provider.exhausted")
+        meter(s"$channel.provider.exhausted").mark()
         ConnektLogger(LogFile.PROCESSORS).error(s"No Providers remaining, already tried with $alreadyTriedProviders", f)
         throw new Exception(s"No Providers remaining, already tried with $alreadyTriedProviders", f)
     }
