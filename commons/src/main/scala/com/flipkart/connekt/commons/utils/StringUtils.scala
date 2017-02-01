@@ -145,7 +145,7 @@ object StringUtils {
       import akka.http.scaladsl.unmarshalling._
       implicit val ec = mat.executionContext
       val futureString = Unmarshal(entity).to[String]
-      Await.result(futureString, 30.seconds)
+      Await.result(futureString, 60.seconds)
     }
   }
 
