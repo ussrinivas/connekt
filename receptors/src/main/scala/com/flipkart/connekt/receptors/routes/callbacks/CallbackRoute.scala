@@ -103,11 +103,11 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with
               (appName: String, providerName: String) =>
                 authorize(user, "ADD_EVENTS", s"ADD_EVENTS_$appName") {
                   meteredResource(s"saveEvent.$channel.$appName") {
-                    extractRequestContext { ctx =>
-                      (post | get) {
-                        parameterMap { urlParams =>
+                    (post | get) {
+                      parameterMap { urlParams =>
+                        entity(as[String](messageUnmarshallerFromEntityUnmarshaller(stringUnmarshaller))) { stringBody =>
 
-                          val payload: ObjectNode = ctx.request.entity.getString match {
+                          val payload: ObjectNode = stringBody match {
                             case x if x.isEmpty => Map("get" -> urlParams).getJsonNode
                             case y => Map("post" -> y.getObj[BaseJsonNode]).getJsonNode
                           }
