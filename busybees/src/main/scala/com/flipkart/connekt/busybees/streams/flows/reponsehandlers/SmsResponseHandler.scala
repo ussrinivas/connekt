@@ -87,7 +87,7 @@ class SmsResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends
         // Retrying in this case
         meter(s"${requestTracker.provider}.exception").mark()
         ConnektLogger(LogFile.PROCESSORS).error(s"SmsResponseHandler failed to send sms for: ${requestTracker.messageId} due to: ${e.getClass.getSimpleName}, ${e.getMessage}", e)
-        ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.SMS, appName = requestTracker.appName, event = InternalStatus.ProviderSendError, count = tryResponse.get.responsePerReceivers.size)
+        ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.SMS, appName = requestTracker.appName, event = InternalStatus.ProviderSendError, count = requestTracker.receivers.size)
         Left(receivers.map(SmsCallbackEvent(requestTracker.messageId, InternalStatus.ProviderSendError, _, requestTracker.clientId, requestTracker.appName, requestTracker.contextId, s"SmsResponseHandler-${e.getClass.getSimpleName}-${e.getMessage}")).toList)
     }
     maybeSmsCallbackEvent.merge.persist
