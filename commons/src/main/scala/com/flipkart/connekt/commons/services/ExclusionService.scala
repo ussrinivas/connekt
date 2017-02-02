@@ -31,8 +31,8 @@ object ExclusionService extends Instrumented {
   lazy val dao = DaoFactory.getExclusionDao
 
   @Timed("add")
-  def add(exclusionEntity: ExclusionEntity): Try[Boolean] = {
-    dao.add(exclusionEntity).transform[Boolean](result => Try_#(message = "ExclusionService.add Failed") {
+  def add(exclusionEntity: ExclusionEntity): Try[Boolean] = profile(s"add.${exclusionEntity.appName}"){
+    dao.add(exclusionEntity).transform[Boolean](_ => Try_#(message = "ExclusionService.add Failed") {
       DistributedCacheManager.getCache(DistributedCacheType.ExclusionDetails).put[String](cacheKey(exclusionEntity.channel, exclusionEntity.appName, exclusionEntity.destination), exclusionEntity.exclusionDetails.exclusionType, exclusionEntity.exclusionDetails.ttl)
     }, Failure(_))
   }
