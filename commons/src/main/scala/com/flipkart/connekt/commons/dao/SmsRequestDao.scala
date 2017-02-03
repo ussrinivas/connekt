@@ -41,7 +41,7 @@ class SmsRequestDao(tableName: String, hTableFactory: THTableFactory) extends Re
   }
 
   override protected def getChannelRequestData(reqDataProps: Map[String, Array[Byte]]): ChannelRequestData = {
-    val body = reqDataProps.getKV("body")
+    val body = reqDataProps.getS("body")
     if (StringUtils.isNullOrEmpty(body))
       null
     else
