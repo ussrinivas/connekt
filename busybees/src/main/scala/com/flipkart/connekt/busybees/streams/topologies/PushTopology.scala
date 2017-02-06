@@ -84,7 +84,7 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
     }.toMap
   }
 
-  lazy val xmppShare = ConnektConfig.getDouble("android.protocol.xmpp-share").getOrElse(100d)
+  lazy val xmppShare: Int = ConnektConfig.getInt("android.protocol.xmpp-share").getOrElse(100)
   lazy val randomGenerator = new Random()
 
   def chooseProtocol = if ( randomGenerator.nextInt(100) < xmppShare ) AndroidProtocols.xmpp else AndroidProtocols.http
