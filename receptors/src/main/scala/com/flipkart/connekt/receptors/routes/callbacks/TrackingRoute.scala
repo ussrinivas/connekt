@@ -20,6 +20,7 @@ import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFa
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.iomodels.{CallbackEvent, EmailCallbackEvent, SmsCallbackEvent}
 import com.flipkart.connekt.commons.services.URLMessageTracker
+import com.flipkart.connekt.commons.utils.CompressionUtils._
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.receptors.routes.BaseHandler
 import org.apache.commons.net.util.Base64
@@ -34,7 +35,7 @@ class TrackingRoute(implicit am: ActorMaterializer) extends BaseHandler {
       (encodedData: String) =>
         get {
           extractUserAgent { userAgent =>
-            val entity = Base64.decodeBase64(encodedData).getObj[URLMessageTracker]
+            val entity = encodedData.decompress.get.getObj[URLMessageTracker]
 
             val channel = Channel.withName(entity.channel)
             val event: CallbackEvent = channel match {
@@ -66,7 +67,9 @@ class TrackingRoute(implicit am: ActorMaterializer) extends BaseHandler {
       (encodedData: String) =>
         get {
           extractUserAgent { userAgent =>
-            val entity = Base64.decodeBase64(encodedData).getObj[URLMessageTracker]
+            //TODO: Remove getOrElse after prod deployment about 1 week.
+            //val entity = encodedData.decompress.get.getObj[URLMessageTracker]
+            val entity = encodedData.decompress.map(_.getBytes).getOrElse(Base64.decodeBase64(encodedData)).getObj[URLMessageTracker]
 
             val channel = Channel.withName(entity.channel)
             val event: CallbackEvent = channel match {

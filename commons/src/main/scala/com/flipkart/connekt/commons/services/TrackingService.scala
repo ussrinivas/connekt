@@ -15,10 +15,11 @@ package com.flipkart.connekt.commons.services
 import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.fasterxml.jackson.annotation.{JsonInclude, JsonProperty}
 import com.flipkart.concord.transformer.TURLTransformer
+import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.entities.Channel.Channel
+import com.flipkart.connekt.commons.utils.CompressionUtils._
 import com.flipkart.connekt.commons.utils.StringUtils._
 import net.htmlparser.jericho._
-import org.apache.commons.net.util.Base64
 
 import scala.collection.JavaConverters._
 
@@ -35,10 +36,7 @@ object TrackingService {
 
   sealed case class TrackedURL(domain: String, originalURL: String, action: String, tracker: URLMessageTracker) {
     def toURL: String = {
-      //TODO : Use compression utils.
-      "http://" + domain + baseURL.format(action) + Base64.encodeBase64URLSafeString(
-        tracker.copy(url = originalURL).getJson.getBytes
-      )
+      Try_("http://" + domain + baseURL.format(action) + tracker.copy(url = originalURL).getJson.compress.get).getOrElse(originalURL)
     }
   }
 
