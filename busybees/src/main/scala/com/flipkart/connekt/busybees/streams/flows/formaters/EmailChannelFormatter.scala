@@ -30,7 +30,7 @@ class EmailChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecu
 
   private lazy val projectConfigService = ServiceFactory.getUserProjectConfigService
 
-  override def map: ConnektRequest => List[EmailPayloadEnvelope] = message => {
+  override def map: ConnektRequest => List[EmailPayloadEnvelope] = message => profile("map") {
 
     try {
       ConnektLogger(LogFile.PROCESSORS).info(s"EmailChannelFormatter received message: ${message.id}")
@@ -53,7 +53,7 @@ class EmailChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecu
         val filteredTo = emailInfo.to.diff(excludedAddress)
         val filteredCC = cc.diff(excludedAddress)
         val filteredBcc = bcc.diff(excludedAddress)
-        val fromAddress = Option(emailInfo.from).getOrElse(projectConfigService.getProjectConfiguration(emailInfo.appName,"default-from-email").get.get.value.getObj[EmailAddress])
+        val fromAddress = Option(emailInfo.from).getOrElse(projectConfigService.getProjectConfiguration(emailInfo.appName, "default-from-email").get.get.value.getObj[EmailAddress])
 
         val payload = EmailPayload(
           to = filteredTo,
@@ -61,7 +61,7 @@ class EmailChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecu
           bcc = filteredBcc,
           data = message.channelData.asInstanceOf[EmailRequestData],
           from = fromAddress,
-          replyTo =  Option(emailInfo.replyTo).getOrElse(fromAddress)
+          replyTo = Option(emailInfo.replyTo).getOrElse(fromAddress)
         )
 
         if (payload.to.nonEmpty)

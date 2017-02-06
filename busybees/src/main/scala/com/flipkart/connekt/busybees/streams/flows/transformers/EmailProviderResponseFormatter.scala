@@ -18,15 +18,13 @@ import com.flipkart.connekt.busybees.models.{EmailRequestTracker, EmailResponse}
 import com.flipkart.connekt.busybees.streams.flows.MapAsyncFlowStage
 import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.factories.ServiceFactory
-import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.StringUtils._
 
-import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 
-class EmailProviderResponseFormatter(implicit m: Materializer, ec: ExecutionContext) extends MapAsyncFlowStage[(Try[HttpResponse], EmailRequestTracker), (Try[EmailResponse], EmailRequestTracker)](96) with Instrumented {
+class EmailProviderResponseFormatter(implicit m: Materializer, ec: ExecutionContext) extends MapAsyncFlowStage[(Try[HttpResponse], EmailRequestTracker), (Try[EmailResponse], EmailRequestTracker)](96) {
 
   private lazy implicit val stencilService = ServiceFactory.getStencilService
 
@@ -34,13 +32,9 @@ class EmailProviderResponseFormatter(implicit m: Materializer, ec: ExecutionCont
 
     val providerResponseHandlerStencil = stencilService.getStencilsByName(s"ckt-email-${responseTrackerPair._2.provider}").find(_.component.equalsIgnoreCase("parse")).get
 
-    val emailResponse = responseTrackerPair._1.flatMap(hR => Try_{
-      val httpResponse = Await.result(hR.toStrict(30.seconds), 5.seconds)
-
-      val result = stencilService.materialize(providerResponseHandlerStencil,Map("statusCode" -> httpResponse._1.intValue(), "headers" -> httpResponse.headers, "body" -> httpResponse._3.getString).getJsonNode).asInstanceOf[EmailResponse]
-
+    val emailResponse = responseTrackerPair._1.flatMap(httpResponse => Try_ {
+      val result = stencilService.materialize(providerResponseHandlerStencil, Map("statusCode" -> httpResponse.status.intValue(), "headers" -> httpResponse.headers, "body" -> httpResponse.entity.getString).getJsonNode).asInstanceOf[EmailResponse]
       assert(result != null, "Provider Parser Failed, NULL Returned")
-
       result
     })
 

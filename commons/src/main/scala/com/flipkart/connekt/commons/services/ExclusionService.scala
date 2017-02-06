@@ -31,8 +31,8 @@ object ExclusionService extends Instrumented {
   lazy val dao = DaoFactory.getExclusionDao
 
   @Timed("add")
-  def add(exclusionEntity: ExclusionEntity): Try[Boolean] = {
-    dao.add(exclusionEntity).transform[Boolean](result => Try_#(message = "ExclusionService.add Failed") {
+  def add(exclusionEntity: ExclusionEntity): Try[Boolean] = profile(s"add.${exclusionEntity.appName}"){
+    dao.add(exclusionEntity).transform[Boolean](_ => Try_#(message = "ExclusionService.add Failed") {
       DistributedCacheManager.getCache(DistributedCacheType.ExclusionDetails).put[String](cacheKey(exclusionEntity.channel, exclusionEntity.appName, exclusionEntity.destination), exclusionEntity.exclusionDetails.exclusionType, exclusionEntity.exclusionDetails.ttl)
     }, Failure(_))
   }
@@ -44,7 +44,8 @@ object ExclusionService extends Instrumented {
       val eType = dao.lookup(channel, appName, destination) match {
         case Success(exDetails) =>
           val eD = exDetails.getOrElse(ExclusionDetails(null))
-          DistributedCacheManager.getCache(DistributedCacheType.ExclusionDetails).put[String](cacheKey(channel, appName, destination), eD.exclusionType, eD.ttl)
+          val eT = Option(eD.exclusionType).map(_.toString).orNull
+          DistributedCacheManager.getCache(DistributedCacheType.ExclusionDetails).put[String](cacheKey(channel, appName, destination), eT, eD.ttl)
           Option(eD.exclusionType).map(_.toString)
         case Failure(_) =>
           ConnektLogger(LogFile.SERVICE).error(s"ExclusionService.get Failed for id : $id")
@@ -67,10 +68,9 @@ object ExclusionService extends Instrumented {
   }
 
   @Timed("delete")
-  def delete(channel: String, appName: String, destination: String): Try[Boolean] = {
-    dao.delete(channel, appName, destination).transform[Boolean](result => Try_#(message = "ExclusionService.delete Failed") {
-      DistributedCacheManager.getCache(DistributedCacheType.ExclusionDetails).put[String](cacheKey(channel, appName, destination), null, Duration.Inf)
-    }, Failure(_))
+  def delete(channel: String, appName: String, destination: String): Try[Unit] = {
+    DistributedCacheManager.getCache(DistributedCacheType.ExclusionDetails).put[String](cacheKey(channel, appName, destination), null, Duration.Inf)
+    dao.delete(channel, appName, destination)
   }
 
   private def cacheKey(channel: String, appName: String, destination: String): String = channel.toLowerCase + "_" + appName.toLowerCase + "_" + destination.sha256.hash.hex

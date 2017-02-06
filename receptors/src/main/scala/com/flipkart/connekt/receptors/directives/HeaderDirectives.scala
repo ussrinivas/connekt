@@ -15,7 +15,7 @@ package com.flipkart.connekt.receptors.directives
 import akka.http.scaladsl.model.HttpHeader
 import akka.http.scaladsl.server._
 import akka.http.scaladsl.server.directives.BasicDirectives
-
+import com.flipkart.connekt.commons.utils.StringUtils.StringOptionHandyFunctions
 import scala.util.Try
 
 trait HeaderDirectives {
@@ -23,6 +23,8 @@ trait HeaderDirectives {
   def getHeader(key: String, h: Seq[HttpHeader]): Option[String] = h.find(_.is(key.toLowerCase)).flatMap(w => Option(w.value()))
 
   def sniffHeaders: Directive1[Seq[HttpHeader]] = BasicDirectives.extract[Seq[HttpHeader]](_.request.headers)
+
+  def extractUserAgent: Directive1[String] = BasicDirectives.extract[String](_.request.headers.find(_.lowercaseName().equalsIgnoreCase("user-agent")).map(_.value()).orEmpty)
 
   def sniffXHeaders = BasicDirectives.extract[Seq[HttpHeader]](_.request.headers.filter(_.lowercaseName().startsWith("x-")))
 

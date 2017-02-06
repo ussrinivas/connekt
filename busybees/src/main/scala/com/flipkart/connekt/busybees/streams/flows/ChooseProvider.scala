@@ -18,18 +18,18 @@ import com.flipkart.connekt.commons.entities.Channel._
 import com.flipkart.connekt.commons.entities.ConfigFormat
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
-import com.flipkart.connekt.commons.iomodels.{EmailPayloadEnvelope, ProviderEnvelope, SmsPayloadEnvelope}
+import com.flipkart.connekt.commons.iomodels.ProviderEnvelope
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.StringUtils
 import com.flipkart.connekt.commons.utils.StringUtils._
 
 import scala.util.{Failure, Random, Success}
 
-class ChooseProvider[T <: ProviderEnvelope](channel: Channel) extends MapFlowStage[T, T] with Instrumented{
+class ChooseProvider[T <: ProviderEnvelope](channel: Channel) extends MapFlowStage[T, T] with Instrumented {
 
   lazy val appLevelConfigService = ServiceFactory.getUserProjectConfigService
 
-  override val map: (T) => List[T] = payload => {
+  override val map: (T) => List[T] = payload => profile("map") {
     try {
       val selectedProvider = pickProvider(payload.provider.toList, channel, payload.appName)
       payload.provider.enqueue(selectedProvider)
@@ -72,7 +72,7 @@ class ChooseProvider[T <: ProviderEnvelope](channel: Channel) extends MapFlowSta
 
         randomProvider.toLowerCase
       case Failure(f) =>
-        meter(s"$channel.provider.exhausted")
+        meter(s"$channel.provider.exhausted").mark()
         ConnektLogger(LogFile.PROCESSORS).error(s"No Providers remaining, already tried with $alreadyTriedProviders", f)
         throw new Exception(s"No Providers remaining, already tried with $alreadyTriedProviders", f)
     }

@@ -33,7 +33,8 @@ class ExclusionDao(tableName: String, hTableFactory: THTableFactory) extends Dao
   private def getRowKeyIndexed(channel: String, appName: String, destination: String) = destination.sha256.hash.hex + "_" + channel + "_" + appName.toLowerCase
 
   private def getRowKeyPrefix(channel: String, appName: String, exclusionType: ExclusionType.ExclusionType) = channel + "_" + appName.toLowerCase + "_" + exclusionType
-  private def getRowKey(channel: String, appName: String, destination: String, exclusionType: ExclusionType.ExclusionType) = getRowKeyPrefix(channel,appName, exclusionType) + "_" + destination
+
+  private def getRowKey(channel: String, appName: String, destination: String, exclusionType: ExclusionType.ExclusionType) = getRowKeyPrefix(channel, appName, exclusionType) + "_" + destination
 
   val columnFamily: String = "e"
 
@@ -48,7 +49,7 @@ class ExclusionDao(tableName: String, hTableFactory: THTableFactory) extends Dao
     val rawData = Map[String, Map[String, Array[Byte]]](columnFamily -> suppressionEntity.toMap)
     val indexedRowKey = getRowKeyIndexed(exclusionEntity.channel, exclusionEntity.appName, exclusionEntity.destination)
     val ttl = exclusionEntity.exclusionDetails.ttl.toTTL
-    addRow(indexedRowKey, rawData,ttl)
+    addRow(indexedRowKey, rawData, ttl)
 
     // Adding exclusionType in rowKey.
     val rowKey = getRowKey(exclusionEntity.channel, exclusionEntity.appName, exclusionEntity.destination, exclusionEntity.exclusionDetails.exclusionType)
@@ -70,12 +71,17 @@ class ExclusionDao(tableName: String, hTableFactory: THTableFactory) extends Dao
 
   @Timed("delete")
   def delete(channel: String, appName: String, destination: String): Try[Unit] = Try_#(s"Deleting ExclusionDao failed for $destination") {
-    implicit val hTableInterface = hTableConnFactory.getTableInterface(hTableName)
-    removeRow(getRowKeyIndexed(channel, appName, destination))
+
+    val hIndexTableInterface = hTableFactory.getTableInterface(hIndexTableName)
+    removeRow(getRowKeyIndexed(channel, appName, destination))(hIndexTableInterface)
+    hTableConnFactory.releaseTableInterface(hIndexTableInterface)
+
+    val hTableInterface = hTableConnFactory.getTableInterface(hTableName)
     ExclusionType.values.foreach { eT =>
-      removeRow(getRowKey(channel, appName, destination, eT))
+      removeRow(getRowKey(channel, appName, destination, eT))(hTableInterface)
     }
     hTableConnFactory.releaseTableInterface(hTableInterface)
+
     ConnektLogger(LogFile.DAO).info(s"Entry deleted for id $destination")
   }
 
@@ -117,8 +123,8 @@ class ExclusionDao(tableName: String, hTableFactory: THTableFactory) extends Dao
   @Timed("getAll")
   def getAll(channel: String, appName: String, exclusionType: ExclusionType): Try[List[ExclusionEntity]] = Try_#(s"ExclusionDao getAll failed for exclusionType : $exclusionType") {
     implicit val hTableInterface = hTableConnFactory.getTableInterface(hTableName)
-    val id = getRowKeyPrefix(channel,appName,exclusionType)
-    val rawDataList = fetchRows(s"${id}_", s"${id}_{",  List(columnFamily))
+    val id = getRowKeyPrefix(channel, appName, exclusionType)
+    val rawDataList = fetchRows(s"${id}_", s"${id}_{", List(columnFamily))
     hTableConnFactory.releaseTableInterface(hTableInterface)
     rawDataList.values.flatMap(rowData => {
       val reqProps: Option[HbaseDao.ColumnData] = rowData.data.get(columnFamily)

@@ -32,7 +32,7 @@ sealed case class ProviderMeta(providerMessageId: String, provider: String, smsR
 sealed case class SMSCargoContainer(providerMessageId: String, provider: String, cargo: String)
 
 class SmsResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends SmsProviderResponseHandler[(Try[SmsResponse], SmsRequestTracker), SmsRequestTracker](96) with Instrumented {
-  override val map: ((Try[SmsResponse], SmsRequestTracker)) => Future[List[Either[SmsRequestTracker, SmsCallbackEvent]]] = responseTrackerPair => Future({
+  override val map: ((Try[SmsResponse], SmsRequestTracker)) => Future[List[Either[SmsRequestTracker, SmsCallbackEvent]]] = responseTrackerPair => Future(profile("map"){
 
     val (smsResponse, smsTracker) = responseTrackerPair
     handleSmsResponse(smsResponse, smsTracker) match {
@@ -49,7 +49,7 @@ class SmsResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends
 
     val maybeSmsCallbackEvent = tryResponse match {
       case Success(smsResponse) =>
-        meter(s"${requestTracker.provider}.${smsResponse.responseCode}")
+        meter(s"${requestTracker.provider}.${smsResponse.responseCode}").mark()
         ConnektLogger(LogFile.PROCESSORS).info(s"SmsResponseHandler received http response for: messageId : ${requestTracker.messageId} code: ${smsResponse.responseCode}")
         smsResponse.responseCode match {
           case s if 2 == (s / 100) =>
@@ -89,9 +89,9 @@ class SmsResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends
 
       case Failure(e) =>
         // Retrying in this case
-        meter(s"${requestTracker.provider}.exception")
+        meter(s"${requestTracker.provider}.exception").mark()
         ConnektLogger(LogFile.PROCESSORS).error(s"SmsResponseHandler failed to send sms for: ${requestTracker.messageId} due to: ${e.getClass.getSimpleName}, ${e.getMessage}", e)
-        ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.SMS, appName = requestTracker.appName, event = InternalStatus.ProviderSendError, count = tryResponse.get.responsePerReceivers.size)
+        ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.SMS, appName = requestTracker.appName, event = InternalStatus.ProviderSendError, count = requestTracker.receivers.size)
         Left(receivers.map(SmsCallbackEvent(requestTracker.messageId, InternalStatus.ProviderSendError, _, requestTracker.clientId, requestTracker.appName, requestTracker.contextId, s"SmsResponseHandler-${e.getClass.getSimpleName}-${e.getMessage}")).toList)
     }
     maybeSmsCallbackEvent.merge.persist

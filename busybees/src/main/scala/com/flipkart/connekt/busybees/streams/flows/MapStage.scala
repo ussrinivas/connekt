@@ -21,11 +21,12 @@ import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFa
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.iomodels.{EmailCallbackEvent, PNCallbackEvent, SmsCallbackEvent}
+import com.flipkart.connekt.commons.metrics.Instrumented
 
 import scala.concurrent.Future
 import scala.util.control.NonFatal
 
-private[busybees] abstract class MapFlowStage[In, Out] {
+private[busybees] abstract class MapFlowStage[In, Out] extends Instrumented {
 
   protected val stageName: String = this.getClass.getSimpleName
 
@@ -35,7 +36,7 @@ private[busybees] abstract class MapFlowStage[In, Out] {
 
 }
 
-private[busybees] abstract class MapAsyncFlowStage[In, Out](parallelism: Int) {
+private[busybees] abstract class MapAsyncFlowStage[In, Out](parallelism: Int) extends Instrumented{
 
   protected val stageName: String = this.getClass.getSimpleName
 

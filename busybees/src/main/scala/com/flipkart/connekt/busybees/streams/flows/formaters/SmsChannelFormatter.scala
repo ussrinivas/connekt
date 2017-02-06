@@ -31,7 +31,7 @@ class SmsChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecuto
 
   lazy val appLevelConfigService = ServiceFactory.getUserProjectConfigService
 
-  override def map: ConnektRequest => List[SmsPayloadEnvelope] = message => {
+  override def map: ConnektRequest => List[SmsPayloadEnvelope] = message => profile("map") {
 
     try {
       ConnektLogger(LogFile.PROCESSORS).info(s"SMSChannelFormatter received message: ${message.id}")

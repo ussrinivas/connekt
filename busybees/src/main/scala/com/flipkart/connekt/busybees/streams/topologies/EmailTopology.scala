@@ -113,7 +113,7 @@ object EmailTopology {
     val providerHttpPrepare = b.add(new EmailProviderPrepare().flow)
     val emailPoolFlow = b.add(HttpDispatcher.emailPoolClientFlow.timedAs("emailRTT"))
     val providerResponseFormatter = b.add(new EmailProviderResponseFormatter()(ioMat,ioDispatcher).flow)
-    val emailResponseHandle = b.add(new EmailResponseHandler().flow)
+    val emailResponseHandle = b.add(new EmailResponseHandler()(ioMat,ioDispatcher).flow)
 
     val emailRetryPartition = b.add(new Partition[Either[EmailRequestTracker, EmailCallbackEvent]](2, {
       case Right(_) => 0

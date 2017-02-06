@@ -13,10 +13,11 @@
 package com.flipkart.connekt.busybees.streams.flows
 
 import akka.stream.scaladsl.Flow
+import com.flipkart.connekt.commons.metrics.Instrumented
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 
-abstract class NIOFlow[In, Out](parallelism: Int)(ec: ExecutionContextExecutor) {
+abstract class NIOFlow[In, Out](parallelism: Int)(ec: ExecutionContextExecutor) extends Instrumented{
 
   def map: In => List[Out]
 

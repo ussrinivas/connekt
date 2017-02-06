@@ -27,7 +27,7 @@ class EmailProviderPrepare extends MapFlowStage[EmailPayloadEnvelope, (HttpReque
 
   lazy implicit val stencilService = ServiceFactory.getStencilService
 
-  override val map: (EmailPayloadEnvelope) => List[(HttpRequest, EmailRequestTracker)] = emailPayloadEnvelope => {
+  override val map: (EmailPayloadEnvelope) => List[(HttpRequest, EmailRequestTracker)] = emailPayloadEnvelope => profile("map") {
 
     val selectedProvider = emailPayloadEnvelope.provider.last
     val credentials = KeyChainManager.getSimpleCredential(s"email.${emailPayloadEnvelope.appName.toLowerCase}.$selectedProvider").get
