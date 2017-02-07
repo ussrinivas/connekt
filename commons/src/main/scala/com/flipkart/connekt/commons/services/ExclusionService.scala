@@ -17,7 +17,7 @@ import com.flipkart.connekt.commons.core.Wrappers.{Try_, Try_#}
 import com.flipkart.connekt.commons.dao.DaoFactory
 import com.flipkart.connekt.commons.entities.ExclusionType.ExclusionType
 import com.flipkart.connekt.commons.entities.{ExclusionDetails, ExclusionEntity, ExclusionType}
-import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
+import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.metrics.Timed
 import com.roundeights.hasher.Implicits.stringToHasher
@@ -28,18 +28,19 @@ import scala.util.{Failure, Success, Try}
 
 object ExclusionService extends Instrumented {
 
-  lazy val dao = DaoFactory.getExclusionDao
+  private lazy val dao = DaoFactory.getExclusionDao
 
   @Timed("add")
-  def add(exclusionEntity: ExclusionEntity): Try[Boolean] = profile(s"add.${exclusionEntity.appName}"){
-    dao.add(exclusionEntity).transform[Boolean](_ => Try_#(message = "ExclusionService.add Failed") {
+  def add(exclusionEntity: ExclusionEntity): Try[Unit] = profile(s"add.${exclusionEntity.appName}") {
+    dao.add(exclusionEntity).transform[Unit](_ => Try_#(message = "ExclusionService.add Failed") {
       DistributedCacheManager.getCache(DistributedCacheType.ExclusionDetails).put[String](cacheKey(exclusionEntity.channel, exclusionEntity.appName, exclusionEntity.destination), exclusionEntity.exclusionDetails.exclusionType, exclusionEntity.exclusionDetails.ttl)
+      BigfootService.ingestEntity(exclusionEntity.destination, exclusionEntity.toPublishFormat, exclusionEntity.namespace).get
     }, Failure(_))
   }
 
   @Timed("lookup")
   def lookup(channel: String, appName: String, destination: String, exclusionType: ExclusionType = null): Try[Boolean] = Try_#(message = "ExclusionService.lookup Failed") {
-    val getExclusionType:Option[String] = Try_(DistributedCacheManager.getCache(DistributedCacheType.ExclusionDetails).get[String](cacheKey(channel, appName, destination))).getOrElse(None).orElse {
+    val getExclusionType: Option[String] = Try_(DistributedCacheManager.getCache(DistributedCacheType.ExclusionDetails).get[String](cacheKey(channel, appName, destination))).getOrElse(None).orElse {
       val id = cacheKey(channel, appName, destination)
       val eType = dao.lookup(channel, appName, destination) match {
         case Success(exDetails) =>
@@ -69,8 +70,12 @@ object ExclusionService extends Instrumented {
 
   @Timed("delete")
   def delete(channel: String, appName: String, destination: String): Try[Unit] = {
-    DistributedCacheManager.getCache(DistributedCacheType.ExclusionDetails).put[String](cacheKey(channel, appName, destination), null, Duration.Inf)
-    dao.delete(channel, appName, destination)
+    get(channel, appName, destination).flatMap(exclusionDetails => Try_ {
+      DistributedCacheManager.getCache(DistributedCacheType.ExclusionDetails).put[String](cacheKey(channel, appName, destination), null, Duration.Inf)
+      dao.delete(channel, appName, destination)
+      val entries = exclusionDetails.map(ExclusionEntity(channel, appName, destination, _, active = false))
+      entries.foreach(eD => BigfootService.ingestEntity(eD.destination, eD.toPublishFormat, eD.namespace))
+    })
   }
 
   private def cacheKey(channel: String, appName: String, destination: String): String = channel.toLowerCase + "_" + appName.toLowerCase + "_" + destination.sha256.hash.hex
