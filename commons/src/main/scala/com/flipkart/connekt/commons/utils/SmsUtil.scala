@@ -15,12 +15,11 @@ package com.flipkart.connekt.commons.utils
 import java.nio.charset.{Charset, CharsetEncoder}
 
 import com.flipkart.connekt.commons.iomodels.SmsMeta
-import org.smpp.charset.Gsm7BitCharsetProvider
+import net.freeutils.charset.gsm.SCGSMCharset
 
 object SmsUtil {
 
-//  val GSM_CHARSET = new Gsm7BitCharsetProvider().charsetForName("X-Gsm7Bit")
-  val GSM_CHARSET = Charset.forName("ISO-8859-1") // TODO Gsm7BitCharsetProvider fix
+  val GSM_CHARSET = new SCGSMCharset
   val gsmCharsetEncoderThreadLocal = new ThreadLocal[CharsetEncoder]
   val USC2_CHARSET: Charset = Charset.forName("UTF-16")
 
