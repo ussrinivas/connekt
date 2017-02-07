@@ -59,9 +59,10 @@ class HttpSink(subscription: Subscription, retryLimit: Int, topologyShutdownTrig
     val sink = subscription.sink.asInstanceOf[HTTPEventSink]
 
     val httpEntity = HttpEntity(ContentTypes.`application/json`, event.payload.toString)
+    val url = Option(event.destination).getOrElse(sink.url)
     val httpRequest = event.header match {
-      case null => HttpRequest(method = HttpMethods.getForKey(sink.method.toUpperCase).get, uri = sink.url, entity = httpEntity)
-      case _ => HttpRequest(method = HttpMethods.getForKey(sink.method.toUpperCase).get, uri = sink.url, entity = httpEntity,
+      case null => HttpRequest(method = HttpMethods.getForKey(sink.method.toUpperCase).get, uri = url, entity = httpEntity)
+      case _ => HttpRequest(method = HttpMethods.getForKey(sink.method.toUpperCase).get, uri = url, entity = httpEntity,
         headers = immutable.Seq[HttpHeader]( event.header.map { case (key, value) => RawHeader(key, value) }.toArray: _ *))
     }
 

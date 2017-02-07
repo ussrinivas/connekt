@@ -44,6 +44,7 @@ class ClientTopology(topic: String, retryLimit: Int, kafkaConsumerConnConf: Conf
   private lazy val eventFilterStencil = stencil.find(_.component == "eventFilter")
   private lazy val eventHeaderTransformer = stencil.find(_.component == "header")
   private lazy val eventPayloadTransformer = stencil.find(_.component == "payload")
+  private lazy val eventDestinationTransformer = stencil.find(_.component == "destination")
 
   def start(): Promise[String] = {
 
@@ -63,21 +64,13 @@ class ClientTopology(topic: String, retryLimit: Int, kafkaConsumerConnConf: Conf
   }
 
   def evaluator(data: CallbackEvent): Boolean = {
-
-    eventFilterStencil match {
-      case None => true
-      case Some(filterStencil) => stencilService.materialize(filterStencil, data.getJsonNode).asInstanceOf[Boolean]
-    }
+    eventFilterStencil.map(stencil =>  stencilService.materialize(stencil, data.getJsonNode).asInstanceOf[Boolean]).getOrElse(Boolean.TRUE)
   }
 
   def transform(event: CallbackEvent): SubscriptionEvent = {
 
-    SubscriptionEvent(header = eventHeaderTransformer match {
-      case None => null
-      case Some(headerStencil) => stencilService.materialize(headerStencil, event.getJsonNode).asInstanceOf[java.util.HashMap[String, String]].asScala.toMap
-    }, payload = eventPayloadTransformer match {
-      case None => event.getJson
-      case Some(payloadStencil) => stencilService.materialize(payloadStencil, event.getJsonNode)
-    })
+    SubscriptionEvent(header = eventHeaderTransformer.map(stencil => stencilService.materialize(stencil, event.getJsonNode).asInstanceOf[java.util.HashMap[String, String]].asScala.toMap).orNull,
+      payload = eventPayloadTransformer.map(stencil => stencilService.materialize(stencil, event.getJsonNode)).getOrElse(event.getJson),
+      destination = eventDestinationTransformer.map(stencil => stencilService.materialize(stencil, event.getJsonNode).asInstanceOf[String]).orNull)
   }
 }
