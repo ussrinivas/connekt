@@ -24,7 +24,7 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
-
+import com.flipkart.connekt.busybees.utils.MailUtils._
 class EmailResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends EmailProviderResponseHandler[(Try[EmailResponse], EmailRequestTracker), EmailRequestTracker](96) with Instrumented {
   override val map: ((Try[EmailResponse], EmailRequestTracker)) => Future[List[Either[EmailRequestTracker, EmailCallbackEvent]]] = responseTrackerPair => Future(profile("map"){
 
@@ -47,6 +47,8 @@ class EmailResponseHandler(implicit m: Materializer, ec: ExecutionContext) exten
           case s if 2 == (s / 100) =>
             //Good!
             ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.EMAIL, appName = requestTracker.appName, event = EmailResponseStatus.Received)
+            //
+            reflect.io.File(s"/tmp/${requestTracker.messageId}.eml").writeAll(requestTracker.request.toEML)
             Right((requestTracker.to ++ requestTracker.cc).map(t => EmailCallbackEvent(requestTracker.messageId, requestTracker.clientId, t, EmailResponseStatus.Received, requestTracker.appName, requestTracker.contextId, s"${emailResponse.providerName}/${emailResponse.messageId}")))
 
           case f if 4 == (f / 100) =>
