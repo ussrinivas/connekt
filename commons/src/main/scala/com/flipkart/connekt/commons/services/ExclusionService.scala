@@ -26,12 +26,12 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 
-object ExclusionService extends Instrumented {
+  object ExclusionService extends Instrumented {
 
   private lazy val dao = DaoFactory.getExclusionDao
 
   @Timed("add")
-  def add(exclusionEntity: ExclusionEntity): Try[Unit] = profile(s"add.${exclusionEntity.appName}") {
+  def add(exclusionEntity: ExclusionEntity): Try[Unit] = profile(s"add.${exclusionEntity.appName}.${exclusionEntity.channel}") {
     dao.add(exclusionEntity).transform[Unit](_ => Try_#(message = "ExclusionService.add Failed") {
       DistributedCacheManager.getCache(DistributedCacheType.ExclusionDetails).put[String](cacheKey(exclusionEntity.channel, exclusionEntity.appName, exclusionEntity.destination), exclusionEntity.exclusionDetails.exclusionType, exclusionEntity.exclusionDetails.ttl)
       BigfootService.ingestEntity(exclusionEntity.destination, exclusionEntity.toPublishFormat, exclusionEntity.namespace).get
