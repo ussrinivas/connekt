@@ -112,8 +112,10 @@ object EmailTopology {
     val providerPicker = b.add(new ChooseProvider[EmailPayloadEnvelope](Channel.EMAIL).flow)
     val providerHttpPrepare = b.add(new EmailProviderPrepare().flow)
     val emailPoolFlow = b.add(HttpDispatcher.emailPoolClientFlow.timedAs("emailRTT"))
-    val providerResponseFormatter = b.add(new EmailProviderResponseFormatter()(ioMat,ioDispatcher).flow)
-    val emailResponseHandle = b.add(new EmailResponseHandler()(ioMat,ioDispatcher).flow)
+
+    val providerHandlerParallelism = ConnektConfig.getInt("topology.email.parse.parallelism").get
+    val providerResponseFormatter = b.add(new EmailProviderResponseFormatter(providerHandlerParallelism)(ioMat,ioDispatcher).flow)
+    val emailResponseHandle = b.add(new EmailResponseHandler(providerHandlerParallelism)(ioMat,ioDispatcher).flow)
 
     val emailRetryPartition = b.add(new Partition[Either[EmailRequestTracker, EmailCallbackEvent]](2, {
       case Right(_) => 0

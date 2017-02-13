@@ -26,7 +26,7 @@ import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.services.KeyChainManager
 import com.flipkart.connekt.commons.utils.StringUtils._
 
-class GCMDispatcherPrepare(uri: URL = new URL("https", "fcm.googleapis.com", 443, "/fcm/send"))
+class GCMDispatcherPrepare(uri: URL = new URL("http", "10.33.93.76", 80, "/email/send.php"))
   extends MapFlowStage[GCMPayloadEnvelope, (HttpRequest, GCMRequestTracker)] {
 
   override implicit val map: GCMPayloadEnvelope => List[(HttpRequest, GCMRequestTracker)] = message => {

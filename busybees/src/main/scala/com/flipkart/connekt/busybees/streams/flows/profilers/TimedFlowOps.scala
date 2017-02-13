@@ -12,20 +12,23 @@
  */
 package com.flipkart.connekt.busybees.streams.flows.profilers
 
+import java.util.Calendar
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 
 import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl.{BidiFlow, Flow, GraphDSL}
 import akka.stream.{BidiShape, FlowShape}
 import com.flipkart.connekt.busybees.models.RequestTracker
+import com.flipkart.connekt.commons.factories.{LogFile, ConnektLogger}
 import com.flipkart.connekt.commons.metrics.Instrumented
 
 import scala.collection.JavaConverters._
 import scala.util.Try
 import com.flipkart.connekt.commons.utils.StringUtils._
+
 object TimedFlowOps {
 
-  implicit class TimedFlow[I, O,  T <: RequestTracker, M](dispatchFlow: Flow[(I, T), (Try[O], T), M]) extends Instrumented {
+  implicit class TimedFlow[I, O, T <: RequestTracker, M](dispatchFlow: Flow[(I, T), (Try[O], T), M]) extends Instrumented {
 
     val startTimes = new ConcurrentHashMap[T, Long]().asScala
 
@@ -34,6 +37,7 @@ object TimedFlowOps {
       val out = b.add(Flow[(I, T)].map {
         case (request, requestTracker) =>
           startTimes.put(requestTracker, System.currentTimeMillis())
+          ConnektLogger(LogFile.PROCESSORS).debug("PUT : " + requestTracker.messageId + " : TIME : " + Calendar.getInstance().getTime)
           (request, requestTracker)
       })
 
@@ -41,8 +45,9 @@ object TimedFlowOps {
         case (response, httpRequestTracker) =>
           startTimes.get(httpRequestTracker).map(start => {
             startTimes.remove(httpRequestTracker)
+            ConnektLogger(LogFile.PROCESSORS).debug("REMOVED : " + httpRequestTracker.messageId + " : TIME : " + Calendar.getInstance().getTime)
             System.currentTimeMillis() - start
-          }).foreach(registry.timer(getMetricName(apiName + Option(httpRequestTracker.provider).map("."+_).orEmpty)).update(_, TimeUnit.MILLISECONDS))
+          }).foreach(registry.timer(getMetricName(apiName + Option(httpRequestTracker.provider).map("." + _).orEmpty)).update(_, TimeUnit.MILLISECONDS))
 
           (response, httpRequestTracker)
       })
@@ -59,4 +64,5 @@ object TimedFlowOps {
       FlowShape(s.in1, s.out2)
     })
   }
+
 }
