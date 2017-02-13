@@ -12,19 +12,18 @@
  */
 package com.flipkart.connekt.busybees.streams.flows.profilers
 
-import java.util.Calendar
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 
 import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl.{BidiFlow, Flow, GraphDSL}
 import akka.stream.{BidiShape, FlowShape}
 import com.flipkart.connekt.busybees.models.RequestTracker
-import com.flipkart.connekt.commons.factories.{LogFile, ConnektLogger}
+import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.metrics.Instrumented
+import com.flipkart.connekt.commons.utils.StringUtils._
 
 import scala.collection.JavaConverters._
 import scala.util.Try
-import com.flipkart.connekt.commons.utils.StringUtils._
 
 object TimedFlowOps {
 
@@ -37,7 +36,6 @@ object TimedFlowOps {
       val out = b.add(Flow[(I, T)].map {
         case (request, requestTracker) =>
           startTimes.put(requestTracker, System.currentTimeMillis())
-          ConnektLogger(LogFile.PROCESSORS).debug("PUT : " + requestTracker.messageId + " : TIME : " + Calendar.getInstance().getTime)
           (request, requestTracker)
       })
 
@@ -45,8 +43,9 @@ object TimedFlowOps {
         case (response, httpRequestTracker) =>
           startTimes.get(httpRequestTracker).map(start => {
             startTimes.remove(httpRequestTracker)
-            ConnektLogger(LogFile.PROCESSORS).debug("REMOVED : " + httpRequestTracker.messageId + " : TIME : " + Calendar.getInstance().getTime)
-            System.currentTimeMillis() - start
+            val duration = System.currentTimeMillis() - start
+            ConnektLogger(LogFile.PROCESSORS).trace(s"TimedFlowOps/$apiName MessageId: ${httpRequestTracker.messageId} took : $duration ms")
+            duration
           }).foreach(registry.timer(getMetricName(apiName + Option(httpRequestTracker.provider).map("." + _).orEmpty)).update(_, TimeUnit.MILLISECONDS))
 
           (response, httpRequestTracker)
