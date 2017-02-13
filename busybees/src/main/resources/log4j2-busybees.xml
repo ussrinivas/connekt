@@ -121,6 +121,7 @@
     <Logger name="com.flipkart" level="DEBUG"/>
     <Logger name="com.flipkart.kloud.config" level="ERROR"/>
     <Logger name="com.relayrides.pushy" level="INFO"/>
+    <Logger name="net.htmlparser.jericho" level="FATAL"/>
 
 
     <Root level="INFO" includeLocation="false">
