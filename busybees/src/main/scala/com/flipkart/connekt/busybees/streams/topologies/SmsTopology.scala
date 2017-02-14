@@ -124,7 +124,7 @@ object SmsTopology {
 
     val providerHandlerParallelism = ConnektConfig.getInt("topology.sms.parse.parallelism").get
     val smsResponseFormatter = b.add(new SmsProviderResponseFormatter(providerHandlerParallelism)(ioMat,ioDispatcher).flow)
-    val smsResponseHandler = b.add(new SmsResponseHandler()(ioMat,ioDispatcher).flow)
+    val smsResponseHandler = b.add(new SmsResponseHandler(providerHandlerParallelism)(ioMat,ioDispatcher).flow)
 
     val smsRetryPartition = b.add(new Partition[Either[SmsRequestTracker, SmsCallbackEvent]](2, {
       case Right(_) => 0
