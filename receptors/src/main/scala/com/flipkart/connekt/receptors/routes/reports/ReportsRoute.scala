@@ -91,7 +91,7 @@ class ReportsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                   authorize(user, s"STATS_$clientId", "STATS") {
                     require(DateTimeUtils.parseCalendarDate(date).isSuccess, "Only 'yyyyMMdd' (Calendar Date) format allowed in `date`")
 
-                    val result = ServiceFactory.getReportingService.getAllDetails(date, clientId, contextId, appName, stencilId, None)
+                    val result = ServiceFactory.getReportingService.getAllDetails( date = date, clientId = clientId, contextId = contextId, stencilId = stencilId,  appName = appName, platform = None, channel =  None)
                     complete(GenericResponse(StatusCodes.OK.intValue, null, Response("Statistics", result)))
                   }
                 }
