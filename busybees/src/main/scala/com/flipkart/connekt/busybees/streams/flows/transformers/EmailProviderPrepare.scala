@@ -16,7 +16,7 @@ import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.headers.RawHeader
 import com.flipkart.connekt.busybees.models.EmailRequestTracker
 import com.flipkart.connekt.busybees.streams.flows.MapFlowStage
-import com.flipkart.connekt.commons.factories.ServiceFactory
+import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels.EmailPayloadEnvelope
 import com.flipkart.connekt.commons.services.KeyChainManager
 import com.flipkart.connekt.commons.utils.StringUtils._
@@ -31,6 +31,7 @@ class EmailProviderPrepare extends MapFlowStage[EmailPayloadEnvelope, (HttpReque
 
     val selectedProvider = emailPayloadEnvelope.provider.last
     val credentials = KeyChainManager.getSimpleCredential(s"email.${emailPayloadEnvelope.appName.toLowerCase}.$selectedProvider").get
+    ConnektLogger(LogFile.PROCESSORS).trace(s"EmailProviderPrepare received message: ${emailPayloadEnvelope.messageId}")
 
     val tracker = EmailRequestTracker(messageId = emailPayloadEnvelope.messageId,
       clientId = emailPayloadEnvelope.clientId,

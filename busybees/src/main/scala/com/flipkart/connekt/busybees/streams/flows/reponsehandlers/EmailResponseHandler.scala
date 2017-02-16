@@ -25,7 +25,7 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
-class EmailResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends EmailProviderResponseHandler[(Try[EmailResponse], EmailRequestTracker), EmailRequestTracker](96) with Instrumented {
+class EmailResponseHandler(parallelism:Int)(implicit m: Materializer, ec: ExecutionContext) extends EmailProviderResponseHandler[(Try[EmailResponse], EmailRequestTracker), EmailRequestTracker](parallelism) with Instrumented {
   override val map: ((Try[EmailResponse], EmailRequestTracker)) => Future[List[Either[EmailRequestTracker, EmailCallbackEvent]]] = responseTrackerPair => Future(profile("map"){
 
     val (emailResponse, emailTracker) = responseTrackerPair

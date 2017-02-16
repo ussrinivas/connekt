@@ -18,14 +18,16 @@ import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl.{BidiFlow, Flow, GraphDSL}
 import akka.stream.{BidiShape, FlowShape}
 import com.flipkart.connekt.busybees.models.RequestTracker
+import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.metrics.Instrumented
+import com.flipkart.connekt.commons.utils.StringUtils._
 
 import scala.collection.JavaConverters._
 import scala.util.Try
-import com.flipkart.connekt.commons.utils.StringUtils._
+
 object TimedFlowOps {
 
-  implicit class TimedFlow[I, O,  T <: RequestTracker, M](dispatchFlow: Flow[(I, T), (Try[O], T), M]) extends Instrumented {
+  implicit class TimedFlow[I, O, T <: RequestTracker, M](dispatchFlow: Flow[(I, T), (Try[O], T), M]) extends Instrumented {
 
     val startTimes = new ConcurrentHashMap[T, Long]().asScala
 
@@ -41,8 +43,10 @@ object TimedFlowOps {
         case (response, httpRequestTracker) =>
           startTimes.get(httpRequestTracker).map(start => {
             startTimes.remove(httpRequestTracker)
-            System.currentTimeMillis() - start
-          }).foreach(registry.timer(getMetricName(apiName + Option(httpRequestTracker.provider).map("."+_).orEmpty)).update(_, TimeUnit.MILLISECONDS))
+            val duration = System.currentTimeMillis() - start
+            ConnektLogger(LogFile.PROCESSORS).trace(s"TimedFlowOps/$apiName MessageId: ${httpRequestTracker.messageId} took : $duration ms")
+            duration
+          }).foreach(registry.timer(getMetricName(apiName + Option(httpRequestTracker.provider).map("." + _).orEmpty)).update(_, TimeUnit.MILLISECONDS))
 
           (response, httpRequestTracker)
       })
@@ -59,4 +63,5 @@ object TimedFlowOps {
       FlowShape(s.in1, s.out2)
     })
   }
+
 }
