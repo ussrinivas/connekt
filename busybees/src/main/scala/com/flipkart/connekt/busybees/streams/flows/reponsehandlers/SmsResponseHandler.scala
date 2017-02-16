@@ -27,8 +27,6 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Either.MergeableEither
 import scala.util.{Failure, Success, Try}
 
-sealed case class ProviderMeta(providerMessageId: String, provider: String, smsResponseMessage: String)
-
 sealed case class SMSCargoContainer(providerMessageId: String, provider: String, cargo: String)
 
 class SmsResponseHandler(parallelism: Int)(implicit m: Materializer, ec: ExecutionContext) extends SmsProviderResponseHandler[(Try[SmsResponse], SmsRequestTracker), SmsRequestTracker](parallelism) with Instrumented {
@@ -63,7 +61,7 @@ class SmsResponseHandler(parallelism: Int)(implicit m: Materializer, ec: Executi
             ConnektLogger(LogFile.PROCESSORS).error(s"SmsResponseHandler http response - auth error for: ${requestTracker.messageId} code: ${smsResponse.responseCode} response: ${smsResponse.message}")
             Right(smsResponse.responsePerReceivers.asScala.map(r => {
               SmsCallbackEvent(requestTracker.messageId, SmsResponseStatus.AuthError, r.receiver, requestTracker.clientId, requestTracker.appName, requestTracker.contextId,
-                ProviderMeta(r.providerMessageId, requestTracker.provider, smsResponse.message).asMap.getJson)
+                ProviderResponse(r.providerMessageId, requestTracker.provider, smsResponse.message).getJson)
             }).toList)
           case e if 5 == (e / 100) =>
             // Retrying in this case
@@ -71,7 +69,7 @@ class SmsResponseHandler(parallelism: Int)(implicit m: Materializer, ec: Executi
             ConnektLogger(LogFile.PROCESSORS).error(s"SmsResponseHandler http response - the server encountered an error while trying to process the request for: ${requestTracker.messageId} code: ${smsResponse.responseCode} response: ${smsResponse.message}")
             Left(smsResponse.responsePerReceivers.asScala.map(r => {
               SmsCallbackEvent(requestTracker.messageId, SmsResponseStatus.InternalError, r.receiver, requestTracker.clientId, requestTracker.appName, requestTracker.contextId,
-                ProviderMeta(r.providerMessageId, requestTracker.provider, smsResponse.message).asMap.getJson)
+                ProviderResponse(r.providerMessageId, requestTracker.provider, smsResponse.message).getJson)
             }).toList)
           case w =>
             // Retrying in this case
@@ -79,7 +77,7 @@ class SmsResponseHandler(parallelism: Int)(implicit m: Materializer, ec: Executi
             ConnektLogger(LogFile.PROCESSORS).error(s"SmsResponseHandler http response - response unhandled for: ${requestTracker.messageId} code: ${smsResponse.responseCode} response: ${smsResponse.message}")
             Left(smsResponse.responsePerReceivers.asScala.map(r => {
               SmsCallbackEvent(requestTracker.messageId, SmsResponseStatus.Error, r.receiver, requestTracker.clientId, requestTracker.appName, requestTracker.contextId,
-                ProviderMeta(r.providerMessageId, requestTracker.provider, smsResponse.message).asMap.getJson)
+                ProviderResponse(r.providerMessageId, requestTracker.provider, smsResponse.message).getJson)
             }).toList)
         }
 

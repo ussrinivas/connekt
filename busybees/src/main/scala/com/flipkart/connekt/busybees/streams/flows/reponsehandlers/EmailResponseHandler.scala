@@ -25,6 +25,8 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
+private [reponsehandlers] case class ProviderResponse(providerMessageId: String, providerName: String, message:String = null)
+
 class EmailResponseHandler(parallelism:Int)(implicit m: Materializer, ec: ExecutionContext) extends EmailProviderResponseHandler[(Try[EmailResponse], EmailRequestTracker), EmailRequestTracker](parallelism) with Instrumented {
   override val map: ((Try[EmailResponse], EmailRequestTracker)) => Future[List[Either[EmailRequestTracker, EmailCallbackEvent]]] = responseTrackerPair => Future(profile("map"){
 
@@ -47,12 +49,12 @@ class EmailResponseHandler(parallelism:Int)(implicit m: Materializer, ec: Execut
           case s if 2 == (s / 100) =>
             //Good!
             ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.EMAIL, appName = requestTracker.appName, event = EmailResponseStatus.Received)
-            Right((requestTracker.to ++ requestTracker.cc).map(t => EmailCallbackEvent(requestTracker.messageId, requestTracker.clientId, t, EmailResponseStatus.Received, requestTracker.appName, requestTracker.contextId, s"${emailResponse.providerName}/${emailResponse.messageId}")))
+            Right((requestTracker.to ++ requestTracker.cc).map(t => EmailCallbackEvent(requestTracker.messageId, requestTracker.clientId, t, EmailResponseStatus.Received, requestTracker.appName, requestTracker.contextId, ProviderResponse(emailResponse.messageId,emailResponse.providerName ).getJson)))
 
           case f if 4 == (f / 100) =>
             ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.EMAIL, appName = requestTracker.appName, event = EmailResponseStatus.AuthError)
             ConnektLogger(LogFile.PROCESSORS).error(s"EmailResponseHandler http response - auth error for:  ${emailResponse.providerName}/${emailResponse.messageId} code: ${emailResponse.responseCode} response: ${emailResponse.message}")
-            Right((requestTracker.to ++ requestTracker.cc).map(t => EmailCallbackEvent(requestTracker.messageId, requestTracker.clientId, t, EmailResponseStatus.AuthError, requestTracker.appName, requestTracker.contextId, s"ProviderReponse : MessageId : ${emailResponse.messageId}, Message: ${emailResponse.message}")))
+            Right((requestTracker.to ++ requestTracker.cc).map(t => EmailCallbackEvent(requestTracker.messageId, requestTracker.clientId, t, EmailResponseStatus.AuthError, requestTracker.appName, requestTracker.contextId, ProviderResponse(emailResponse.messageId, emailResponse.providerName, emailResponse.message).getJson)))
 
           case e if 5 == (e / 100) =>
             ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.EMAIL, appName = requestTracker.appName, event = EmailResponseStatus.InternalError)
