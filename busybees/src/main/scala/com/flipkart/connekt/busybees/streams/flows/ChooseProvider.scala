@@ -23,7 +23,8 @@ import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.StringUtils
 import com.flipkart.connekt.commons.utils.StringUtils._
 
-import scala.util.{Failure, Random, Success}
+import scala.util.control.NoStackTrace
+import scala.util.{Failure, Random, Success, Try}
 
 class ChooseProvider[T <: ProviderEnvelope](channel: Channel) extends MapFlowStage[T, T] with Instrumented {
 
@@ -36,7 +37,7 @@ class ChooseProvider[T <: ProviderEnvelope](channel: Channel) extends MapFlowSta
       List(payload)
     } catch {
       case e: Throwable =>
-        ConnektLogger(LogFile.PROCESSORS).error(s"ChooseProvider error", e)
+        ConnektLogger(LogFile.PROCESSORS).warn(s"ChooseProvider error", e)
         throw ConnektStageException(payload.messageId, payload.clientId, payload.destinations, InternalStatus.StageError, payload.appName, channel, payload.contextId, payload.meta, s"ChooseProvider-${e.getMessage}", e)
     }
   }
@@ -56,9 +57,7 @@ class ChooseProvider[T <: ProviderEnvelope](channel: Channel) extends MapFlowSta
     })
 
     val randomGenerator = new Random()
-    val randomNumber = Try_ {
-      randomGenerator.nextInt(maxValue)
-    }
+    val randomNumber = Try(randomGenerator.nextInt(maxValue))
     var iteration = 0
 
     randomNumber match {
@@ -74,7 +73,7 @@ class ChooseProvider[T <: ProviderEnvelope](channel: Channel) extends MapFlowSta
       case Failure(f) =>
         meter(s"$channel.provider.exhausted").mark()
         ConnektLogger(LogFile.PROCESSORS).error(s"No Providers remaining, already tried with $alreadyTriedProviders", f)
-        throw new Exception(s"No Providers remaining, already tried with $alreadyTriedProviders", f)
+        throw new Exception(s"No Providers remaining, already tried with $alreadyTriedProviders", f) with NoStackTrace
     }
   }
 }
