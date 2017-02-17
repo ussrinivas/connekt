@@ -60,7 +60,7 @@ case class ConnektRequest(@JsonProperty(required = false) id: String,
           val subject = stencilService.materialize(stencil.filter(_.component.equalsIgnoreCase("subject")).head, channelDataModel).asInstanceOf[String]
           val html = stencilService.materialize(stencil.filter(_.component.equalsIgnoreCase("html")).head, channelDataModel).asInstanceOf[String]
           val txt = stencilService.materialize(stencil.filter(_.component.equalsIgnoreCase("text")).head, channelDataModel).asInstanceOf[String]
-          EmailRequestData(subject = subject, html = html, text = txt, attachments = channelData.asInstanceOf[EmailRequestData].attachments)
+          EmailRequestData(subject = subject, html = html, text = txt, attachments = Option(channelData).map(_.asInstanceOf[EmailRequestData].attachments).orNull)
         case unsupportedChannel =>
           throw new Exception(s"`channelData` compute undefined for $unsupportedChannel")
       }
