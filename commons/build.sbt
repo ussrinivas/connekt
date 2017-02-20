@@ -25,7 +25,7 @@ libraryDependencies ++= Seq(
 
 libraryDependencies ++= Seq(
   "com.flipkart.connekt" %% "concord" % "0.2.1",
-  "com.flipkart.connekt" %% "connekt-concord" % "0.2.5" excludeAll ExclusionRule(organization = "com.google.guava", name = "guava"),
+  "com.flipkart.connekt" %% "connekt-concord" % "0.2.7" excludeAll ExclusionRule(organization = "com.google.guava", name = "guava"),
   /* Logging Dependencies.Since we want to use log4j2 */
   "com.lmax" % "disruptor" % "3.3.4",
   "org.apache.logging.log4j" % "log4j-api" % "2.5",
@@ -40,7 +40,7 @@ libraryDependencies ++= Seq(
     ExclusionRule(organization = "org.slf4j", name = "slf4j-log4j12"),
     ExclusionRule(organization = "log4j"),
     ExclusionRule("io.netty")
-    ),
+  ),
   "com.typesafe" % "config" % "1.3.0",
   "commons-beanutils" % "commons-beanutils" % "1.8.0",
   "org.ow2.asm" % "asm" % "4.1",
@@ -50,20 +50,20 @@ libraryDependencies ++= Seq(
     ExclusionRule("log4j"),
     ExclusionRule(organization = "org.slf4j"),
     ExclusionRule(organization = "asm")
-    ),
+  ),
   "io.netty" % "netty-all" % "4.1.0.Final",
   "org.apache.hbase" % "hbase-common" % "1.2.1" excludeAll(
     ExclusionRule("log4j"),
     ExclusionRule("io.netty"),
     ExclusionRule(organization = "org.slf4j")
-    ),
+  ),
   "org.apache.hadoop" % "hadoop-common" % "2.7.2" excludeAll(
     ExclusionRule("org.slf4j"),
     ExclusionRule("io.netty"),
     ExclusionRule("asm"),
     ExclusionRule("log4j"),
     ExclusionRule("org.apache.curator")
-    ),
+  ),
   "com.google.guava" % "guava" % "12.0.1",
   "org.scalatest" % "scalatest_2.11" % "2.2.4" % Test,
   "com.fasterxml.jackson.module" % "jackson-module-scala_2.11" % "2.7.2",
@@ -84,7 +84,7 @@ libraryDependencies ++= Seq(
     ExclusionRule(organization = "log4j"),
     ExclusionRule(organization = "org.slf4j"),
     ExclusionRule(organization = "io.netty")
-    ),
+  ),
   "joda-time" % "joda-time" % "2.3",
   "com.flipkart" %% "espion" % "1.0.3",
   "com.flipkart" %% "util-http" % "0.0.6",
@@ -96,7 +96,7 @@ libraryDependencies ++= Seq(
     ExclusionRule(organization = "com.codahale.metrics"),
     ExclusionRule(organization = "org.mockito", name = "mockito-all"),
     ExclusionRule(organization = "org.hamcrest", name = "hamcrest-core")
-    ),
+  ),
   "chronosQ" % "chronosQ-reservation-impl-hbase" % "1.1-hdp-SNAPSHOT" excludeAll(
     ExclusionRule("org.slf4j"),
     ExclusionRule("io.netty"),
@@ -106,12 +106,12 @@ libraryDependencies ++= Seq(
     ExclusionRule("org.apache.curator"),
     ExclusionRule(organization = "org.mockito", name = "mockito-all"),
     ExclusionRule(organization = "org.hamcrest", name = "hamcrest-core")
-    ),
-    "javax.mail" % "mail" % "1.5.0-b01",
-    "net.htmlparser.jericho" % "jericho-html" % "3.3",
-    "com.googlecode.libphonenumber" % "libphonenumber" % "7.7.5",
-    "com.rabbitmq" % "amqp-client" % "4.0.1",
-    "net.freeutils" % "jcharset" % "2.0"
+  ),
+  "javax.mail" % "mail" % "1.5.0-b01",
+  "net.htmlparser.jericho" % "jericho-html" % "3.3",
+  "com.googlecode.libphonenumber" % "libphonenumber" % "7.7.5",
+  "com.rabbitmq" % "amqp-client" % "4.0.1",
+  "net.freeutils" % "jcharset" % "2.0"
 )
 
 
@@ -120,7 +120,9 @@ test in assembly := {}
 parallelExecution in Test := false
 
 assemblyExcludedJars in assembly <<= (fullClasspath in assembly) map { cp =>
-  cp filter {_.data.getName == "bcprov-jdk15on-1.54.jar"}
+  cp filter {
+    _.data.getName == "bcprov-jdk15on-1.54.jar"
+  }
 }
 
 assemblyMergeStrategy in assembly := AppBuild.mergeStrategy
