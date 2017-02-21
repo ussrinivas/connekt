@@ -12,7 +12,7 @@
  */
 package com.flipkart.connekt.receptors.routes.exclude
 
-import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.model._
 import akka.stream.ActorMaterializer
 import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.entities.ExclusionType.ExclusionType
@@ -58,13 +58,24 @@ class SuppressionsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                   (destination: String) =>
                     get {
                       val details = ExclusionService.get(channel, appName.toLowerCase, destination.trim).get
-                      if(details.nonEmpty)
+                      if (details.nonEmpty)
                         complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Suppression get request received for destination : $destination", details)))
                       else
                         complete(GenericResponse(StatusCodes.NotFound.intValue, null, Response(s"No Suppressions found for destination : $destination", null)))
                     } ~ delete {
                       ExclusionService.delete(channel, appName.toLowerCase, destination.trim).get
                       complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Suppression remove request received for destination : $destination", null)))
+                    } ~ method(HttpMethods.TRACE) {
+                      val notFiltered = ExclusionService.lookup(channel, appName.toLowerCase, destination.trim).get
+                      complete {
+                        HttpResponse(
+                          status = {
+                            if (notFiltered) StatusCodes.NotFound else StatusCodes.OK
+                          },
+                          headers = Nil,
+                          entity = HttpEntity.Empty
+                        )
+                      }
                     }
                 }
               }
