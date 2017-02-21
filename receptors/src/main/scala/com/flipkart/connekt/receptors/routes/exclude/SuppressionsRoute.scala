@@ -58,7 +58,10 @@ class SuppressionsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                   (destination: String) =>
                     get {
                       val details = ExclusionService.get(channel, appName.toLowerCase, destination.trim).get
-                      complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Suppression get request received for destination : $destination", details)))
+                      if(details.nonEmpty)
+                        complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Suppression get request received for destination : $destination", details)))
+                      else
+                        complete(GenericResponse(StatusCodes.NotFound.intValue, null, Response(s"No Suppressions found for destination : $destination", null)))
                     } ~ delete {
                       ExclusionService.delete(channel, appName.toLowerCase, destination.trim).get
                       complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Suppression remove request received for destination : $destination", null)))

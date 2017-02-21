@@ -221,18 +221,23 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                     //TODO: do an exclusion check
                                     val excludedAddress = recipients.filterNot { address => ExclusionService.lookup(request.channel, appName, address).getOrElse(false) }
                                     val failure = ListBuffer[String](excludedAddress.toSeq :_*)
+                                    val validRecipients = recipients.diff(excludedAddress)
 
-                                    /* enqueue multiple requests into kafka */
-                                    ServiceFactory.getMessageService(Channel.EMAIL).saveRequest(request.copy(channelInfo = emailRequestInfo), queueName, isCrucial = true) match {
-                                      case Success(id) =>
-                                        success += id -> recipients.diff(excludedAddress)
-                                        ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, request.contextId, request.stencilId, Channel.EMAIL, appName, InternalStatus.Received, recipients.size)
-                                      case Failure(t) =>
-                                        failure ++= recipients
-                                        ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, request.contextId, request.stencilId, Channel.EMAIL, appName, InternalStatus.Rejected, recipients.size)
+                                    if(validRecipients.nonEmpty) {
+                                      /* enqueue multiple requests into kafka */
+                                      ServiceFactory.getMessageService(Channel.EMAIL).saveRequest(request.copy(channelInfo = emailRequestInfo), queueName, isCrucial = true) match {
+                                        case Success(id) =>
+                                          success += id -> validRecipients
+                                          ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, request.contextId, request.stencilId, Channel.EMAIL, appName, InternalStatus.Received, recipients.size)
+                                        case Failure(t) =>
+                                          failure ++= validRecipients
+                                          ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, request.contextId, request.stencilId, Channel.EMAIL, appName, InternalStatus.Rejected, recipients.size)
+                                      }
+
+                                      GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse("Email Send Request Received", success.toMap, failure.toList)).respond
+                                    } else {
+                                      GenericResponse(StatusCodes.BadRequest.intValue, null, SendResponse(s"No valid destinations found", success.toMap, failure.toList)).respond
                                     }
-
-                                    GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse("Email Send Request Received", success.toMap, failure.toList)).respond
                                   } else {
                                     ConnektLogger(LogFile.SERVICE).error(s"Request Validation Failed, $request ")
                                     GenericResponse(StatusCodes.BadRequest.intValue, null, Response("Request Validation Failed, Please ensure mandatory field values.", null)).respond
