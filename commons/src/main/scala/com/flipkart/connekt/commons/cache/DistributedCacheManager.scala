@@ -31,7 +31,7 @@ object DistributedCacheManager extends CacheManager {
   cacheTTLMap += DistributedCacheType.ExclusionDetails -> CacheProperty(0, 0.second)
   cacheTTLMap += DistributedCacheType.IdempotentCheck -> CacheProperty(0, 1.day)
   cacheTTLMap += DistributedCacheType.Default -> CacheProperty(0, 24.hours)
-  cacheTTLMap += DistributedCacheType.DeviceDetails -> CacheProperty(0, 0.seconds)
+  cacheTTLMap += DistributedCacheType.DeviceDetails -> CacheProperty(0, Duration.Inf)
 
   private var cacheStorage = concurrent.TrieMap[DistributedCacheType.Value, Caches]()
 
@@ -72,7 +72,7 @@ class DistributedCaches(name: String, cacheStorageBucket: Bucket, props: CachePr
 
   override def put[T](key: String, value: T, ttl: Duration)(implicit cTag: reflect.ClassTag[T]): Boolean = {
     try {
-      val ttlSec = if (ttl.isFinite()) ttl.toSeconds.toInt else 0 // In couchbase. 0 is infinite
+      val ttlSec = if (ttl.isFinite()) (System.currentTimeMillis + ttl.toMillis / 1000).toInt  else 0 // In couchbase. 0 is infinite
       cacheStorageBucket.upsert(StringDocument.create(key, ttlSec, value.asInstanceOf[AnyRef].getJson))
       true
     } catch {
