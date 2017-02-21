@@ -10,7 +10,7 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.receptors.routes.push
+package com.flipkart.connekt.receptors.routes.master
 
 import akka.connekt.AkkaHelpers._
 import akka.http.scaladsl.model.StatusCodes
@@ -22,7 +22,7 @@ import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFa
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.iomodels._
-import com.flipkart.connekt.commons.services.DeviceDetailsService
+import com.flipkart.connekt.commons.services.{DeviceDetailsService, ExclusionService}
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.receptors.directives.MPlatformSegment
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
@@ -214,15 +214,18 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                   if (emailRequestInfo.to != null && emailRequestInfo.to.nonEmpty) {
 
                                     val success = scala.collection.mutable.Map[String, Set[String]]()
-                                    val failure = ListBuffer[String]()
 
                                     val queueName = ServiceFactory.getMessageService(Channel.EMAIL).getRequestBucket(request, user)
                                     val recipients = emailRequestInfo.to.map(_.address) ++ emailRequestInfo.cc.map(_.address) ++ emailRequestInfo.bcc.map(_.address)
 
+                                    //TODO: do an exclusion check
+                                    val excludedAddress = recipients.filterNot { address => ExclusionService.lookup(request.channel, appName, address).getOrElse(false) }
+                                    val failure = ListBuffer[String](excludedAddress.toSeq :_*)
+
                                     /* enqueue multiple requests into kafka */
                                     ServiceFactory.getMessageService(Channel.EMAIL).saveRequest(request.copy(channelInfo = emailRequestInfo), queueName, isCrucial = true) match {
                                       case Success(id) =>
-                                        success += id -> recipients
+                                        success += id -> recipients.diff(excludedAddress)
                                         ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, request.contextId, request.stencilId, Channel.EMAIL, appName, InternalStatus.Received, recipients.size)
                                       case Failure(t) =>
                                         failure ++= recipients

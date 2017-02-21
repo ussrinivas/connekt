@@ -10,7 +10,7 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.receptors.routes.push
+package com.flipkart.connekt.receptors.routes.master
 
 import akka.http.scaladsl.model._
 import akka.stream.ActorMaterializer

@@ -18,7 +18,7 @@ import com.flipkart.connekt.receptors.directives.AuthenticationDirectives
 import com.flipkart.connekt.receptors.routes.callbacks.{CallbackRoute, SubscriptionsRoute, TrackingRoute}
 import com.flipkart.connekt.receptors.routes.common._
 import com.flipkart.connekt.receptors.routes.exclude.SuppressionsRoute
-import com.flipkart.connekt.receptors.routes.push.{FetchRoute, RegistrationRoute, SendRoute}
+import com.flipkart.connekt.receptors.routes.master.{FetchRoute, RegistrationRoute, SendRoute}
 import com.flipkart.connekt.receptors.routes.reports.ReportsRoute
 import com.flipkart.connekt.receptors.routes.status.SystemStatus
 import com.flipkart.connekt.receptors.routes.stencils.StencilsRoute
