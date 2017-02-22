@@ -17,13 +17,14 @@ import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFa
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.iomodels.ConnektRequest
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
+import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.StringUtils._
 
-class RenderFlow extends MapFlowStage[ConnektRequest, ConnektRequest] {
+class RenderFlow extends MapFlowStage[ConnektRequest, ConnektRequest] with Instrumented {
 
   lazy implicit val stencilService = ServiceFactory.getStencilService
 
-  override val map: (ConnektRequest) => List[ConnektRequest] = input => {
+  override val map: (ConnektRequest) => List[ConnektRequest] = input => profile("map"){
     try {
       ConnektLogger(LogFile.PROCESSORS).debug("RenderFlow received message: {}", supplier(input.id))
       ConnektLogger(LogFile.PROCESSORS).trace("RenderFlow received message: {}", supplier(input.getJson))
