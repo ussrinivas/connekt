@@ -17,15 +17,17 @@ import com.fasterxml.jackson.annotation.{JsonInclude, JsonProperty}
 import com.flipkart.concord.transformer.TURLTransformer
 import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.entities.Channel.Channel
+import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.CompressionUtils._
 import com.flipkart.connekt.commons.utils.StringUtils._
+import com.flipkart.metrics.Timed
 import net.htmlparser.jericho._
 
 import scala.collection.JavaConverters._
 
 case class URLMessageTracker(@JsonProperty("v") version: Int, @JsonProperty("c") channel: String, @JsonInclude(Include.NON_NULL) @JsonProperty("u") url: String, @JsonProperty("i") messageId: String, @JsonInclude(Include.NON_NULL) @JsonProperty("n") linkName: String, @JsonProperty("d") destination: String, @JsonProperty("ct") clientId: String, @JsonInclude(Include.NON_NULL) @JsonProperty("ctx") contextId: Option[String], @JsonProperty("a") appName: String)
 
-object TrackingService {
+object TrackingService extends Instrumented {
 
   private val urlRegex = """(?i)\b(https?)://[-A-Za-z0-9+&@#/%?=~_|!:,.;\[\]]*[-A-Za-z0-9+&@#/%=~_|\[\]]""".r
   private val baseURL = "/t/%s/"
@@ -44,10 +46,11 @@ object TrackingService {
     def toMap: Map[String, AnyRef] = this.asMap.asInstanceOf[Map[String, AnyRef]]
   }
 
+  @Timed("trackText")
   def trackText(txt: String, trackerOptions: TrackerOptions, urlTransformer: TURLTransformer): String = {
     var message = txt
     val finalURLs = (for (url <- getAllUrls(message)) yield {
-      val deepLinkedUrl: String = urlTransformer.deeplink(url, trackerOptions.toMap).get
+      val deepLinkedUrl: String = profile(s"${trackerOptions.appName}.${trackerOptions.channel}.deeplink")(urlTransformer.deeplink(url, trackerOptions.toMap).get)
       val trackedURL = TrackedURL(
         domain = trackerOptions.domain,
         originalURL = deepLinkedUrl,
@@ -72,6 +75,7 @@ object TrackingService {
     message
   }
 
+  @Timed("trackHTML")
   def trackHTML(html: String, trackerOptions: TrackerOptions, urlTransformer: TURLTransformer): String = {
     val source: Source = new Source(html)
     val out = new OutputDocument(source)
@@ -123,7 +127,7 @@ object TrackingService {
     attrMap.foreach { case (name, value) =>
       if (name.equalsIgnoreCase("href") && !attrMap("href").startsWith("mailto")) {
         val originalUrl = attrMap("href")
-        val url: String = urlTransformer.deeplink(originalUrl, trackerOptions.toMap).get //.getOrElse(originalUrl)
+        val url: String = profile(s"${trackerOptions.appName}.${trackerOptions.channel}.deeplink")(urlTransformer.deeplink(originalUrl, trackerOptions.toMap).get) //.getOrElse(originalUrl)
 
         val trackedUrl = TrackedURL(
           domain = trackerOptions.domain,
