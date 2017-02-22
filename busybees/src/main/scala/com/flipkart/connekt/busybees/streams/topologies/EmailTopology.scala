@@ -40,6 +40,7 @@ import scala.concurrent.{ExecutionContextExecutor, Promise}
 
 class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCallbackEvent] with SyncDelegate {
 
+  val blockingDispatcher = system.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
   SyncManager.get().addObserver(this, List(SyncType.CLIENT_QUEUE_CREATE))
 
   override def onUpdate(_type: SyncType, args: List[AnyRef]): Any = {
@@ -94,17 +95,17 @@ class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCa
 
 
   override def transformers: Map[CheckPointGroup, Flow[ConnektRequest, EmailCallbackEvent, NotUsed]] = {
-    Map(Channel.EMAIL.toString -> emailHTTPTransformFlow(ioMat,ioDispatcher))
+    Map(Channel.EMAIL.toString -> emailHTTPTransformFlow(ioMat,ioDispatcher,blockingDispatcher))
   }
 }
 
 object EmailTopology {
 
-  def emailHTTPTransformFlow(implicit ioMat:ActorMaterializer, ioDispatcher:  ExecutionContextExecutor): Flow[ConnektRequest, EmailCallbackEvent, NotUsed] = Flow.fromGraph(GraphDSL.create() { implicit b =>
+  def emailHTTPTransformFlow(implicit ioMat:ActorMaterializer, ioDispatcher:  ExecutionContextExecutor, blockingDispatcher:ExecutionContextExecutor): Flow[ConnektRequest, EmailCallbackEvent, NotUsed] = Flow.fromGraph(GraphDSL.create() { implicit b =>
 
     val render = b.add(new RenderFlow().flow)
     val trackEmailParallelism = ConnektConfig.getInt("topology.email.tracking.parallelism").get
-    val tracking = b.add(new EmailTrackingFlow(trackEmailParallelism)(ioDispatcher).flow)
+    val tracking = b.add(new EmailTrackingFlow(trackEmailParallelism)(blockingDispatcher).flow)
     val fmtEmailParallelism = ConnektConfig.getInt("topology.email.formatter.parallelism").get
     val fmtEmail = b.add(new EmailChannelFormatter(fmtEmailParallelism)(ioDispatcher).flow)
     val emailPayloadMerge = b.add(MergePreferred[EmailPayloadEnvelope](1))

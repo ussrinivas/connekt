@@ -62,7 +62,7 @@ class EmailProviderTopologyTest extends TopologyUTSpec {
                    """.stripMargin.getObj[ConnektRequest]
 
     val result = Source.single(cRequest)
-      .via(EmailTopology.emailHTTPTransformFlow)
+      .via(EmailTopology.emailHTTPTransformFlow(mat, ec, ec))
       .runWith(Sink.head)
 
     val response = Await.result(result, 120.seconds)
