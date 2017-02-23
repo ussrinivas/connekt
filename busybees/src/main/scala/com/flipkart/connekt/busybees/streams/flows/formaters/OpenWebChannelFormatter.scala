@@ -13,7 +13,7 @@
 package com.flipkart.connekt.busybees.streams.flows.formaters
 
 import java.net.URL
-import java.util.{Base64, Date}
+import java.util.Base64
 
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.flipkart.connekt.busybees.encryption.WebPushEncryptionUtils
@@ -30,6 +30,7 @@ import com.flipkart.connekt.commons.utils.NetworkUtils.URLFunctions
 import com.flipkart.connekt.commons.utils.StringUtils._
 import org.bouncycastle.jce.interfaces.ECPublicKey
 import org.jose4j.jws.{AlgorithmIdentifiers, JsonWebSignature}
+import org.jose4j.jwt.JwtClaims
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
@@ -74,13 +75,14 @@ class OpenWebChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExe
                     "Content-Encoding" -> "aesgcm"
                   )
 
+                  val claims = new JwtClaims()
+                  claims.setAudience(new URL(token).origin)
+                  claims.setExpirationTimeMinutesInTheFuture(12 * 60)
+                  claims.setSubject("mailto:connekt-dev@flipkart.com")
+
                   val jws = new JsonWebSignature()
                   jws.setHeader("typ", "JWT")
-                  jws.setPayload(Map(
-                    "sub" -> "mailto:connekt-dev@flipkart.com",
-                    "aud" -> new URL(token).origin,
-                    "exp" -> (new Date(System.currentTimeMillis() + 6.hours.toMillis).getTime / 1000)
-                  ).getJson)
+                  jws.setPayload(claims.toJson)
                   jws.setKey(WebPushEncryptionUtils.loadPrivateKey(vapIdKeyPair.privateKey))
                   jws.setAlgorithmHeaderValue(AlgorithmIdentifiers.ECDSA_USING_P256_CURVE_AND_SHA256)
                   val compactJws = jws.getCompactSerialization.stripSuffix("=")
