@@ -18,19 +18,18 @@ import java.security.spec.ECPublicKeySpec
 import java.util.Base64
 import javax.crypto.KeyAgreement
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.jce.spec.ECNamedCurveSpec
 import org.bouncycastle.jce.{ECNamedCurveTable, ECPointUtil}
 
 object EllipticCurveKeyUtils {
 
-  Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider())
   private val cryptoTypeEcdh = "ECDH"
-  private val providerBouncyCastle = "BC"
   private val secp256r1 = "secp256r1"
-  private val keyFactory = KeyFactory.getInstance(cryptoTypeEcdh, providerBouncyCastle)
+  private val keyFactory = KeyFactory.getInstance(cryptoTypeEcdh, BouncyCastleProvider.PROVIDER_NAME)
   private val ecNamedCurveParameterSpec = ECNamedCurveTable.getParameterSpec(secp256r1)
   private val ecNamedCurveSpec = new ECNamedCurveSpec(secp256r1, ecNamedCurveParameterSpec.getCurve, ecNamedCurveParameterSpec.getG, ecNamedCurveParameterSpec.getN)
-  private val keyPairGenerator = KeyPairGenerator.getInstance(cryptoTypeEcdh, providerBouncyCastle)
+  private val keyPairGenerator = KeyPairGenerator.getInstance(cryptoTypeEcdh, BouncyCastleProvider.PROVIDER_NAME)
 
   keyPairGenerator.initialize(ECNamedCurveTable.getParameterSpec(secp256r1), new SecureRandom())
 
@@ -53,7 +52,7 @@ object EllipticCurveKeyUtils {
   }
 
   def generateSharedSecret(serverKeys: KeyPair, clientPublicKey: PublicKey): Array[Byte] = {
-    val keyAgreement = KeyAgreement.getInstance(cryptoTypeEcdh, providerBouncyCastle)
+    val keyAgreement = KeyAgreement.getInstance(cryptoTypeEcdh, BouncyCastleProvider.PROVIDER_NAME)
     keyAgreement.init(serverKeys.getPrivate)
     keyAgreement.doPhase(clientPublicKey, true)
     keyAgreement.generateSecret()

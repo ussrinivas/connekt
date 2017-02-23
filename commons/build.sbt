@@ -89,7 +89,7 @@ libraryDependencies ++= Seq(
   "com.flipkart" %% "espion" % "1.0.1",
   "com.flipkart" %% "util-http" % "0.0.6",
   "commons-validator" % "commons-validator" % "1.5.0" excludeAll ExclusionRule("commons-beanutils", "commons-beanutils"),
-  "org.bouncycastle" % "bcprov-jdk15on" % "1.54",
+  "org.bouncycastle" % "bcprov-jdk15on" % "1.56",
   "chronosQ" % "chronosQ-client" % "1.1-SNAPSHOT" excludeAll(
     ExclusionRule(organization = "log4j"),
     ExclusionRule(organization = "org.slf4j"),
@@ -116,7 +116,7 @@ test in assembly := {}
 parallelExecution in Test := false
 
 assemblyExcludedJars in assembly <<= (fullClasspath in assembly) map { cp =>
-  cp filter {_.data.getName == "bcprov-jdk15on-1.54.jar"}
+  cp filter {_.data.getName == "bcprov-jdk15on-1.56.jar"}
 }
 
 assemblyMergeStrategy in assembly := AppBuild.mergeStrategy

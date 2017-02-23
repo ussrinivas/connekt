@@ -31,6 +31,7 @@ sealed case class WebPushEncryptionResult(salt: Array[Byte], serverPublicKey: Ar
 object WebPushEncryptionUtils {
 
   private val hmacSHA256 = "HmacSHA256"
+  Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider())
 
   def encrypt(userPublicKey: String, userAuth: String, payload: String): WebPushEncryptionResult = {
     val salt = generateSalt()
@@ -111,7 +112,7 @@ object WebPushEncryptionUtils {
   def loadPrivateKey(encodedPrivateKey: String): PrivateKey = {
     val decodedPrivateKey = base64Decode(encodedPrivateKey)
     val params = ECNamedCurveTable.getParameterSpec("prime256v1") // prime256v1 is NIST P-256
-    val prvkey = new ECPrivateKeySpec(new BigInteger(decodedPrivateKey), params)
+    val prvkey = new ECPrivateKeySpec(new BigInteger(1, decodedPrivateKey), params)
     val kf = KeyFactory.getInstance("ECDH", BouncyCastleProvider.PROVIDER_NAME)
     kf.generatePrivate(prvkey)
   }
