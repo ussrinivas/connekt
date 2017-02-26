@@ -88,7 +88,8 @@ class DistributedCaches(name: String, cacheStorageBucket: Bucket, props: CachePr
 
   override def put[T](kv: List[(String, T)])(implicit cTag: reflect.ClassTag[T]): Boolean = {
     try {
-      val documents = kv.map(doc => StringDocument.create(doc._1, props.ttl.toSeconds.toInt, doc._2.asInstanceOf[AnyRef].getJson))
+      val ttlSec = if (props.ttl.isFinite()) (System.currentTimeMillis + props.ttl.toMillis / 1000).toInt  else 0 // In couchbase. 0 is infinite
+      val documents = kv.map(doc => StringDocument.create(doc._1, ttlSec, doc._2.asInstanceOf[AnyRef].getJson))
       Observable.from(documents).flatMap(doc => {
         rx.lang.scala.JavaConversions.toScalaObservable(cacheStorageBucket.async().upsert(doc))
       }).last.toBlocking.single
