@@ -220,10 +220,10 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
                                     //TODO: do an exclusion check
                                     val excludedAddress = recipients.filterNot { address => ExclusionService.lookup(request.channel, appName, address).getOrElse(false) }
-                                    val failure = ListBuffer[String](excludedAddress.toSeq :_*)
+                                    val failure = ListBuffer[String](excludedAddress.toSeq: _*)
                                     val validRecipients = recipients.diff(excludedAddress)
 
-                                    if(validRecipients.nonEmpty) {
+                                    if (validRecipients.nonEmpty) {
                                       /* enqueue multiple requests into kafka */
                                       ServiceFactory.getMessageService(Channel.EMAIL).saveRequest(request.copy(channelInfo = emailRequestInfo), queueName, isCrucial = true) match {
                                         case Success(id) =>
@@ -289,6 +289,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                         val validateNum = Try(phoneUtil.parse(r, appDefaultCountryCode.get("localRegion").asText.trim.toUpperCase))
                                         if (validateNum.isSuccess && phoneUtil.isValidNumber(validateNum.get)) {
                                           validNumbers += phoneUtil.format(validateNum.get, PhoneNumberFormat.E164)
+                                          ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.SMS, appName, InternalStatus.Received)
                                         } else {
                                           ConnektLogger(LogFile.PROCESSORS).error(s"Dropping invalid numbers: $r")
                                           ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.SMS, appName, InternalStatus.Rejected)
@@ -296,18 +297,27 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                         }
                                       })
 
-                                      val smsRequest = request.copy(channelInfo = smsRequestInfo.copy(receivers = validNumbers.toSet))
+                                      //TODO: do an exclusion check
+                                      val excludedNumbers = validNumbers.filterNot { number => ExclusionService.lookup(request.channel, appName, number).getOrElse(false) }
+                                      val nonExcludedNumbers = validNumbers.diff(excludedNumbers)
 
-                                      val queueName = ServiceFactory.getMessageService(Channel.SMS).getRequestBucket(request, user)
-                                      /* enqueue multiple requests into kafka */
-                                      val (success, failure) = ServiceFactory.getMessageService(Channel.SMS).saveRequest(smsRequest, queueName, isCrucial = true) match {
-                                        case Success(id) =>
-                                          (Map(id -> validNumbers.toSet), invalidNumbers)
-                                        case Failure(t) =>
-                                          (Map(), smsRequestInfo.receivers)
+                                      if (nonExcludedNumbers.nonEmpty) {
+                                        val smsRequest = request.copy(channelInfo = smsRequestInfo.copy(receivers = nonExcludedNumbers.toSet))
+
+                                        val queueName = ServiceFactory.getMessageService(Channel.SMS).getRequestBucket(request, user)
+                                        /* enqueue multiple requests into kafka */
+                                        val (success, failure) = ServiceFactory.getMessageService(Channel.SMS).saveRequest(smsRequest, queueName, isCrucial = true) match {
+                                          case Success(id) =>
+                                            (Map(id -> nonExcludedNumbers.toSet), invalidNumbers ++ excludedNumbers)
+                                          case Failure(t) =>
+                                            (Map(), smsRequestInfo.receivers)
+                                        }
+                                        GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse("SMS Send Request Received", success.toMap, failure.toList)).respond
+                                      } else {
+                                        GenericResponse(StatusCodes.BadRequest.intValue, null, SendResponse("No valid destinations found", Map.empty, smsRequestInfo.receivers.toList)).respond
                                       }
-                                      GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse("SMS Send Request Received", success.toMap, failure.toList)).respond
                                     }
+
                                     else {
                                       ConnektLogger(LogFile.SERVICE).error(s"Request Validation Failed, $request ")
                                       GenericResponse(StatusCodes.BadRequest.intValue, null, Response("Request Validation Failed, Please ensure mandatory field values.", null)).respond
