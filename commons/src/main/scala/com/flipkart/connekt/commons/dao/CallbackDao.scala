@@ -13,7 +13,9 @@
 package com.flipkart.connekt.commons.dao
 
 import java.io.IOException
+import java.util.concurrent.{ScheduledThreadPoolExecutor, TimeUnit}
 
+import com.flipkart.connekt.commons.core.Wrappers.Try_
 import com.flipkart.connekt.commons.dao.HbaseDao.ColumnData
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, THTableFactory}
 import com.flipkart.connekt.commons.iomodels.{CallbackEvent, ChannelRequestInfo}
@@ -34,7 +36,17 @@ abstract class CallbackDao(tableName: String, hTableFactory: THTableFactory) ext
 
   def mapToChannelEvent(channelEventPropsMap: Map[String, Array[Byte]]): CallbackEvent
 
-  override def close() = {
+
+  private val executor = new ScheduledThreadPoolExecutor(1)
+  private val flusher = executor.scheduleAtFixedRate(new Runnable {
+    override def run(): Unit = Try_ {
+      Option(hTableMutator).foreach(_.flush())
+    }
+  }, 60, 60, TimeUnit.SECONDS)
+
+
+  override def close(): Unit = {
+    flusher.cancel(true)
     Option(hTableMutator).foreach(_.close())
   }
 
