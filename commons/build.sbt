@@ -109,7 +109,7 @@ libraryDependencies ++= Seq(
   ),
   "javax.mail" % "mail" % "1.5.0-b01",
   "net.htmlparser.jericho" % "jericho-html" % "3.3",
-  "com.googlecode.libphonenumber" % "libphonenumber" % "7.7.5",
+  "com.googlecode.libphonenumber" % "libphonenumber" % "8.3.1",
   "com.rabbitmq" % "amqp-client" % "4.0.1",
   "net.freeutils" % "jcharset" % "2.0"
 )
