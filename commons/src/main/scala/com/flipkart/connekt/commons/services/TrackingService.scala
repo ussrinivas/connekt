@@ -21,7 +21,9 @@ import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.CompressionUtils._
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.metrics.Timed
-import net.htmlparser.jericho._
+import net.htmlparser.jericho.HTMLElementName
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
 
 import scala.collection.JavaConverters._
 
@@ -77,32 +79,36 @@ object TrackingService extends Instrumented {
 
   @Timed("trackHTML")
   def trackHTML(html: String, trackerOptions: TrackerOptions, urlTransformer: TURLTransformer): String = {
-    val source: Source = new Source(html)
-    val out = new OutputDocument(source)
 
-    val tags = source.getAllTags.asScala
-    var pos: Int = 0
+    val out = Jsoup.parse(html)
+    val links = out.select("a")
+//
+//    links.forEach( (link) -> {
+//      System.out.println(link)
+//    })
+
+
+    links.asScala.foreach(link => {
+      val seq = processATag(link, trackerOptions, urlTransformer)
+      link.attr("href", seq)
+    })
+
 
     // append tracking info for all a tag hrefs - only a tag is being rewritten right now!
     var hasBodyTagEnd: Boolean = false
-    tags.foreach(tag => {
-      if (tag.getTagType == StartTagType.NORMAL) {
-        if (tag.getName == HTMLElementName.A || tag.getName == HTMLElementName.AREA) {
-          val seq = processATag(tag.getElement, trackerOptions, urlTransformer)
-          out.replace(tag, seq)
-          reEncodeTextSegment(source, out, pos, tag.getBegin)
-        }
-      }
+    links.asScala.foreach(link => {
+      val seq = processATag(link, trackerOptions, urlTransformer)
+      link.attr("href", seq.toString)
+      //           reEncodeTextSegment(source, out, pos, tag.getBegin)
 
-      if (tag.getTagType == EndTagType.NORMAL && tag.getName == HTMLElementName.BODY) {
+      if (link.tag() == HTMLElementName.BODY) {
         hasBodyTagEnd = true
         val seq = getMailOpenTracker(trackerOptions) + " </body>"
-        out.replace(tag, seq)
+        link.attr("body", seq.toString)
       }
-      pos = tag.getEnd
     })
 
-    reEncodeTextSegment(source, out, pos, source.getEnd)
+    //    reEncodeTextSegment(source, out, pos, source.getEnd)
 
     if (!hasBodyTagEnd) {
       //wrap inside a body
@@ -111,22 +117,23 @@ object TrackingService extends Instrumented {
       out.toString
   }
 
-  private def reEncodeTextSegment(source: Source, out: OutputDocument, begin: Int, end: Int) {
-    if (begin < end) {
-      val textSegment = new Segment(source, begin, end)
-      val decodedText = CharacterReference.decode(textSegment)
-      out.replace(textSegment, CharacterReference.encode(decodedText))
-    }
-  }
+  /* private def reEncodeTextSegment(source: Source, out: OutputDocument, begin: Int, end: Int) {
+     if (begin < end) {
+       val textSegment = new Segment(source, begin, end)
+       val decodedText = CharacterReference.decode(textSegment)
+       out.replace(textSegment, CharacterReference.encode(decodedText))
+     }
+   }*/
 
-  private def processATag(tag: Element, trackerOptions: TrackerOptions, urlTransformer: TURLTransformer): CharSequence = {
-    val attrMap = tag.getStartTag.getAttributes.asScala.toList.map(attr => attr.getKey -> attr.getValue).toMap
-    val lName: String = attrMap.getOrElse("lname", "-")
+  private def processATag(tag: Element, trackerOptions: TrackerOptions, urlTransformer: TURLTransformer): String = {
+    val allElements = tag.getAllElements.asScala
 
-    val sb = new StringBuffer("<" + tag.getName)
-    attrMap.foreach { case (name, value) =>
-      if (name.equalsIgnoreCase("href") && !attrMap("href").startsWith("mailto")) {
-        val originalUrl = attrMap("href")
+    val lName = allElements.find(p => p.hasAttr("lname")).getOrElse("-").toString
+    //    val lName: String = attrMap.getOrElse("lname", "-")
+
+    val url = allElements.map { element =>
+      if (!element.attr("href").startsWith("mailto")) {
+        val originalUrl = element.attr("href")
         val url: String = profile(s"${trackerOptions.appName}.${trackerOptions.channel}.deeplink")(urlTransformer.deeplink(originalUrl, trackerOptions.toMap).get) //.getOrElse(originalUrl)
 
         val trackedUrl = TrackedURL(
@@ -145,13 +152,12 @@ object TrackingService extends Instrumented {
             appName = trackerOptions.appName
           )
         ).toURL
-        sb.append(s""" $name = "$trackedUrl"  """)
+        trackedUrl
       }
       else
-        sb.append(s""" $name = "$value"  """)
-    }
-    sb.append(" >")
-    sb
+        element.attr("href")
+    }.head
+    url
   }
 
   def getMailOpenTracker(trackerOptions: TrackerOptions): String = {
