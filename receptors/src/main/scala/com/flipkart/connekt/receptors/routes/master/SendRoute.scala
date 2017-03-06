@@ -267,7 +267,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                             if (!tR) {
                               complete {
                                 Future {
-                                  profile(s"sendSms.$appName") {
+                                  profile("sms") {
                                     val request = r.copy(clientId = user.userId, channel = Channel.SMS.toString, meta = {
                                       Option(r.meta).getOrElse(Map.empty[String, String]) ++ headers
                                     })
