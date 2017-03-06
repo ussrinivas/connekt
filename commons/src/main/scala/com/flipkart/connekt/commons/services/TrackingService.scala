@@ -12,6 +12,8 @@
  */
 package com.flipkart.connekt.commons.services
 
+import java.util
+
 import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.fasterxml.jackson.annotation.{JsonInclude, JsonProperty}
 import com.flipkart.concord.transformer.TURLTransformer
@@ -82,33 +84,19 @@ object TrackingService extends Instrumented {
 
     val out = Jsoup.parse(html)
     val links = out.select("a")
-//
-//    links.forEach( (link) -> {
-//      System.out.println(link)
-//    })
-
-
-    links.asScala.foreach(link => {
-      val seq = processATag(link, trackerOptions, urlTransformer)
-      link.attr("href", seq)
-    })
-
 
     // append tracking info for all a tag hrefs - only a tag is being rewritten right now!
     var hasBodyTagEnd: Boolean = false
     links.asScala.foreach(link => {
       val seq = processATag(link, trackerOptions, urlTransformer)
-      link.attr("href", seq.toString)
-      //           reEncodeTextSegment(source, out, pos, tag.getBegin)
+      link.attr("href", seq)
 
-      if (link.tag() == HTMLElementName.BODY) {
+      if (link.tag().getName == HTMLElementName.BODY) {
         hasBodyTagEnd = true
         val seq = getMailOpenTracker(trackerOptions) + " </body>"
         link.attr("body", seq.toString)
       }
     })
-
-    //    reEncodeTextSegment(source, out, pos, source.getEnd)
 
     if (!hasBodyTagEnd) {
       //wrap inside a body
@@ -117,19 +105,11 @@ object TrackingService extends Instrumented {
       out.toString
   }
 
-  /* private def reEncodeTextSegment(source: Source, out: OutputDocument, begin: Int, end: Int) {
-     if (begin < end) {
-       val textSegment = new Segment(source, begin, end)
-       val decodedText = CharacterReference.decode(textSegment)
-       out.replace(textSegment, CharacterReference.encode(decodedText))
-     }
-   }*/
 
   private def processATag(tag: Element, trackerOptions: TrackerOptions, urlTransformer: TURLTransformer): String = {
     val allElements = tag.getAllElements.asScala
 
     val lName = allElements.find(p => p.hasAttr("lname")).getOrElse("-").toString
-    //    val lName: String = attrMap.getOrElse("lname", "-")
 
     val url = allElements.map { element =>
       if (!element.attr("href").startsWith("mailto")) {

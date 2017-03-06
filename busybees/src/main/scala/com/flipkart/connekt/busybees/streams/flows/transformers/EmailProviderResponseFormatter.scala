@@ -24,7 +24,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 
-class EmailProviderResponseFormatter(parallelism:Int)(implicit m: Materializer, ec: ExecutionContext) extends MapAsyncFlowStage[(Try[HttpResponse], EmailRequestTracker), (Try[EmailResponse], EmailRequestTracker)](parallelism) {
+class EmailProviderResponseFormatter(parallelism: Int)(implicit m: Materializer, ec: ExecutionContext) extends MapAsyncFlowStage[(Try[HttpResponse], EmailRequestTracker), (Try[EmailResponse], EmailRequestTracker)](parallelism) {
 
   private lazy implicit val stencilService = ServiceFactory.getStencilService
 
