@@ -13,6 +13,10 @@
 package com.flipkart.connekt.commons.services
 
 import java.util
+<<<<<<< Updated upstream
+=======
+import java.util.function.Consumer
+>>>>>>> Stashed changes
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.fasterxml.jackson.annotation.{JsonInclude, JsonProperty}
@@ -85,18 +89,23 @@ object TrackingService extends Instrumented {
     val out = Jsoup.parse(html)
     val links = out.select("a")
 
+
     // append tracking info for all a tag hrefs - only a tag is being rewritten right now!
     var hasBodyTagEnd: Boolean = false
-    links.asScala.foreach(link => {
-      val seq = processATag(link, trackerOptions, urlTransformer)
-      link.attr("href", seq)
 
-      if (link.tag().getName == HTMLElementName.BODY) {
-        hasBodyTagEnd = true
-        val seq = getMailOpenTracker(trackerOptions) + " </body>"
-        link.attr("body", seq.toString)
+    links.forEach(new Consumer[Element] {
+      override def accept(link: Element): Unit = {
+        val seq = processATag(link, trackerOptions, urlTransformer)
+        link.attr("href", seq)
+
+        if (link.tag().getName == HTMLElementName.BODY) {
+          hasBodyTagEnd = true
+          val seq = getMailOpenTracker(trackerOptions) + " </body>"
+          link.attr("body", seq.toString)
+        }
       }
     })
+
 
     if (!hasBodyTagEnd) {
       //wrap inside a body
@@ -160,6 +169,20 @@ object TrackingService extends Instrumented {
     ).toURL
     val openTrackingImage = s"""<img style='width:1px;height:1px;' src="$url" /> """
     openTrackingImage
+  }
+
+
+  def main(args: Array[String]): Unit = {
+
+    val d = new util.ArrayList[String]()
+    d.add("a")
+    d.add("b")
+
+    d.forEach(new Consumer[String] {
+      override def accept(t: String) = {
+        println(t)
+      }
+    })
   }
 
 }
