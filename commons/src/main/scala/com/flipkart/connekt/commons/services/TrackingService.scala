@@ -12,11 +12,7 @@
  */
 package com.flipkart.connekt.commons.services
 
-import java.util
-<<<<<<< Updated upstream
-=======
 import java.util.function.Consumer
->>>>>>> Stashed changes
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.fasterxml.jackson.annotation.{JsonInclude, JsonProperty}
@@ -169,20 +165,6 @@ object TrackingService extends Instrumented {
     ).toURL
     val openTrackingImage = s"""<img style='width:1px;height:1px;' src="$url" /> """
     openTrackingImage
-  }
-
-
-  def main(args: Array[String]): Unit = {
-
-    val d = new util.ArrayList[String]()
-    d.add("a")
-    d.add("b")
-
-    d.forEach(new Consumer[String] {
-      override def accept(t: String) = {
-        println(t)
-      }
-    })
   }
 
 }
