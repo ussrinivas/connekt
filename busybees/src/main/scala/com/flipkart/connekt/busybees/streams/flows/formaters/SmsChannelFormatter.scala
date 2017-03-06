@@ -35,7 +35,7 @@ class SmsChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecuto
 
     try {
       ConnektLogger(LogFile.PROCESSORS).info(s"SMSChannelFormatter received message: ${message.id}")
-      ConnektLogger(LogFile.PROCESSORS).trace(s"SMSChannelFormatter received message: ${message.toString}")
+      ConnektLogger(LogFile.PROCESSORS).trace(s"SMSChannelFormatter received message {}", supplier(message.toString))
 
       val senderMask = appLevelConfigService.getProjectConfiguration(message.appName.toLowerCase, s"sender-mask-${Channel.SMS.toString}") match {
         case Success(s) => s.map(_.value.toUpperCase).orNull

@@ -34,7 +34,7 @@ class EmailChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecu
 
     try {
       ConnektLogger(LogFile.PROCESSORS).info(s"EmailChannelFormatter received message: ${message.id}")
-      ConnektLogger(LogFile.PROCESSORS).trace(s"EmailChannelFormatter received message: ${message.toString}")
+      //ConnektLogger(LogFile.PROCESSORS).trace(s"EmailChannelFormatter received message: ${message.toString}")
 
       val emailInfo = message.channelInfo.asInstanceOf[EmailRequestInfo]
 
