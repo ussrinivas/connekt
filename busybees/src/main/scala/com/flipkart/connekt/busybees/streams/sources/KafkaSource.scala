@@ -31,6 +31,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.ClassTag
 import scala.util.Try
+import com.flipkart.connekt.commons.utils.CollectionUtils.iteratorUtils
 
 class KafkaSource[V: ClassTag](kafkaConsumerConf: Config, topic: String, groupId: String)(shutdownTrigger: Future[String])(implicit val ec: ExecutionContext) extends GraphStage[SourceShape[V]] with KafkaConnectionHelper with Instrumented {
 
@@ -124,9 +125,9 @@ class KafkaSource[V: ClassTag](kafkaConsumerConf: Config, topic: String, groupId
       * Using threadCount = 1, since for now we got the best performance with this.
       * Once akka/reactive-kafka get's stable, we will move to it provided it gives better performance.
       */
-    val consumerStreams = kafkaConnector.createMessageStreams(Map[String, Int](topic -> 1), new DefaultDecoder(), new MessageDecoder[V]())
+    val consumerStreams = kafkaConnector.createMessageStreams(Map[String, Int](topic -> 2), new DefaultDecoder(), new MessageDecoder[V]())
     val streams = consumerStreams.getOrElse(topic,throw new Exception(s"No KafkaStreams for topic: $topic"))
-    Try(streams.map(_.iterator()).head).getOrElse {
+    Try(streams.map(_.iterator()).merge).getOrElse {
       ConnektLogger(LogFile.PROCESSORS).warn(s"KafkaSource stream could not be created for $topic")
       Iterator.empty
     }
