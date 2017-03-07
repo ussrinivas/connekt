@@ -14,6 +14,7 @@ package com.flipkart.connekt.busybees.streams.flows.transformers
 
 import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.headers.RawHeader
+import akka.stream.Materializer
 import com.flipkart.connekt.busybees.models.EmailRequestTracker
 import com.flipkart.connekt.busybees.streams.flows.MapAsyncFlowStage
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
@@ -21,12 +22,14 @@ import com.flipkart.connekt.commons.iomodels.EmailPayloadEnvelope
 import com.flipkart.connekt.commons.services.KeyChainManager
 import com.flipkart.connekt.commons.utils.StringUtils._
 
+import scala.concurrent.{ExecutionContext, Future}
 
-class EmailProviderPrepare(parallelism: Int) extends MapAsyncFlowStage[EmailPayloadEnvelope, (HttpRequest, EmailRequestTracker)](parallelism) {
+
+class EmailProviderPrepare(parallelism: Int)(implicit ec: ExecutionContext) extends MapAsyncFlowStage[EmailPayloadEnvelope, (HttpRequest, EmailRequestTracker)](parallelism) {
 
   private lazy implicit val stencilService = ServiceFactory.getStencilService
 
-  override val map: (EmailPayloadEnvelope) => List[(HttpRequest, EmailRequestTracker)] = emailPayloadEnvelope => profile("map") {
+  override val map: (EmailPayloadEnvelope) => Future[List[(HttpRequest, EmailRequestTracker)]] = emailPayloadEnvelope => Future(profile("map") {
 
     val selectedProvider = emailPayloadEnvelope.provider.last
     val credentials = KeyChainManager.getSimpleCredential(s"email.${emailPayloadEnvelope.appName.toLowerCase}.$selectedProvider").get
@@ -51,5 +54,5 @@ class EmailProviderPrepare(parallelism: Int) extends MapAsyncFlowStage[EmailPayl
       .addHeader(RawHeader("x-context-id", emailPayloadEnvelope.contextId))
 
     List(Tuple2(httpRequest, tracker))
-  }
+  })(ec)
 }

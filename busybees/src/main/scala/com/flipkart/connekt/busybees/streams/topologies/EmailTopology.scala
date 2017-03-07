@@ -95,13 +95,13 @@ class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCa
 
 
   override def transformers: Map[CheckPointGroup, Flow[ConnektRequest, EmailCallbackEvent, NotUsed]] = {
-    Map(Channel.EMAIL.toString -> emailHTTPTransformFlow(ioMat,ioDispatcher,blockingDispatcher))
+    Map(Channel.EMAIL.toString -> emailHTTPTransformFlow(ioMat, ec,ioDispatcher,blockingDispatcher))
   }
 }
 
 object EmailTopology {
 
-  def emailHTTPTransformFlow(implicit ioMat:ActorMaterializer, ioDispatcher:  ExecutionContextExecutor, blockingDispatcher:ExecutionContextExecutor): Flow[ConnektRequest, EmailCallbackEvent, NotUsed] = Flow.fromGraph(GraphDSL.create() { implicit b =>
+  def emailHTTPTransformFlow(implicit ioMat:ActorMaterializer,defaultDispatcher:  ExecutionContextExecutor,  ioDispatcher:  ExecutionContextExecutor, blockingDispatcher:ExecutionContextExecutor): Flow[ConnektRequest, EmailCallbackEvent, NotUsed] = Flow.fromGraph(GraphDSL.create() { implicit b =>
 
     val render = b.add(new RenderFlow().flow)
     val trackEmailParallelism = ConnektConfig.getInt("topology.email.tracking.parallelism").get
@@ -111,7 +111,7 @@ object EmailTopology {
     val emailPayloadMerge = b.add(MergePreferred[EmailPayloadEnvelope](1))
     val emailRetryMapper = b.add(Flow[EmailRequestTracker].map(_.request) /*.buffer(10, OverflowStrategy.backpressure)*/)
     val providerPicker = b.add(new ChooseProvider[EmailPayloadEnvelope](Channel.EMAIL).flow)
-    val providerHttpPrepare = b.add(new EmailProviderPrepare(128).flow)
+    val providerHttpPrepare = b.add(new EmailProviderPrepare(128)(defaultDispatcher).flow)
     val emailPoolFlow = b.add(HttpDispatcher.emailPoolClientFlow.timedAs("emailRTT"))
 
     val providerHandlerParallelism = ConnektConfig.getInt("topology.email.parse.parallelism").get
