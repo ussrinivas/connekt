@@ -111,7 +111,8 @@ object EmailTopology {
     val emailPayloadMerge = b.add(MergePreferred[EmailPayloadEnvelope](1))
     val emailRetryMapper = b.add(Flow[EmailRequestTracker].map(_.request) /*.buffer(10, OverflowStrategy.backpressure)*/)
     val providerPicker = b.add(new ChooseProvider[EmailPayloadEnvelope](Channel.EMAIL).flow)
-    val providerHttpPrepare = b.add(new EmailProviderPrepare(128)(defaultDispatcher).flow)
+    val providerHttpPrepareParallelism = ConnektConfig.getInt("topology.email.prepare.parallelism").get
+    val providerHttpPrepare = b.add(new EmailProviderPrepare(providerHttpPrepareParallelism)(defaultDispatcher).flow)
     val emailPoolFlow = b.add(HttpDispatcher.emailPoolClientFlow.timedAs("emailRTT"))
 
     val providerHandlerParallelism = ConnektConfig.getInt("topology.email.parse.parallelism").get
