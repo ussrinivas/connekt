@@ -28,7 +28,7 @@ import org.scalatest.Ignore
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Promise}
 
-@Ignore
+//@Ignore
 class KafkaBenchmarkTest extends TopologyUTSpec with Instrumented {
 
   val counter: AtomicLong = new AtomicLong(0)
@@ -36,39 +36,8 @@ class KafkaBenchmarkTest extends TopologyUTSpec with Instrumented {
 
   "KafkaBenchmarkTest" should "bench" in {
 
-    val kSource = Source.fromGraph(new KafkaSource[ConnektRequest](getKafkaConsumerConf, "push_connekt_insomnia_d346b56a260f1a", getKafkaConsumerConf.getString("group.id"))(Promise[String]().future))
+    val kSource = Source.fromGraph(new KafkaSource[ConnektRequest](getKafkaConsumerConf, "push_connekt_insomnia_d346b56a260f1a", "ckt_email")(Promise[String]().future))
     val qps = meter("kafa.read")
-
-    val repeatSource = Source.repeat {
-      """
-        |{
-        |	"channel": "PN",
-        |	"sla": "H",
-        |	"channelData": {
-        |		"type": "PN",
-        |		"data": {
-        |			"message": "Hello Kinshuk. GoodLuck!",
-        |			"title": "Kinshuk GCM Push Test",
-        |			"id": "123456789",
-        |			"triggerSound": true,
-        |			"notificationType": "Text"
-        |
-        |		}
-        |	},
-        |	"channelInfo" : {
-        |	    "type" : "PN",
-        |	    "ackRequired": true,
-        |    	"delayWhileIdle": true,
-        |     "platform" :  "android",
-        |     "appName" : "ConnectSampleApp",
-        |     "deviceIds" : ["513803e45cf1b344ef494a04c9fb650a"]
-        |	},
-        |	"meta": {
-        |   "x-perf-test" : "true"
-        | }
-        |}
-      """.stripMargin.getObj[ConnektRequest]
-    }
 
 
     /*val rKafka = new ReactiveKafka()
@@ -85,7 +54,7 @@ class KafkaBenchmarkTest extends TopologyUTSpec with Instrumented {
     //Run the benchmark topology
     val rF = kSource.runWith(Sink.foreach( r => {
       qps.mark()
-      if(0 == (counter.incrementAndGet() % 1000)) {
+      if(0 == (counter.incrementAndGet() % 5)) {
         ConnektLogger(LogFile.SERVICE).info(s">>> MR[${qps.getMeanRate}], 1MR[${qps.getOneMinuteRate}], 5MR[${qps.getFiveMinuteRate}]")
       }
     }))

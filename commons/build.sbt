@@ -37,7 +37,7 @@ libraryDependencies ++= Seq(
   "org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.5", /* For SLF4J Bridge */
   /* End of Logging Libraries dependency */
   "commons-pool" % "commons-pool" % "1.6",
-  "org.apache.kafka" % "kafka_2.11" % "0.8.2.2" excludeAll(
+  "org.apache.kafka" %% "kafka" % "0.8.2.2" excludeAll(
     ExclusionRule(organization = "org.slf4j", name = "slf4j-log4j12"),
     ExclusionRule(organization = "log4j"),
     ExclusionRule("io.netty")
@@ -66,8 +66,8 @@ libraryDependencies ++= Seq(
     ExclusionRule("org.apache.curator")
   ),
   "com.google.guava" % "guava" % "12.0.1",
-  "org.scalatest" % "scalatest_2.11" % "2.2.4" % Test,
-  "com.fasterxml.jackson.module" % "jackson-module-scala_2.11" % "2.7.2",
+  "org.scalatest" %% "scalatest" % "2.2.4" % Test,
+  "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.8.7",
   "commons-lang" % "commons-lang" % "2.6",
   "commons-pool" % "commons-pool" % "1.6",
   "org.springframework" % "spring-jdbc" % "4.2.3.RELEASE",
