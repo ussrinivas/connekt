@@ -15,17 +15,16 @@ package com.flipkart.connekt.busybees.streams.flows.transformers
 import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.headers.RawHeader
 import com.flipkart.connekt.busybees.models.EmailRequestTracker
-import com.flipkart.connekt.busybees.streams.flows.MapFlowStage
+import com.flipkart.connekt.busybees.streams.flows.MapAsyncFlowStage
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels.EmailPayloadEnvelope
 import com.flipkart.connekt.commons.services.KeyChainManager
 import com.flipkart.connekt.commons.utils.StringUtils._
 
 
-class EmailProviderPrepare extends MapFlowStage[EmailPayloadEnvelope, (HttpRequest, EmailRequestTracker)] {
+class EmailProviderPrepare(parallelism: Int) extends MapAsyncFlowStage[EmailPayloadEnvelope, (HttpRequest, EmailRequestTracker)](parallelism) {
 
-
-  lazy implicit val stencilService = ServiceFactory.getStencilService
+  private lazy implicit val stencilService = ServiceFactory.getStencilService
 
   override val map: (EmailPayloadEnvelope) => List[(HttpRequest, EmailRequestTracker)] = emailPayloadEnvelope => profile("map") {
 
