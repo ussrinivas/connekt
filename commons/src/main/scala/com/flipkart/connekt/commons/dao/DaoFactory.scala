@@ -12,6 +12,8 @@
  */
 package com.flipkart.connekt.commons.dao
 
+import java.util.concurrent.TimeUnit
+
 import com.couchbase.client.java.Bucket
 import com.flipkart.connekt.commons.connections.TConnectionProvider
 import com.flipkart.connekt.commons.factories.{HTableFactory, MySQLFactory, THTableFactory, TMySQLFactory}
@@ -82,7 +84,7 @@ object DaoFactory {
     couchbaseBuckets.get(name) match {
       case Some(x) => x
       case None =>
-        val bucket = couchBaseCluster.openBucket(name)
+        val bucket = couchBaseCluster.openBucket(name, 10, TimeUnit.SECONDS)
         couchbaseBuckets += name -> bucket
         bucket
     }
