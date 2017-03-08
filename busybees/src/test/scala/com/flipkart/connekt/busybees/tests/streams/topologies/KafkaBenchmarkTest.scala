@@ -54,7 +54,7 @@ class KafkaBenchmarkTest extends TopologyUTSpec with Instrumented {
     //Run the benchmark topology
     val rF = kSource.runWith(Sink.foreach( r => {
       qps.mark()
-      if(0 == (counter.incrementAndGet() % 5)) {
+      if(0 == (counter.incrementAndGet() % 50)) {
         ConnektLogger(LogFile.SERVICE).info(s">>> MR[${qps.getMeanRate}], 1MR[${qps.getOneMinuteRate}], 5MR[${qps.getFiveMinuteRate}]")
       }
     }))
