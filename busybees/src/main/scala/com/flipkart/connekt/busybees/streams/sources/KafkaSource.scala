@@ -75,7 +75,7 @@ class KafkaSource[V: ClassTag](kafkaConsumerConf: Config, topic: String, groupId
         scheduleOnce(TimerPollTrigger, timerDelayInMs)
       }
 
-      def safeHasNext = try { iterator.hasNext } catch { case e: ConsumerTimeoutException => false }
+      def safeHasNext = try { iterator.hasNext } catch { case _: ConsumerTimeoutException => false }
     }
 
     setHandler(out, new OutHandler {

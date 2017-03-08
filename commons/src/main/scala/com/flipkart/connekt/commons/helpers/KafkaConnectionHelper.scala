@@ -68,6 +68,7 @@ trait KafkaConnectionHelper {
     factoryProps.setProperty("serializer.class", factoryConf.getString("serializer.class"))
     factoryProps.setProperty("request.required.acks", factoryConf.getString("request.required.acks"))
     factoryProps.setProperty("producer.type", Try(factoryConf.getString("producer.type")).getOrElse("sync"))
+    factoryProps.setProperty("compression.codec", "1")
 
     val kafkaProducerFactory = new KafkaProducerFactory[String, String](factoryProps)
 
@@ -110,6 +111,7 @@ trait KafkaConnectionHelper {
     producerProps.setProperty("serializer.class", kafkaProducerConf.getString("serializer.class"))
     producerProps.setProperty("request.required.acks", kafkaProducerConf.getString("request.required.acks"))
     producerProps.setProperty("producer.type", Try(kafkaProducerConf.getString("producer.type")).getOrElse("sync"))
+    producerProps.setProperty("compression.codec", "2")
 
     new Producer[K, M](new ProducerConfig(producerProps))
   }

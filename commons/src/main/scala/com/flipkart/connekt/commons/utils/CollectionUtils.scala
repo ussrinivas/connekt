@@ -22,17 +22,17 @@ object CollectionUtils {
     def merge = new AbstractIterator[T] {
 
       private var inUseItrIndex = 0
-      private val size = iterators.size
+      private val iteratorSize = iterators.size
 
       private def unsafeHasNext(index: Int) = try { iterators(index).hasNext } catch { case _: ConsumerTimeoutException => false }
 
       override def hasNext: Boolean = {
         if (iterators.nonEmpty) {
-          inUseItrIndex = (1 + inUseItrIndex) % size
+          inUseItrIndex = (1 + inUseItrIndex) % iteratorSize
 
           unsafeHasNext(inUseItrIndex) || {
             def r(stopIdx: Int): Boolean = {
-              inUseItrIndex = (1 + inUseItrIndex) % size
+              inUseItrIndex = (1 + inUseItrIndex) % iteratorSize
 
               if (stopIdx != inUseItrIndex) {
                 unsafeHasNext(inUseItrIndex) || r(stopIdx)
