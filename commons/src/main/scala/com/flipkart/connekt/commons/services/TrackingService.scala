@@ -85,29 +85,15 @@ object TrackingService extends Instrumented {
     val out = Jsoup.parse(html)
     val links = out.select("a")
 
-
-    // append tracking info for all a tag hrefs - only a tag is being rewritten right now!
-    var hasBodyTagEnd: Boolean = false
-
     links.forEach(new Consumer[Element] {
       override def accept(link: Element): Unit = {
         val seq = processATag(link, trackerOptions, urlTransformer)
         link.attr("href", seq)
-
-        if (link.tag().getName == HTMLElementName.BODY) {
-          hasBodyTagEnd = true
-          val seq = getMailOpenTracker(trackerOptions) + " </body>"
-          link.attr("body", seq.toString)
-        }
       }
     })
 
-
-    if (!hasBodyTagEnd) {
-      //wrap inside a body
-      "<body>" + out.toString + getMailOpenTracker(trackerOptions) + " </body>"
-    } else
-      out.toString
+    out.body().append(getMailOpenTracker(trackerOptions))
+    out.toString
   }
 
 
