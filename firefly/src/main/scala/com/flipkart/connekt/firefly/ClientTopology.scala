@@ -64,10 +64,7 @@ class ClientTopology(topic: String, retryLimit: Int, kafkaConsumerConnConf: Conf
   }
 
   def evaluator(data: CallbackEvent): Boolean = {
-    val l = eventFilterStencil.map(stencil =>  {
-      stencilService.materialize(stencil, data.getJsonNode).asInstanceOf[Boolean]
-    }).getOrElse(Boolean.TRUE)
-    l
+    eventFilterStencil.map(stencil =>  stencilService.materialize(stencil, data.getJsonNode).asInstanceOf[Boolean]).getOrElse(Boolean.TRUE)
   }
 
   def transform(event: CallbackEvent): SubscriptionEvent = {
