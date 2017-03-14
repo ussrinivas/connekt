@@ -52,7 +52,7 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with
                           event.validate()
                           event.persist
                           ServiceFactory.getReportingService.recordPushStatsDelta(user.userId, Option(e.contextId), None, Some(event.platform), event.appName, event.eventType)
-                          ConnektLogger(LogFile.SERVICE).debug(s"Received callback event ${event.toString}")
+                          ConnektLogger(LogFile.SERVICE).debug(s"Received callback event {}", supplier(event.toString))
                           complete(GenericResponse(StatusCodes.OK.intValue, null, Response("PN callback saved successfully.", null)))
                         }
                       }
@@ -81,7 +81,7 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with
                             ServiceFactory.getReportingService.recordPushStatsDelta(user.userId, Some(event.contextId), None, Some(event.platform), event.appName, event.eventType)
                           })
 
-                          ConnektLogger(LogFile.SERVICE).debug(s"Received callback events ${validEvents.getJson}")
+                          ConnektLogger(LogFile.SERVICE).debug(s"Received callback events {}",supplier(validEvents.getJson))
                           complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Batch PN callback request recieved.", s"Events successfully ingested : ${validEvents.length}")))
                         }
                       }
@@ -93,7 +93,7 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with
                 meteredResource(s"deleteEvents.$appPlatform.$appName") {
                   authorize(user, s"DELETE_EVENTS_$appName") {
                     delete {
-                      ConnektLogger(LogFile.SERVICE).debug(s"Received event delete request for: ${messageId.toString}")
+                      ConnektLogger(LogFile.SERVICE).debug(s"Received event delete request for {}", supplier(messageId.toString))
                       val deletedEvents = ServiceFactory.getCallbackService.deleteCallBackEvent(messageId, s"${appName.toLowerCase}$contactId", Channel.PUSH)
                       complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"PN callback events deleted successfully for requestId: $messageId.", deletedEvents)))
                     }
@@ -138,7 +138,7 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with
                             ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, Some(event.contextId), None, channel, event.appName, event.eventType)
                           })
 
-                          ConnektLogger(LogFile.SERVICE).debug(s"Received callback events ${validEvents.getJson}")
+                          ConnektLogger(LogFile.SERVICE).debug(s"Received callback events ",supplier(validEvents.getJson))
                           complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"${channel.toUpperCase} callbacks request recieved.", s"Events successfully ingested : ${validEvents.length}")))
 
                         }
