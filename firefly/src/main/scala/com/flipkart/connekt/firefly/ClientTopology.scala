@@ -49,7 +49,7 @@ class ClientTopology(topic: String, retryLimit: Int, kafkaConsumerConnConf: Conf
   def start(): Promise[String] = {
 
     val topologyShutdownTrigger = Promise[String]()
-    val kafkaCallbackSource = new KafkaSource[CallbackEvent](kafkaConsumerConnConf, topic, subscription.name)(topologyShutdownTrigger.future)
+    val kafkaCallbackSource = new KafkaSource[CallbackEvent](kafkaConsumerConnConf, topic, subscription.id)(topologyShutdownTrigger.future)
     val source = Source.fromGraph(kafkaCallbackSource).filter(evaluator).map(transform).filter(null != _.payload)
 
     subscription.sink match {
@@ -64,7 +64,7 @@ class ClientTopology(topic: String, retryLimit: Int, kafkaConsumerConnConf: Conf
   }
 
   def evaluator(data: CallbackEvent): Boolean = {
-    eventFilterStencil.map(stencil =>  stencilService.materialize(stencil, data.getJsonNode).asInstanceOf[Boolean]).getOrElse(Boolean.TRUE)
+    eventFilterStencil.map(stencil => stencilService.materialize(stencil, data.getJsonNode).asInstanceOf[Boolean]).getOrElse(Boolean.TRUE)
   }
 
   def transform(event: CallbackEvent): SubscriptionEvent = {
