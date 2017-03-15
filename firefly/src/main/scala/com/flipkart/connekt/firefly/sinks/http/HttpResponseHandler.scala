@@ -58,7 +58,7 @@ class HttpResponseHandler(retryLimit: Int, shutdownThreshold: Int, subscriptionI
                 deliveredMeter.mark()
                 push(successOut, (httpCallbackTracker.httpRequest, httpCallbackTracker))
               case e =>
-                ConnektLogger(LogFile.SERVICE).error(s"Callback event relay non-200 code: $e")
+                ConnektLogger(LogFile.SERVICE).error(s"Callback event relay non-200 code: $e, URL : ${httpCallbackTracker.httpRequest._2}")
                 consecutiveSendFailures.incrementAndGet()
                 if(httpCallbackTracker.failureCount > retryLimit) {
                   discardedMeter.mark()

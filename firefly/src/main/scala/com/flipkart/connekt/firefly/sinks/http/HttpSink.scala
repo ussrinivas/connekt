@@ -43,11 +43,13 @@ class HttpSink(subscription: Subscription, retryLimit: Int, topologyShutdownTrig
       httpRequestMergePref.out ~> httpCachedClient ~> httpResponseHandler.in
       httpResponseHandler.out(0) ~> httpRequestMergePref.preferred
       httpResponseHandler.out(1) ~> Sink.foreach[(HttpRequest, HttpRequestTracker)] { event =>
-        ConnektLogger(LogFile.SERVICE).debug(s"HttpSink message delivered: $event")
+        ConnektLogger(LogFile.SERVICE).info(s"HttpSink message delivered to ${event._1._2}")
+        ConnektLogger(LogFile.SERVICE).debug(s"HttpSink message delivered to {}", supplier(event))
       }
 
       httpResponseHandler.out(2) ~> Sink.foreach[(HttpRequest, HttpRequestTracker)] { event =>
-        ConnektLogger(LogFile.SERVICE).warn(s"HttpSink message discarded: $event")
+        ConnektLogger(LogFile.SERVICE).warn(s"HttpSink message failed to deliver to ${event._1._2}")
+        ConnektLogger(LogFile.SERVICE).debug(s"HttpSink message failed {}", supplier(event))
       }
 
       SinkShape(event2HttpRequestMapper.in)

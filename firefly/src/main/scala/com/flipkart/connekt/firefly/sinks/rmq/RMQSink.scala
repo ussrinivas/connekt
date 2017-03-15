@@ -23,7 +23,8 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 class RMQSink(queue: String, rmqProducer: RMQProducer) extends Instrumented {
 
   def sink = Sink.foreach[SubscriptionEvent](e => {
-    ConnektLogger(LogFile.SERVICE).trace(s"Received callback event ${e.getJson}")
+    ConnektLogger(LogFile.SERVICE).info(s"RMQSink event delivered to ${e.destination}")
+    ConnektLogger(LogFile.SERVICE).trace(s"RMQSink event delivered {}", supplier(e.getJson))
     rmqProducer.writeMessage(queue, e.payload)
   })
 }
