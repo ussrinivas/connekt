@@ -54,7 +54,13 @@ class EmailRequestDao(tableName: String, hTableFactory: THTableFactory) extends 
   override protected def channelRequestDataMap(channelRequestData: ChannelRequestData): Map[String, Array[Byte]] = {
     Option(channelRequestData).map(d => {
       val requestData = d.asInstanceOf[EmailRequestData]
-      Map("subject" -> requestData.subject.getUtf8Bytes, "html" -> requestData.html.getUtf8Bytes, "text" -> requestData.text.getUtf8Bytes , "attachments" -> requestData.attachments.getJson.getUtf8Bytes )
+
+      val m = scala.collection.mutable.Map[String, Array[Byte]]()
+      Option(requestData.subject).foreach(m += "subject" -> _.getUtf8Bytes )
+      Option(requestData.html).foreach(m += "html" -> _.getUtf8Bytes )
+      Option(requestData.text).foreach(m += "text" -> _.getUtf8Bytes )
+      Option(requestData.attachments).foreach(m += "text" -> _.getJson.getUtf8Bytes )
+      m.toMap
     }).orNull
   }
 
