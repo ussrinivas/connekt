@@ -216,7 +216,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                     val success = scala.collection.mutable.Map[String, Set[String]]()
 
                                     val queueName = ServiceFactory.getMessageService(Channel.EMAIL).getRequestBucket(request, user)
-                                    val recipients = emailRequestInfo.to.map(_.address) ++ emailRequestInfo.cc.map(_.address) ++ emailRequestInfo.bcc.map(_.address)
+                                    val recipients = (emailRequestInfo.to.map(_.address) ++ emailRequestInfo.cc.map(_.address) ++ emailRequestInfo.bcc.map(_.address)).filter(_.isDefined)
 
                                     //TODO: do an exclusion check
                                     val excludedAddress = recipients.filterNot { address => ExclusionService.lookup(request.channel, appName, address).getOrElse(false) }
