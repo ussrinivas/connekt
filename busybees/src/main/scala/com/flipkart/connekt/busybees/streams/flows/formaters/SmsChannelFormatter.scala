@@ -37,13 +37,10 @@ class SmsChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecuto
       ConnektLogger(LogFile.PROCESSORS).info(s"SMSChannelFormatter received message: ${message.id}")
       ConnektLogger(LogFile.PROCESSORS).trace(s"SMSChannelFormatter received message {}", supplier(message.toString))
 
-      val senderMask = appLevelConfigService.getProjectConfiguration(message.appName.toLowerCase, s"sender-mask-${Channel.SMS.toString}") match {
-        case Success(s) => s.map(_.value.toUpperCase).orNull
-        case Failure(e) =>
-          throw ConnektStageException(message.id, message.clientId, message.destinations, InternalStatus.StageError, message.appName, Channel.SMS, message.contextId.orEmpty, message.meta, "SMSChannelFormatter::".concat(e.getMessage), e)
-      }
-
       val smsInfo = message.channelInfo.asInstanceOf[SmsRequestInfo]
+
+      val senderMask = smsInfo.sender.getOrElse(appLevelConfigService.getProjectConfiguration(message.appName.toLowerCase, s"sender-mask-${Channel.SMS.toString}").get.map(_.value.toUpperCase).orNull)
+
       val ttl = message.expiryTs.map(expiry => (expiry - System.currentTimeMillis) / 1000).getOrElse(1l)
       val rD = message.channelData.asInstanceOf[SmsRequestData]
       val smsMeta = SmsUtil.getSmsInfo(rD.body)

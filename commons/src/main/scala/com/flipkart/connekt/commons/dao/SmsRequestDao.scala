@@ -22,14 +22,17 @@ class SmsRequestDao(tableName: String, hTableFactory: THTableFactory) extends Re
   override protected def channelRequestInfoMap(channelRequestInfo: ChannelRequestInfo): Map[String, Array[Byte]] = {
     val smsRequestInfo = channelRequestInfo.asInstanceOf[SmsRequestInfo]
 
-    val m = scala.collection.mutable.Map[String, Array[Byte]]()
-    m += "receivers" -> smsRequestInfo.receivers.mkString(",").getUtf8Bytes
-    m += "appName" -> smsRequestInfo.appName.toString.getUtf8Bytes
+    val m = scala.collection.mutable.Map[String, Array[Byte]](
+      "receivers" -> smsRequestInfo.receivers.mkString(",").getUtf8Bytes,
+      "appName" -> smsRequestInfo.appName.getUtf8Bytes
+    )
+    smsRequestInfo.sender.foreach(m += "sender" -> _.getUtf8Bytes)
     m.toMap
   }
 
   override protected def getChannelRequestInfo(reqInfoProps: Map[String, Array[Byte]]): ChannelRequestInfo = SmsRequestInfo(
     appName = reqInfoProps.getS("appName"),
+    sender = Option(reqInfoProps.getS("sender")),
     receivers = reqInfoProps.getS("receivers").split(",").toSet
   )
 
