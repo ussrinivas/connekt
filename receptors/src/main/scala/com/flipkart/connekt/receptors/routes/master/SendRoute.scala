@@ -36,8 +36,8 @@ import scala.util.{Failure, Success, Try}
 
 class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
-  lazy implicit val stencilService = ServiceFactory.getStencilService
-  implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
+  private lazy implicit val stencilService = ServiceFactory.getStencilService
+  private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
 
   val route =
     authenticate {
@@ -100,7 +100,9 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                               ServiceFactory.getReportingService.recordPushStatsDelta(user.userId, request.contextId, request.stencilId, Option(p.platform), appName, InternalStatus.Rejected, deviceIds.size)
                                           }
                                         }
-                                        GenericResponse(StatusCodes.Created.intValue, null, SendResponse("PN Send Request Received", success.toMap, failure.toList)).respond
+                                        val (responseCode, message) = if(success.nonEmpty) Tuple2(StatusCodes.Created,"PN Send Request Received") else Tuple2(StatusCodes.InternalServerError,"PN Send Request Failed")
+                                        GenericResponse(responseCode.intValue, null, SendResponse(message, success.toMap, failure.toList)).respond
+
                                       } else {
                                         GenericResponse(StatusCodes.BadRequest.intValue, null, SendResponse("No valid devices found", success.toMap, failure.toList)).respond
                                       }
@@ -137,7 +139,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                     })
                                     request.validate
 
-                                    ConnektLogger(LogFile.SERVICE).debug(s"Received PN request sent for user : $userId with payload: ${request.toString}")
+                                    ConnektLogger(LogFile.SERVICE).debug(s"Received PN request sent for user : $userId with payload: {}", supplier(request))
 
                                     val pnRequestInfo = request.channelInfo.asInstanceOf[PNRequestInfo].copy(appName = appName.toLowerCase)
                                     val groupedPlatformRequests = ListBuffer[ConnektRequest]()
@@ -173,7 +175,9 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                         }
                                       }
 
-                                      GenericResponse(StatusCodes.Created.intValue, null, SendResponse(s"PN request processed for user $userId.", success.toMap, failure.toList)).respond
+                                      val (responseCode, message) = if(success.nonEmpty) Tuple2(StatusCodes.Created,s"PN request processed for user $userId") else Tuple2(StatusCodes.InternalServerError,s"PN request failed for user $userId")
+                                      GenericResponse(responseCode.intValue, null, SendResponse(message, success.toMap, failure.toList)).respond
+
                                     } else {
                                       GenericResponse(StatusCodes.NotFound.intValue, null, Response(s"No device Found for user: $userId.", null)).respond
                                     }
@@ -207,7 +211,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                   })
                                   request.validate
 
-                                  ConnektLogger(LogFile.SERVICE).debug(s"Received EMAIL request with payload: ${request.toString}")
+                                  ConnektLogger(LogFile.SERVICE).debug(s"Received EMAIL request sent for user : $user with payload: {}", supplier(request))
 
                                   val emailRequestInfo = request.channelInfo.asInstanceOf[EmailRequestInfo].copy(appName = appName.toLowerCase).toStrict
 
@@ -234,7 +238,9 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                           ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, request.contextId, request.stencilId, Channel.EMAIL, appName, InternalStatus.Rejected, recipients.size)
                                       }
 
-                                      GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse("Email Send Request Received", success.toMap, failure.toList)).respond
+                                      val (responseCode, message) = if(success.nonEmpty) Tuple2(StatusCodes.Accepted,"Email Send Request Received") else Tuple2(StatusCodes.InternalServerError,"Email Send Request Failed")
+                                      GenericResponse(responseCode.intValue, null, SendResponse(message, success.toMap, failure.toList)).respond
+
                                     } else {
                                       GenericResponse(StatusCodes.BadRequest.intValue, null, SendResponse(s"No valid destinations found", success.toMap, failure.toList)).respond
                                     }
@@ -312,7 +318,10 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                           case Failure(t) =>
                                             (Map(), smsRequestInfo.receivers)
                                         }
-                                        GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse("SMS Send Request Received", success.toMap, failure.toList)).respond
+
+                                        val (responseCode, message) = if(success.nonEmpty) Tuple2(StatusCodes.Accepted,"SMS Send Request Received") else Tuple2(StatusCodes.InternalServerError,"SMS Send Request Failed")
+                                        GenericResponse(responseCode.intValue, null, SendResponse(message, success.toMap, failure.toList)).respond
+
                                       } else {
                                         GenericResponse(StatusCodes.BadRequest.intValue, null, SendResponse("No valid destinations found", Map.empty, smsRequestInfo.receivers.toList)).respond
                                       }
