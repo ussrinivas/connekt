@@ -48,18 +48,4 @@ object CompressionUtils {
     def decompress: Try[String] = inflate(s)
   }
 
-  /*
-    import StringUtils._
-    def main(args: Array[String]): Unit = {
-      val obj = HelloWorld("16C51516B3A6413FA0B90D1F81EE5F9B", "ff5cb72e-29ce-4a3c-94a8-d582841cceaf","Ceryx","EM-MPN1234567890","RetailApp")
-      println(obj.getJson)
-      println(Base64.getUrlEncoder.encodeToString(obj.getJson.getBytes))
-      val d = obj.getJson.compress.get
-      println(d)
-      println(inflate(d))
-    }
-
-    case class HelloWorld(@JsonProperty("dId") deviceId:String,@JsonProperty("mId") messageId:String,@JsonProperty("cId") clientId:String,@JsonProperty("ctx") contextId:String,@JsonProperty("aId") appId:String)
-  */
-
 }

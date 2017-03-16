@@ -33,7 +33,8 @@ class EmailProviderPrepare(parallelism: Int)(implicit ec: ExecutionContext) exte
 
     val selectedProvider = emailPayloadEnvelope.provider.last
     val credentials = KeyChainManager.getSimpleCredential(s"email.${emailPayloadEnvelope.appName.toLowerCase}.$selectedProvider").get
-    ConnektLogger(LogFile.PROCESSORS).trace(s"EmailProviderPrepare received message: ${emailPayloadEnvelope.messageId}")
+    ConnektLogger(LogFile.PROCESSORS).debug(s"EmailProviderPrepare received message: ${emailPayloadEnvelope.messageId}")
+    //ConnektLogger(LogFile.PROCESSORS).trace(s"EmailProviderPrepare received message: {}", supplier(emailPayloadEnvelope))
 
     val tracker = EmailRequestTracker(messageId = emailPayloadEnvelope.messageId,
       clientId = emailPayloadEnvelope.clientId,

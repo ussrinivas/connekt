@@ -33,8 +33,8 @@ class EmailChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecu
   override def map: ConnektRequest => List[EmailPayloadEnvelope] = message => profile("map") {
 
     try {
-      ConnektLogger(LogFile.PROCESSORS).info(s"EmailChannelFormatter received message: ${message.id}")
-      //ConnektLogger(LogFile.PROCESSORS).trace(s"EmailChannelFormatter received message: ${message.toString}")
+      ConnektLogger(LogFile.PROCESSORS).debug(s"EmailChannelFormatter received message: ${message.id}")
+      //ConnektLogger(LogFile.PROCESSORS).trace(s"EmailChannelFormatter received message: {}", supplier(message))
 
       val emailInfo = message.channelInfo.asInstanceOf[EmailRequestInfo]
 
@@ -52,7 +52,7 @@ class EmailChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecu
 
         val filteredTo = emailInfo.to.diff(excludedAddress).filter(_.address.isDefined)
         val filteredCC = cc.diff(excludedAddress).filter(_.address.isDefined)
-        val filteredBcc = bcc.diff(excludedAddress).filter(_.address.isDefined)
+        val filteredBcc = bcc.diff(excludedAddress).filter(_.address.isDefined) ++ projectConfigService.getProjectConfiguration(emailInfo.appName, "bcc-email-address").get.map(_.value.getObj[EmailAddress])
         val fromAddress = Option(emailInfo.from).getOrElse(projectConfigService.getProjectConfiguration(emailInfo.appName, "default-from-email").get.get.value.getObj[EmailAddress])
 
         val payload = EmailPayload(
