@@ -59,7 +59,7 @@ class EmailRequestDao(tableName: String, hTableFactory: THTableFactory) extends 
       Option(requestData.subject).foreach(m += "subject" -> _.getUtf8Bytes )
       Option(requestData.html).foreach(m += "html" -> _.getUtf8Bytes )
       Option(requestData.text).foreach(m += "text" -> _.getUtf8Bytes )
-      Option(requestData.attachments).foreach(m += "text" -> _.getJson.getUtf8Bytes )
+      Option(requestData.attachments).foreach(m += "attachments" -> _.getJson.getUtf8Bytes )
       m.toMap
     }).orNull
   }
