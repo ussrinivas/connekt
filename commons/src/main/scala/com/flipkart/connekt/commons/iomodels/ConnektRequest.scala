@@ -12,7 +12,7 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
-import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.services.TStencilService
@@ -46,6 +46,7 @@ case class ConnektRequest(@JsonProperty(required = false) id: String,
     require(contextId.forall(_.length <= 20), "`contextId` can be max 20 characters")
   }
 
+  @JsonIgnore
   def isTestRequest : Boolean = meta.get("x-perf-test").exists(v => v.trim.equalsIgnoreCase("true"))
 
   def getComputedChannelData(implicit stencilService: TStencilService): ChannelRequestData =
