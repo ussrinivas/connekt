@@ -55,7 +55,7 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                       val skipMessageIds: Set[String] = skipIds.toSet
                       val safeStartTs = if (startTs < (System.currentTimeMillis - 7.days.toMillis)) System.currentTimeMillis - 1.days.toMillis else startTs
 
-                      val pendingMessageIds = MessageQueueService.getMessages(appName, instanceId, Some(Tuple2(safeStartTs + 1, endTs)))
+                      val pendingMessageIds = ServiceFactory.getMessageQueueService.getMessages(appName, instanceId, Some(Tuple2(safeStartTs + 1, endTs)))
 
                       complete {
                         pendingMessageIds.map(_ids => {
@@ -92,8 +92,10 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                 }
               } ~ path(Segment) { messageId: String =>
                 delete {
-                  MessageQueueService.removeMessage(appName, instanceId, messageId)
-                  complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Removed $messageId from $appName / $instanceId", null)))
+                  authorize(user, "FETCH_REMOVE", s"FETCH_REMOVE_$appName") {
+                    ServiceFactory.getMessageQueueService.removeMessage(appName, instanceId, messageId)
+                    complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Removed $messageId from $appName / $instanceId", null)))
+                  }
                 }
               }
           }

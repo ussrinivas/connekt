@@ -1,3 +1,15 @@
+/*
+ *         -╥⌐⌐⌐⌐            -⌐⌐⌐⌐-
+ *      ≡╢░░░░⌐\░░░φ     ╓╝░░░░⌐░░░░╪╕
+ *     ╣╬░░`    `░░░╢┘ φ▒╣╬╝╜     ░░╢╣Q
+ *    ║╣╬░⌐        ` ╤▒▒▒Å`        ║╢╬╣
+ *    ╚╣╬░⌐        ╔▒▒▒▒`«╕        ╢╢╣▒
+ *     ╫╬░░╖    .░ ╙╨╨  ╣╣╬░φ    ╓φ░╢╢Å
+ *      ╙╢░░░░⌐"░░░╜     ╙Å░░░░⌐░░░░╝`
+ *        ``˚¬ ⌐              ˚˚⌐´
+ *
+ *      Copyright © 2016 Flipkart.com
+ */
 package com.flipkart.connekt.commons.dao
 
 import com.aerospike.client.Key
@@ -5,21 +17,29 @@ import com.aerospike.client.async.AsyncClient
 
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration._
 
 class MessageQueueDao(private val setName: String, private implicit val client: AsyncClient) extends Dao with AeroSpikeDao {
 
   private val namespace: String = "connekt"
   private val binName:String = "queue"
 
-  def enqueueMessage(appName: String, contactIdentifier: String, messageId: String, ttl: Long): Future[_] = {
+  def enqueueMessage(appName: String, contactIdentifier: String, messageId: String, ttl: Long)(implicit ec: ExecutionContext): Future[Int] = {
     val key = new Key(namespace, setName, s"$appName$contactIdentifier")
     val data = Map(messageId -> s"${System.currentTimeMillis()}|$ttl" )
-    addMapRow(key, binName, data )
+    addMapRow(key, binName, data, Some(1.days.toMillis)).map {  _record =>  //Row TTL: 15days, if no future writes happens on this row
+      _record.getInt(binName)
+    }
   }
 
   def removeMessage(appName: String, contactIdentifier: String, messageId: String): Future[_] = {
     val key = new Key(namespace, setName, s"$appName$contactIdentifier")
     deleteMapRowItems(key, binName, List(messageId))
+  }
+
+  def trimMessages(appName: String, contactIdentifier: String, numToRemove:Int): Future[_] = {
+    val key = new Key(namespace, setName, s"$appName$contactIdentifier")
+    trimMapRowItems(key, binName, numToRemove)
   }
 
   def getMessages(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[List[String]] = {

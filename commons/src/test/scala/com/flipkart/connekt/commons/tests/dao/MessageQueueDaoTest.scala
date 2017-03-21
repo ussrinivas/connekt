@@ -23,7 +23,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class MessageQueueDaoTest extends CommonsBaseTest {
 
-  private val contactId = "cae73a32-cc99-429e-b024-dab81eaa6"
+  private val contactId = "cae73a32-cc99-429e-b024-dab81eaa5"
   private lazy val dao = DaoFactory.getMessageQueueDao
 
 
@@ -35,7 +35,7 @@ class MessageQueueDaoTest extends CommonsBaseTest {
     val expiry = System.currentTimeMillis() + 5.minutes.toMillis
 
     1 to 10 foreach( i =>
-      noException should be thrownBy Await.result(dao.enqueueMessage("testApp",contactId, UUID.randomUUID().toString, expiry), 30.seconds)
+      noException should be thrownBy Await.result(dao.enqueueMessage("testApp",contactId, i.toString, expiry), 30.seconds)
     )
 
     val fetch = Await.result( dao.getMessages("testApp",contactId, None), 30.seconds)
@@ -43,6 +43,16 @@ class MessageQueueDaoTest extends CommonsBaseTest {
     println(fetch)
 
     fetch.nonEmpty shouldEqual true
+
+
+    println(Await.result( dao.trimMessages("testApp",contactId, 2), 30.seconds))
+    println(Await.result( dao.trimMessages("testApp",contactId, 2), 30.seconds))
+    println(Await.result( dao.trimMessages("testApp",contactId, 2), 30.seconds))
+    println(Await.result( dao.trimMessages("testApp",contactId, 2), 30.seconds))
+
+
+    println(Await.result( dao.getMessages("testApp",contactId, None), 30.seconds))
+
 
   }
 
