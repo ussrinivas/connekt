@@ -73,6 +73,9 @@ object BusyBeesBoot extends BaseApp {
       val couchbaseCf = ConnektConfig.getConfig("connections.couchbase").getOrElse(ConfigFactory.empty())
       DaoFactory.initCouchbaseCluster(couchbaseCf)
 
+      val aeroSpikeCf = ConnektConfig.getConfig("connections.aerospike").getOrElse(ConfigFactory.empty())
+      DaoFactory.initAeroSpike(aeroSpikeCf)
+
       DaoFactory.initReportingDao(DaoFactory.getCouchbaseBucket("StatsReporting"))
 
       ServiceFactory.initStorageService(DaoFactory.getKeyChainDao)

@@ -113,7 +113,8 @@ libraryDependencies ++= Seq(
   "org.jsoup" % "jsoup" % "1.8.3",
   "com.googlecode.libphonenumber" % "libphonenumber" % "8.3.1",
   "com.rabbitmq" % "amqp-client" % "4.0.1",
-  "net.freeutils" % "jcharset" % "2.0"
+  "net.freeutils" % "jcharset" % "2.0",
+  "com.aerospike" % "aerospike-client" % "3.3.3"
 )
 
 
