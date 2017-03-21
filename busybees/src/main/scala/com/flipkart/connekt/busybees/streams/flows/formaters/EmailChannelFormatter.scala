@@ -83,7 +83,7 @@ class EmailChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecu
     } catch {
       case e: Exception =>
         ConnektLogger(LogFile.PROCESSORS).error(s"EmailChannelFormatter error for ${message.id}", e)
-        throw new ConnektStageException(message.id, message.clientId, message.destinations, InternalStatus.StageError, message.appName, Channel.EMAIL, message.contextId.orEmpty, message.meta, "AndroidChannelFormatter::".concat(e.getMessage), e)
+        throw new ConnektStageException(message.id, message.clientId, message.destinations, InternalStatus.StageError, message.appName, Channel.EMAIL, message.contextId.orEmpty, message.meta, "EmailChannelFormatter::".concat(e.getMessage), e)
     }
   }
 }
