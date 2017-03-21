@@ -16,6 +16,7 @@ import java.util.UUID
 
 import com.flipkart.connekt.commons.dao.DaoFactory
 import com.flipkart.connekt.commons.tests.CommonsBaseTest
+import com.flipkart.connekt.commons.utils.StringUtils
 
 import scala.concurrent.duration._
 import scala.concurrent.Await
@@ -23,9 +24,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class MessageQueueDaoTest extends CommonsBaseTest {
 
-  private val contactId = "cae73a32-cc99-429e-b024-dab81eaa5"
+  private val contactId = "cae73a32-cc99-429e-b024-aab8aeob5"
   private lazy val dao = DaoFactory.getMessageQueueDao
-
 
   override def beforeAll() = {
     super.beforeAll()
@@ -34,8 +34,8 @@ class MessageQueueDaoTest extends CommonsBaseTest {
   "PullMessageDao test" should "add data" in {
     val expiry = System.currentTimeMillis() + 5.minutes.toMillis
 
-    1 to 10 foreach( i =>
-      noException should be thrownBy Await.result(dao.enqueueMessage("testApp",contactId, i.toString, expiry), 30.seconds)
+    11 to 20 foreach( i =>
+      noException should be thrownBy Await.result(dao.enqueueMessage("testApp",contactId, StringUtils.generateRandomStr(6) + i.toString, expiry), 30.seconds)
     )
 
     val fetch = Await.result( dao.getMessages("testApp",contactId, None), 30.seconds)

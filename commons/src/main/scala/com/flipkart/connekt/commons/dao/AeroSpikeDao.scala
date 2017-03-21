@@ -17,7 +17,7 @@ import com.aerospike.client._
 import com.aerospike.client.async.AsyncClient
 import com.aerospike.client.cdt._
 import com.aerospike.client.listener.{DeleteListener, RecordListener, WriteListener}
-import com.aerospike.client.policy.WritePolicy
+import com.aerospike.client.policy.{QueryPolicy, WritePolicy}
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.services.ConnektConfig
 
@@ -50,6 +50,7 @@ trait AeroSpikeDao extends Instrumented {
   protected def deleteMapRowItems(key: Key, binName: String, keys: List[String])(implicit client: AsyncClient): Future[Record] = {
     val policy = new WritePolicy()
     policy.timeout = timeout
+    policy.expiration = -2
     val _keys: List[Value] = keys.map(new StringValue(_))
     val promise = Promise[Record]()
     client.operate(policy, new AeroSpikeRecordHandler(promise), key, MapOperation.removeByKeyList(binName, _keys.asJava, MapReturnType.COUNT))
@@ -59,13 +60,14 @@ trait AeroSpikeDao extends Instrumented {
   protected def trimMapRowItems(key: Key, binName: String, numToRemove:Int)(implicit client: AsyncClient): Future[Record] = {
     val policy = new WritePolicy()
     policy.timeout = timeout
+    policy.expiration = -2
     val promise = Promise[Record]()
     client.operate(policy, new AeroSpikeRecordHandler(promise), key, MapOperation.removeByIndexRange(binName, 0, numToRemove, MapReturnType.COUNT))
     promise.future
   }
 
   protected def getRow(key: Key)(implicit client: AsyncClient): Future[Record] = {
-    val policy = new WritePolicy()
+    val policy = new QueryPolicy()
     policy.timeout = timeout
     val promise = Promise[Record]()
     client.get(policy, new AeroSpikeRecordHandler(promise), key)

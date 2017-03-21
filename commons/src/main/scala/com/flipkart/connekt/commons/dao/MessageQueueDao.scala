@@ -23,11 +23,12 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
 
   private val namespace: String = "connekt"
   private val binName:String = "queue"
+  private val rowTTL = Some(15.days.toMillis)
 
   def enqueueMessage(appName: String, contactIdentifier: String, messageId: String, ttl: Long)(implicit ec: ExecutionContext): Future[Int] = {
     val key = new Key(namespace, setName, s"$appName$contactIdentifier")
     val data = Map(messageId -> s"${System.currentTimeMillis()}|$ttl" )
-    addMapRow(key, binName, data, Some(1.days.toMillis)).map {  _record =>  //Row TTL: 15days, if no future writes happens on this row
+    addMapRow(key, binName, data, rowTTL).map { _record =>
       _record.getInt(binName)
     }
   }
