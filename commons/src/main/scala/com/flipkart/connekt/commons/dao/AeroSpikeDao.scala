@@ -37,13 +37,9 @@ trait AeroSpikeDao extends Instrumented {
 
     val data: Map[Value, Value] = values.map { case (k, v) => (new StringValue(k), new StringValue(v)) }
     val promise = Promise[Record]()
-    val record = client.operate(policy, key, MapOperation.putItems(MapPolicy.Default, binName, data.asJava))
-
-    println(record)
+    client.operate(policy,new AeroSpikeRecordHandler(promise), key, MapOperation.putItems(MapPolicy.Default, binName, data.asJava))
 
     promise.future
-
-    FastFuture.successful(new Record(Map.empty[String,AnyRef].asJava,0,0))
   }
 
   protected def deleteMapRowItems(key: Key, binName: String, keys: List[String])(implicit client: AsyncClient): Future[Record] = {
@@ -96,36 +92,3 @@ private class AeroSpikeDeleteHandler(promise: Promise[Boolean]) extends DeleteLi
 }
 
 
-
-object AeroSpikeTest extends App with AeroSpikeDao {
-
-
-
-  private val namespace: String = "connekt"
-  private val binName:String = "queue"
-  private val setName:String = "pull"
-
-
-  val nodes = List("10.34.73.220","10.32.129.110")
-  implicit val aeroSpikeClient = new ConnectionProvider().createAeroSpikeConnection(nodes)
-
-  val keySimple = new Key(namespace, setName, "kinshukSimple")
-  val bin = new Bin("d", "lorem-ipsum")
-  val resSimple = Await.result(addRow(keySimple, bin ), 30.seconds )
-  println(resSimple)
-
-  println( Await.result(getRow(keySimple),30.seconds) )
-
-
-
-  val key = new Key(namespace, setName, "kinshuk1")
-  val data = Map("key" -> "value")
-  val res = Await.result(addMapRow(key, binName, data ), 30.seconds )
-  println(res)
-
-  val res2 = Await.result(getRow(key),30.seconds)
-  println(res2)
-
-
-
-}

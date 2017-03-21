@@ -32,9 +32,7 @@ class MessageQueueDaoTest extends CommonsBaseTest {
   }
 
   "PullMessageDao test" should "add data" in {
-    val expiry = System.currentTimeMillis() + 60000
-
-    dao.test()
+    val expiry = System.currentTimeMillis() + 5.minutes.toMillis
 
     1 to 10 foreach( i =>
       noException should be thrownBy Await.result(dao.enqueueMessage("testApp",contactId, UUID.randomUUID().toString, expiry), 30.seconds)
