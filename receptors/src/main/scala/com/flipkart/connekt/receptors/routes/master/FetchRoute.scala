@@ -44,9 +44,9 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
           pathPrefix("fetch" / "push" / MPlatformSegment / Segment / Segment) {
             (platform: MobilePlatform, appName: String, instanceId: String) =>
               pathEndOrSingleSlash {
-                authorize(user, "FETCH", s"FETCH_$appName") {
                   get {
-                    parameters('startTs.as[Long], 'endTs ? System.currentTimeMillis, 'skipIds.*) { (startTs, endTs, skipIds) =>
+                    authorize(user, "FETCH", s"FETCH_$appName") {
+                      parameters('startTs.as[Long], 'endTs ? System.currentTimeMillis, 'skipIds.*) { (startTs, endTs, skipIds) =>
 
                       require(startTs < endTs, "startTs must be prior to endTs")
 
@@ -59,10 +59,15 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
                       complete {
                         pendingMessageIds.map(_ids => {
-                          val filteredMessageIds: List[String] = _ids.distinct.filterNot(skipMessageIds.contains)
+                          val filteredMessageIds = _ids.distinct.filterNot(skipMessageIds.contains)
 
-                          val fetchedMessages: Try[List[ConnektRequest]] = messageService.getRequestInfo(filteredMessageIds)
-                          val messages = fetchedMessages.map(_.filter(_.expiryTs.forall(_ >= System.currentTimeMillis)).filterNot(_.isTestRequest)).getOrElse(List.empty[ConnektRequest])
+                          val fetchedMessages: Try[List[ConnektRequest]] = messageService.getRequestInfo(filteredMessageIds.toList)
+                          val sortedMessages:Try[Seq[ConnektRequest]] = fetchedMessages.map{ _messages =>
+                            val mIdRequestMap = _messages.map(r => r.id -> r).toMap
+                            filteredMessageIds.flatMap(mId => mIdRequestMap.find(_._1 == mId).map(_._2))
+                          }
+
+                          val messages = sortedMessages.map(_.filter(_.expiryTs.forall(_ >= System.currentTimeMillis)).filterNot(_.isTestRequest)).getOrElse(List.empty[ConnektRequest])
 
                           val pushRequests = messages.map(r => {
                             r.id -> {
@@ -89,7 +94,12 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                       }
                     }
                   }
-                }
+                } ~ delete {
+                    authorize(user, "FETCH_REMOVE", s"FETCH_REMOVE_$appName") {
+                      ServiceFactory.getMessageQueueService.empty(appName, instanceId)
+                      complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Emptied $appName / $instanceId", null)))
+                    }
+                  }
               } ~ path(Segment) { messageId: String =>
                 delete {
                   authorize(user, "FETCH_REMOVE", s"FETCH_REMOVE_$appName") {

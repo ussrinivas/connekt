@@ -39,6 +39,11 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
     deleteMapRowItems(key, binName, List(messageId))
   }
 
+  def empty(appName: String, contactIdentifier: String): Future[_] = {
+    val key = new Key(namespace, setName, s"$appName$contactIdentifier")
+    deleteRow(key)
+  }
+
   def trimMessages(appName: String, contactIdentifier: String, numToRemove: Int)(implicit ec: ExecutionContext): Future[Int] = {
     val key = new Key(namespace, setName, s"$appName$contactIdentifier")
     getQueue(appName, contactIdentifier).flatMap {
@@ -66,16 +71,21 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
     }
   }
 
-  def getMessages(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[List[String]] = {
-    getQueue(appName, contactIdentifier).map { messages =>
-      if (timestampRange.isDefined) {
-        val timeFiltered = messages.filter { case (_, data) =>
-          val ts = data.split('|').head.toLong
-          ts >= timestampRange.get._1 && ts <= timestampRange.get._2
-        }
-        timeFiltered.keys.toList
-      } else
-        messages.keys.toList
+  /**
+    * getMessages
+    * @return Ordered MessageIds sorted by Most Recency
+    */
+  def getMessages(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[Seq[String]] = {
+    getQueue(appName, contactIdentifier).map { _messages =>
+      val messages = timestampRange match {
+        case Some((fromTs, endTs)) =>
+          _messages.filter { case (_, data) =>
+            val createTs = data.split('|').head.toLong
+            createTs >= fromTs && createTs <= endTs
+          }
+        case None => _messages
+      }
+      messages.toSeq.sortWith(_._2.split('|').head.toLong > _._2.split('|').head.toLong).map(_._1)
     }
   }
 
