@@ -43,17 +43,23 @@ class MessageQueueDaoTest extends CommonsBaseTest {
 
     fetch.size shouldEqual 10
 
-
     println(Await.result( dao.trimMessages("testApp",contactId, 2), 30.seconds))
     println(Await.result( dao.trimMessages("testApp",contactId, 2), 30.seconds))
     println(Await.result( dao.trimMessages("testApp",contactId, 2), 30.seconds))
     println(Await.result( dao.trimMessages("testApp",contactId, 2), 30.seconds))
-
 
     val fetch2 = Await.result( dao.getMessages("testApp",contactId, None), 30.seconds)
     println(fetch2)
-
     fetch2.size shouldEqual 2
+
+    println(Await.result( dao.trimMessages("testApp",contactId, 5), 30.seconds))
+    val fetch3 = Await.result( dao.getMessages("testApp",contactId, None), 30.seconds)
+    println(fetch3)
+
+    fetch3.size shouldEqual 0
+
+    Await.result(dao.trimMessages("testApp",contactId, 5), 30.seconds)
+    Await.result(dao.getMessages("testApp",contactId, None), 30.seconds).size shouldEqual 0
 
   }
 

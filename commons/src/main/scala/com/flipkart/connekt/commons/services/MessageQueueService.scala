@@ -28,9 +28,10 @@ class MessageQueueService(dao: MessageQueueDao) extends TService with Instrument
 
   def enqueueMessage(appName: String, contactIdentifier: String, messageId: String, expiryTs: Option[Long] = None)(implicit ec: ExecutionContext): Future[Int] = {
     dao.enqueueMessage(appName.toLowerCase, contactIdentifier, messageId, expiryTs.getOrElse(System.currentTimeMillis() + defaultTTL)).andThen {
-      case Success(count) if count >= maxRecords => dao.trimMessages(appName.toLowerCase, contactIdentifier, maxRecords * cleanupFactor toInt) //TODO: This is random truncation
+      case Success(count) if count >= maxRecords =>  dao.trimMessages(appName.toLowerCase, contactIdentifier, maxRecords * cleanupFactor toInt)
       case Failure(ex) =>
-        ConnektLogger(LogFile.SERVICE).error(s"MessageQueueService.enqueueMessage failed for $messageId", ex)
+        meter("enqueueMessage.failure").mark()
+        ConnektLogger(LogFile.SERVICE).error(s"MessageQueueService.enqueueMessage failed for $appName / $contactIdentifier / $messageId", ex)
     }
   }
 

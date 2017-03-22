@@ -12,6 +12,7 @@
  */
 package com.flipkart.connekt.commons.dao
 
+import akka.http.scaladsl.util.FastFuture
 import com.aerospike.client.Key
 import com.aerospike.client.async.AsyncClient
 
@@ -22,12 +23,12 @@ import scala.concurrent.{ExecutionContext, Future}
 class MessageQueueDao(private val setName: String, private implicit val client: AsyncClient) extends Dao with AeroSpikeDao {
 
   private val namespace: String = "connekt"
-  private val binName:String = "queue"
+  private val binName: String = "queue"
   private val rowTTL = Some(15.days.toMillis)
 
   def enqueueMessage(appName: String, contactIdentifier: String, messageId: String, expiryTs: Long)(implicit ec: ExecutionContext): Future[Int] = {
     val key = new Key(namespace, setName, s"$appName$contactIdentifier")
-    val data = Map(messageId -> s"${System.currentTimeMillis()}|$expiryTs" )
+    val data = Map(messageId -> s"${System.currentTimeMillis()}|$expiryTs")
     addMapRow(key, binName, data, rowTTL).map { _record =>
       _record.getInt(binName)
     }
@@ -38,31 +39,43 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
     deleteMapRowItems(key, binName, List(messageId))
   }
 
-  def trimMessages(appName: String, contactIdentifier: String, numToRemove:Int): Future[_] = {
+  def trimMessages(appName: String, contactIdentifier: String, numToRemove: Int)(implicit ec: ExecutionContext): Future[Int] = {
     val key = new Key(namespace, setName, s"$appName$contactIdentifier")
-    trimMapRowItems(key, binName, numToRemove)
+    getQueue(appName, contactIdentifier).flatMap {
+      case m if m.isEmpty => FastFuture.successful(0)
+      case less if less.size <= numToRemove =>
+        deleteMapRowItems(key, binName, less.keys.toList).map(_ => 0)
+      case normal =>
+        val sortedMessageIds = normal.toSeq.sortBy { case (_, data) => data.split('|').head.toLong }
+        val mIds = sortedMessageIds.take(numToRemove).map { case (messageId, _) => messageId }
+        deleteMapRowItems(key, binName, mIds.toList).map(_ => normal.size - numToRemove)
+    }
   }
 
-  def getMessages(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[List[String]] = {
+  private def getQueue(appName: String, contactIdentifier: String)(implicit ec: ExecutionContext): Future[Map[String, String]] = {
     val key = new Key(namespace, setName, s"$appName$contactIdentifier")
     getRow(key).map { _record =>
       Option(_record).map { record =>
-        val (valid, expired) = record.getMap(binName).asScala.partition { case (_ , data) =>
-          data.toString.split('|').last.toLong >= System.currentTimeMillis()
+        val (valid, expired) = record.getMap(binName).asScala.toMap.asInstanceOf[Map[String,String]].partition { case (_, data) =>
+          data.split('|').last.toLong >= System.currentTimeMillis()
         }
+        if (expired.nonEmpty)
+          deleteMapRowItems(key, binName, expired.keys.toList)
+        valid
+      } getOrElse Map.empty[String, String]
+    }
+  }
 
-        if(expired.nonEmpty)
-          deleteMapRowItems(key,binName,expired.keys.map(_.toString).toList )
-
-        if(timestampRange.isDefined){
-          val timeFiltered = valid.filter { case (_ , data ) =>
-            val ts =  data.toString.split('|').head.toLong
-            ts >= timestampRange.get._1 && ts <= timestampRange.get._2
-          }
-          timeFiltered.keys.map(_.toString).toList
-        } else
-          valid.keys.map(_.toString).toList
-      } getOrElse List.empty
+  def getMessages(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[List[String]] = {
+    getQueue(appName, contactIdentifier).map { messages =>
+      if (timestampRange.isDefined) {
+        val timeFiltered = messages.filter { case (_, data) =>
+          val ts = data.split('|').head.toLong
+          ts >= timestampRange.get._1 && ts <= timestampRange.get._2
+        }
+        timeFiltered.keys.toList
+      } else
+        messages.keys.toList
     }
   }
 

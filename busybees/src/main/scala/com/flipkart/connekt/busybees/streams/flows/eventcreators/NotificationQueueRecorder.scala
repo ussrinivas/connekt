@@ -23,7 +23,6 @@ import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.utils.StringUtils._
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.util.{Failure, Success}
 
 class NotificationQueueRecorder(parallelism: Int)(implicit ec: ExecutionContext) extends MapAsyncFlowStage[ConnektRequest, ConnektRequest](parallelism) with Instrumented {
 
@@ -42,13 +41,7 @@ class NotificationQueueRecorder(parallelism: Int)(implicit ec: ExecutionContext)
       else {
         val enqueueFutures = pnInfo.deviceIds.map(ServiceFactory.getMessageQueueService.enqueueMessage(message.appName, _, message.id))
         if (shouldAwait) //TODO: Remove this when cross-dc calls are taken care of.
-          Future.sequence(enqueueFutures).andThen {
-            case Success(_) =>
-              promise.success(List(message))
-            case Failure(ex) =>
-              ConnektLogger(LogFile.PROCESSORS).error(s"NotificationQueueRecorder MessageQueueService.enqueueMessage failed for ${message.id}", ex)
-              promise.success(List(message))
-          }
+          Future.sequence(enqueueFutures).onComplete(_ => promise.success(List(message)))
         else
           promise.success(List(message))
       }

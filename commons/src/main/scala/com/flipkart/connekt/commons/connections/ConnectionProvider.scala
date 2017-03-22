@@ -32,5 +32,10 @@ class ConnectionProvider extends TConnectionProvider {
 
   override def createCouchBaseConnection(nodes: List[String]): Cluster = CouchbaseCluster.create(nodes.asJava)
 
-  override def createAeroSpikeConnection(nodes: List[String]): AsyncClient =  new AsyncClient(new AsyncClientPolicy(), nodes.map(new Host(_, 3000)): _ *)
+  override def createAeroSpikeConnection(nodes: List[String]): AsyncClient =  {
+    val asyncClientPolicy = new AsyncClientPolicy()
+    asyncClientPolicy.asyncMaxCommands = 500
+    asyncClientPolicy.asyncSelectorThreads = 4
+    new AsyncClient(asyncClientPolicy, nodes.map(new Host(_, 3000)): _ *)
+  }
 }
