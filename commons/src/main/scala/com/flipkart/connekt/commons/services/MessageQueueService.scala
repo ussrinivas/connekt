@@ -13,11 +13,12 @@
 package com.flipkart.connekt.commons.services
 
 import com.flipkart.connekt.commons.dao.MessageQueueDao
+import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.metrics.Instrumented
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Success
+import scala.util.{Failure, Success}
 
 class MessageQueueService(dao: MessageQueueDao) extends TService with Instrumented {
 
@@ -28,6 +29,8 @@ class MessageQueueService(dao: MessageQueueDao) extends TService with Instrument
   def enqueueMessage(appName: String, contactIdentifier: String, messageId: String, expiryTs: Option[Long] = None)(implicit ec: ExecutionContext): Future[Int] = {
     dao.enqueueMessage(appName.toLowerCase, contactIdentifier, messageId, expiryTs.getOrElse(System.currentTimeMillis() + defaultTTL)).andThen {
       case Success(count) if count >= maxRecords => dao.trimMessages(appName.toLowerCase, contactIdentifier, maxRecords * cleanupFactor toInt) //TODO: This is random truncation
+      case Failure(ex) =>
+        ConnektLogger(LogFile.SERVICE).error(s"MessageQueueService.enqueueMessage failed for $messageId", ex)
     }
   }
 

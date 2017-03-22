@@ -19,12 +19,16 @@ import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.iomodels.{ConnektRequest, PNRequestInfo}
 import com.flipkart.connekt.commons.metrics.Instrumented
+import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.utils.StringUtils._
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
 
 class NotificationQueueRecorder(parallelism: Int)(implicit ec: ExecutionContext) extends MapAsyncFlowStage[ConnektRequest, ConnektRequest](parallelism) with Instrumented {
+
+  private lazy val shouldAwait = ConnektConfig.getBoolean("topology.push.queue.await").getOrElse(false)
+
   override val map: (ConnektRequest) => Future[List[ConnektRequest]] = message => {
     val profiler = timer("map").time()
     try {
@@ -33,17 +37,20 @@ class NotificationQueueRecorder(parallelism: Int)(implicit ec: ExecutionContext)
       val pnInfo = message.channelInfo.asInstanceOf[PNRequestInfo]
       val promise = Promise[List[ConnektRequest]]()
 
-      if(message.isTestRequest)
+      if (message.isTestRequest)
         promise.success(List(message))
       else {
         val enqueueFutures = pnInfo.deviceIds.map(ServiceFactory.getMessageQueueService.enqueueMessage(message.appName, _, message.id))
-        Future.sequence(enqueueFutures).andThen {
-          case Success(_) =>
-            promise.success(List(message))
-          case Failure(ex) =>
-            ConnektLogger(LogFile.PROCESSORS).error(s"NotificationQueueRecorder MessageQueueService.enqueueMessage failed for ${message.id}", ex)
-            promise.success(List(message))
-        }
+        if (shouldAwait) //TODO: Remove this when cross-dc calls are taken care of.
+          Future.sequence(enqueueFutures).andThen {
+            case Success(_) =>
+              promise.success(List(message))
+            case Failure(ex) =>
+              ConnektLogger(LogFile.PROCESSORS).error(s"NotificationQueueRecorder MessageQueueService.enqueueMessage failed for ${message.id}", ex)
+              promise.success(List(message))
+          }
+        else
+          promise.success(List(message))
       }
       promise.future.onComplete(_ => profiler.stop())
       promise.future
