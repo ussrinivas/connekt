@@ -16,8 +16,8 @@ import com.aerospike.client.Key
 import com.aerospike.client.async.AsyncClient
 
 import scala.collection.JavaConverters._
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 
 class MessageQueueDao(private val setName: String, private implicit val client: AsyncClient) extends Dao with AeroSpikeDao {
 

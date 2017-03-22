@@ -24,7 +24,7 @@ import com.flipkart.connekt.commons.services.ConnektConfig
 import scala.collection.JavaConverters._
 import scala.concurrent.{Future, Promise}
 
-trait AeroSpikeDao extends Instrumented {
+trait AeroSpikeDao  extends  Instrumented {
 
   lazy val timeout: Int = ConnektConfig.getInt("connections.aerospike.timeout").getOrElse(500)
 
