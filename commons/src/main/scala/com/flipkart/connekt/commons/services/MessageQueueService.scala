@@ -22,11 +22,12 @@ import scala.util.Success
 class MessageQueueService(dao: MessageQueueDao) extends TService with Instrumented {
 
   private val defaultTTL = 7.days.toMillis
-  private val maxRecords = 10
+  private val maxRecords = 100
+  private val cleanupFactor = 0.1
 
-  def enqueueMessage(appName: String, contactIdentifier: String, messageId: String, ttl: Option[Long] = None)(implicit ec: ExecutionContext): Future[Int] = {
-    dao.enqueueMessage(appName.toLowerCase, contactIdentifier, messageId, ttl.getOrElse(System.currentTimeMillis() + defaultTTL)).andThen {
-      case Success(count) if count >= maxRecords => dao.trimMessages(appName.toLowerCase, contactIdentifier, maxRecords * 0.1 toInt) //TODO: This is random truncation
+  def enqueueMessage(appName: String, contactIdentifier: String, messageId: String, expiryTs: Option[Long] = None)(implicit ec: ExecutionContext): Future[Int] = {
+    dao.enqueueMessage(appName.toLowerCase, contactIdentifier, messageId, expiryTs.getOrElse(System.currentTimeMillis() + defaultTTL)).andThen {
+      case Success(count) if count >= maxRecords => dao.trimMessages(appName.toLowerCase, contactIdentifier, maxRecords * cleanupFactor toInt) //TODO: This is random truncation
     }
   }
 
