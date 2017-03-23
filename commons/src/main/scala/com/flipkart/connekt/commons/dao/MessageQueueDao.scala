@@ -49,7 +49,7 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
     getQueue(appName, contactIdentifier).flatMap {
       case m if m.isEmpty => FastFuture.successful(0)
       case less if less.size <= numToRemove =>
-        deleteMapRowItems(key, binName, less.keys.toList).map(_ => 0)
+        deleteRow(key).map(_ => 0)
       case normal =>
         val sortedMessageIds = normal.toSeq.sortBy { case (_, data) => data.split('|').head.toLong }
         val mIds = sortedMessageIds.take(numToRemove).map { case (messageId, _) => messageId }
