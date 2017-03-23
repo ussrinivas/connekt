@@ -23,6 +23,7 @@ import com.flipkart.connekt.commons.entities.MobilePlatform._
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.iomodels._
+import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.receptors.directives.{ChannelSegment, MPlatformSegment}
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
@@ -33,6 +34,8 @@ import scala.collection.JavaConverters._
 import scala.util.Try
 
 class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with PredefinedFromEntityUnmarshallers {
+
+  private val seenEventTypes = ConnektConfig.getList[String]("core.pn.seen.events").map(_.toLowerCase)
 
   private lazy implicit val stencilService = ServiceFactory.getStencilService
 
@@ -51,7 +54,11 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with
                           val event = e.copy(messageId = Option(e.messageId).orEmpty, eventId = RandomStringUtils.randomAlphabetic(10), clientId = user.userId, contextId = Option(e.contextId).orEmpty, platform = appPlatform.toString, appName = appName, deviceId = deviceId, eventType = Option(e.eventType).map(_.toLowerCase).orNull)
                           event.validate()
                           event.persist
+
                           ServiceFactory.getReportingService.recordPushStatsDelta(user.userId, Option(e.contextId), None, Some(event.platform), event.appName, event.eventType)
+                          if(seenEventTypes.contains(event.eventType.toLowerCase))
+                            ServiceFactory.getMessageQueueService.removeMessage(appName, event.deviceId, event.messageId)
+
                           ConnektLogger(LogFile.SERVICE).debug(s"Received callback event {}", supplier(event.toString))
                           complete(GenericResponse(StatusCodes.OK.intValue, null, Response("PN callback saved successfully.", null)))
                         }
@@ -79,6 +86,8 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with
 
                           validEvents.foreach(event => {
                             ServiceFactory.getReportingService.recordPushStatsDelta(user.userId, Some(event.contextId), None, Some(event.platform), event.appName, event.eventType)
+                            if(seenEventTypes.contains(event.eventType.toLowerCase))
+                              ServiceFactory.getMessageQueueService.removeMessage(appName, event.deviceId, event.messageId)
                           })
 
                           ConnektLogger(LogFile.SERVICE).debug(s"Received callback events {}",supplier(validEvents.getJson))

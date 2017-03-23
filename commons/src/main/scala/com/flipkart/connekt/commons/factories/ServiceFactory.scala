@@ -64,6 +64,10 @@ object ServiceFactory {
     serviceCache += ServiceType.SCHEDULER -> instance
   }
 
+  def initMessageQueueService(dao: MessageQueueDao):Unit = {
+    serviceCache += ServiceType.PULL_QUEUE -> new MessageQueueService(dao)
+  }
+
   def getMessageService(channel: Channel): TMessageService = {
     channel match {
       case Channel.PUSH => serviceCache(ServiceType.PN_MESSAGE).asInstanceOf[TMessageService]
@@ -71,6 +75,8 @@ object ServiceFactory {
       case Channel.SMS => serviceCache(ServiceType.SMS_MESSAGE).asInstanceOf[TMessageService]
     }
   }
+
+  def getMessageQueueService = serviceCache(ServiceType.PULL_QUEUE).asInstanceOf[MessageQueueService]
 
   def initStencilService(dao: TStencilDao) = serviceCache += ServiceType.STENCIL -> new StencilService(dao)
 
@@ -93,5 +99,5 @@ object ServiceFactory {
 }
 
 object ServiceType extends Enumeration {
-  val PN_MESSAGE, TEMPLATE, CALLBACK, USER_INFO, AUTHORISATION, KEY_CHAIN, STATS_REPORTING, SCHEDULER, STENCIL, SMS_MESSAGE, EMAIL_MESSAGE, APP_CONFIG = Value
+  val PN_MESSAGE, TEMPLATE, CALLBACK, USER_INFO, AUTHORISATION, KEY_CHAIN, STATS_REPORTING, SCHEDULER, STENCIL, SMS_MESSAGE, EMAIL_MESSAGE, APP_CONFIG, PULL_QUEUE = Value
 }
