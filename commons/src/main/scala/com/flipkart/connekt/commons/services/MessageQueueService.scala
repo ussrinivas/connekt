@@ -39,6 +39,9 @@ class MessageQueueService(dao: MessageQueueDao) extends TService with Instrument
 
   def removeMessage(appName: String, contactIdentifier: String, messageId: String): Future[_] = dao.removeMessage(appName.toLowerCase, contactIdentifier, messageId)
 
-  def getMessages(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[Seq[String]] = dao.getMessages(appName.toLowerCase, contactIdentifier, timestampRange)(ec)
+  def getMessages(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[Seq[String]] = {
+    val context = timer("getMessages").time()
+    dao.getMessages(appName.toLowerCase, contactIdentifier, timestampRange).andThen { case _ => context.stop() }
+  }
 
 }
