@@ -47,11 +47,13 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
     }
   }
 
+  @Timed("removeMessage")
   def removeMessage(appName: String, contactIdentifier: String, messageId: String): Future[_] = {
     val key = new Key(namespace, setName, s"$appName$contactIdentifier")
     deleteMapRowItems(key, binName, List(messageId))
   }
 
+  @Timed("empty")
   def empty(appName: String, contactIdentifier: String): Future[_] = {
     val key = new Key(namespace, setName, s"$appName$contactIdentifier")
     deleteRow(key)
