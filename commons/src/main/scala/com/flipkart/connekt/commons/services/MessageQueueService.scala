@@ -15,6 +15,7 @@ package com.flipkart.connekt.commons.services
 import com.flipkart.connekt.commons.dao.MessageQueueDao
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.metrics.Instrumented
+import com.flipkart.metrics.Timed
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
@@ -26,6 +27,7 @@ class MessageQueueService(dao: MessageQueueDao) extends TService with Instrument
   private val maxRecords = 100
   private val cleanupFactor = 0.1
 
+  @Timed("enqueueMessage")
   def enqueueMessage(appName: String, contactIdentifier: String, messageId: String, expiryTs: Option[Long] = None)(implicit ec: ExecutionContext): Future[Int] = {
     dao.enqueueMessage(appName.toLowerCase, contactIdentifier, messageId, expiryTs.getOrElse(System.currentTimeMillis() + defaultTTL)).andThen {
       case Success(count) if count >= maxRecords =>  dao.trimMessages(appName.toLowerCase, contactIdentifier, maxRecords * cleanupFactor toInt)
@@ -35,13 +37,13 @@ class MessageQueueService(dao: MessageQueueDao) extends TService with Instrument
     }
   }
 
+  @Timed("empty")
   def empty(appName: String, contactIdentifier: String ): Future[_] = dao.empty(appName.toLowerCase, contactIdentifier)
 
+  @Timed("removeMessage")
   def removeMessage(appName: String, contactIdentifier: String, messageId: String): Future[_] = dao.removeMessage(appName.toLowerCase, contactIdentifier, messageId)
 
-  def getMessages(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[Seq[String]] = {
-    val context = timer("getMessages").time()
-    dao.getMessages(appName.toLowerCase, contactIdentifier, timestampRange).andThen { case _ => context.stop() }
-  }
+  @Timed("getMessages")
+  def getMessages(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[Seq[String]] =  dao.getMessages(appName.toLowerCase, contactIdentifier, timestampRange)
 
 }

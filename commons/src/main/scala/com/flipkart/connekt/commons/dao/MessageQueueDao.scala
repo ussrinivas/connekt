@@ -15,6 +15,7 @@ package com.flipkart.connekt.commons.dao
 import akka.http.scaladsl.util.FastFuture
 import com.aerospike.client.Key
 import com.aerospike.client.async.AsyncClient
+import com.flipkart.metrics.Timed
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -37,6 +38,7 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
   private val binName: String = "queue"
   private val rowTTL = Some(15.days.toMillis)
 
+  @Timed("enqueueMessage")
   def enqueueMessage(appName: String, contactIdentifier: String, messageId: String, expiryTs: Long)(implicit ec: ExecutionContext): Future[Int] = {
     val key = new Key(namespace, setName, s"$appName$contactIdentifier")
     val data = Map(messageId -> MessageMetaData(System.currentTimeMillis(),expiryTs).encoded)
@@ -55,6 +57,7 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
     deleteRow(key)
   }
 
+  @Timed("trimMessages")
   def trimMessages(appName: String, contactIdentifier: String, numToRemove: Int)(implicit ec: ExecutionContext): Future[Int] = {
     val key = new Key(namespace, setName, s"$appName$contactIdentifier")
     getQueue(appName, contactIdentifier).flatMap {
@@ -68,6 +71,7 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
     }
   }
 
+  @Timed("getQueue")
   private def getQueue(appName: String, contactIdentifier: String)(implicit ec: ExecutionContext): Future[Map[String, MessageMetaData]] = {
     val key = new Key(namespace, setName, s"$appName$contactIdentifier")
     getRow(key).map { _record =>
@@ -88,6 +92,7 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
     * getMessages
     * @return Ordered MessageIds sorted by Most Recency
     */
+  @Timed("getMessages")
   def getMessages(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[Seq[String]] = {
     getQueue(appName, contactIdentifier).map { _messages =>
       val messages = timestampRange match {
