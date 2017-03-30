@@ -18,7 +18,7 @@ import akka.http.scaladsl.util.FastFuture
 import akka.stream.scaladsl.Flow
 import com.flipkart.connekt.busybees.models.APNSRequestTracker
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
-import com.flipkart.connekt.commons.services.KeyChainManager
+import com.flipkart.connekt.commons.services.{ConnektConfig, KeyChainManager}
 import com.flipkart.connekt.commons.utils.FutureUtils._
 import com.flipkart.connekt.commons.utils.StringUtils
 import com.google.common.util.concurrent.ThreadFactoryBuilder
@@ -33,6 +33,7 @@ import scala.util.control.NonFatal
 
 object APNSDispatcher {
 
+  private val apnsHost:String = ConnektConfig.getOrElse("ios.apns.host", ApnsClient.PRODUCTION_APNS_HOST)
   private [busybees] val clientGatewayCache = new ConcurrentHashMap[String, Future[ApnsClient[SimpleApnsPushNotification]]]
 
   private def createAPNSClient(appName: String): ApnsClient[SimpleApnsPushNotification] = {
@@ -41,7 +42,7 @@ object APNSDispatcher {
     //TODO: shutdown this eventloop when client is closed.
     val eventLoop = new NioEventLoopGroup(4, new ThreadFactoryBuilder().setNameFormat(s"apns-nio-$appName-${StringUtils.generateRandomStr(4)}-%s").build())
     val client = new ApnsClient[SimpleApnsPushNotification](credential.getCertificateFile, credential.passkey,eventLoop)
-    client.connect(ApnsClient.PRODUCTION_APNS_HOST).await(120, TimeUnit.SECONDS)
+    client.connect(apnsHost).await(120, TimeUnit.SECONDS)
     if (!client.isConnected)
       ConnektLogger(LogFile.PROCESSORS).error(s"APNSDispatcher Unable to connect [$appName] apns-client in 2minutes")
     client
