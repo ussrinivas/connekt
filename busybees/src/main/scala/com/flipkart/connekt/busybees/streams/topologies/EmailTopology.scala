@@ -31,6 +31,7 @@ import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.services.ConnektConfig
+import com.flipkart.connekt.commons.streams.FirewallRequestTransformer
 import com.flipkart.connekt.commons.sync.SyncType.SyncType
 import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
 import com.flipkart.connekt.commons.utils.StringUtils._
@@ -94,6 +95,8 @@ class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCa
 
 object EmailTopology {
 
+  private val firewallStencilId: Option[String] = ConnektConfig.getString("sys.firewall.stencil.id")
+
   def emailHTTPTransformFlow(implicit ioMat:ActorMaterializer,defaultDispatcher:  ExecutionContextExecutor,  ioDispatcher:  ExecutionContextExecutor, blockingDispatcher:ExecutionContextExecutor): Flow[ConnektRequest, EmailCallbackEvent, NotUsed] = Flow.fromGraph(GraphDSL.create() { implicit b =>
 
     val render = b.add(new RenderFlow().flow)
@@ -106,6 +109,7 @@ object EmailTopology {
     val providerPicker = b.add(new ChooseProvider[EmailPayloadEnvelope](Channel.EMAIL).flow)
     val providerHttpPrepareParallelism = ConnektConfig.getInt("topology.email.prepare.parallelism").get
     val providerHttpPrepare = b.add(new EmailProviderPrepare(providerHttpPrepareParallelism)(defaultDispatcher).flow)
+    val firewallTransformer = b.add(new FirewallRequestTransformer[EmailRequestTracker](firewallStencilId).flow)
     val emailPoolFlow = b.add(HttpDispatcher.emailPoolClientFlow.timedAs("emailRTT"))
 
     val providerHandlerParallelism = ConnektConfig.getInt("topology.email.parse.parallelism").get
@@ -118,7 +122,7 @@ object EmailTopology {
     }))
 
     render.out ~> tracking ~> fmtEmail ~> emailPayloadMerge
-    emailPayloadMerge.out ~> providerPicker ~> providerHttpPrepare ~> emailPoolFlow ~> providerResponseFormatter ~> emailResponseHandle ~> emailRetryPartition.in
+    emailPayloadMerge.out ~> providerPicker ~> providerHttpPrepare ~> firewallTransformer ~> emailPoolFlow ~> providerResponseFormatter ~> emailResponseHandle ~> emailRetryPartition.in
     emailPayloadMerge.preferred <~ emailRetryMapper <~ emailRetryPartition.out(1).map(_.left.get).outlet
 
     FlowShape(render.in, emailRetryPartition.out(0).map(_.right.get).outlet)

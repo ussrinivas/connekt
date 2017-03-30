@@ -31,6 +31,7 @@ import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.services.ConnektConfig
+import com.flipkart.connekt.commons.streams.FirewallRequestTransformer
 import com.flipkart.connekt.commons.sync.SyncType.SyncType
 import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
 import com.flipkart.connekt.commons.utils.StringUtils._
@@ -93,6 +94,8 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
 
 object SmsTopology {
 
+  private val firewallStencilId: Option[String] = ConnektConfig.getString("sys.firewall.stencil.id")
+
   def smsTransformFlow(implicit ioMat:ActorMaterializer, ioDispatcher:  ExecutionContextExecutor): Flow[ConnektRequest, SmsCallbackEvent, NotUsed] = Flow.fromGraph(GraphDSL.create() { implicit b  =>
 
     /**
@@ -113,6 +116,7 @@ object SmsTopology {
     val smsRetryMapper = b.add(Flow[SmsRequestTracker].map(_.request) /*.buffer(10, OverflowStrategy.backpressure)*/)
     val chooseProvider = b.add(new ChooseProvider[SmsPayloadEnvelope](Channel.SMS).flow)
     val smsPrepare = b.add(new SmsProviderPrepare().flow)
+    val firewallTransformer = b.add(new FirewallRequestTransformer[SmsRequestTracker](firewallStencilId).flow)
     val smsHttpPoolFlow = b.add(HttpDispatcher.smsPoolClientFlow.timedAs("smsRTT"))
 
     val providerHandlerParallelism = ConnektConfig.getInt("topology.sms.parse.parallelism").get
@@ -125,12 +129,11 @@ object SmsTopology {
     }))
 
     render.out ~> tracking ~> fmtSMS ~> smsPayloadMerge
-    smsPayloadMerge.out ~> chooseProvider ~> smsPrepare ~> smsHttpPoolFlow ~> smsResponseFormatter ~> smsResponseHandler ~> smsRetryPartition.in
+    smsPayloadMerge.out ~> chooseProvider ~> smsPrepare ~> firewallTransformer ~> smsHttpPoolFlow ~> smsResponseFormatter ~> smsResponseHandler ~> smsRetryPartition.in
     smsPayloadMerge.preferred <~ smsRetryMapper <~ smsRetryPartition.out(1).map(_.left.get).outlet
 
     FlowShape(render.in, smsRetryPartition.out(0).map(_.right.get).outlet)
   })
-
 
 
 }
