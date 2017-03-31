@@ -24,6 +24,7 @@ import com.flipkart.connekt.commons.utils.CompressionUtils._
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.receptors.routes.BaseHandler
 import org.apache.commons.net.util.Base64
+import com.flipkart.connekt.commons.core.Wrappers._
 
 class TrackingRoute(implicit am: ActorMaterializer) extends BaseHandler {
 
@@ -70,32 +71,32 @@ class TrackingRoute(implicit am: ActorMaterializer) extends BaseHandler {
             //TODO: Remove getOrElse after prod deployment about 1 week.
             //val entity = encodedData.decompress.get.getObj[URLMessageTracker]
             val entity = encodedData.decompress.map(_.getBytes).getOrElse(Base64.decodeBase64(encodedData)).getObj[URLMessageTracker]
+            Try_ {
+              val channel = Channel.withName(entity.channel.toLowerCase)
+              val event: CallbackEvent = channel match {
+                case Channel.EMAIL =>
+                  EmailCallbackEvent(messageId = entity.messageId,
+                    clientId = entity.clientId,
+                    address = entity.destination,
+                    eventType = "CLICK",
+                    appName = entity.appName,
+                    contextId = entity.contextId.orEmpty,
+                    cargo = Map("name" -> entity.linkName, "url" -> entity.url, "useragent" -> userAgent).getJson)
 
-            val channel = Channel.withName(entity.channel)
-            val event: CallbackEvent = channel match {
-              case Channel.EMAIL =>
-                EmailCallbackEvent(messageId = entity.messageId,
-                  clientId = entity.clientId,
-                  address = entity.destination,
-                  eventType = "CLICK",
-                  appName = entity.appName,
-                  contextId = entity.contextId.orEmpty,
-                  cargo = Map("name" -> entity.linkName, "url" -> entity.url, "useragent" -> userAgent).getJson)
+                case Channel.SMS =>
+                  SmsCallbackEvent(messageId = entity.messageId,
+                    clientId = entity.clientId,
+                    receiver = entity.destination,
+                    eventType = "CLICK",
+                    appName = entity.appName,
+                    contextId = entity.contextId.orEmpty,
+                    cargo = Map("name" -> entity.linkName, "url" -> entity.url, "useragent" -> userAgent).getJson)
+              }
 
-              case Channel.SMS =>
-                SmsCallbackEvent(messageId = entity.messageId,
-                  clientId = entity.clientId,
-                  receiver = entity.destination,
-                  eventType = "CLICK",
-                  appName = entity.appName,
-                  contextId = entity.contextId.orEmpty,
-                  cargo = Map("name" -> entity.linkName, "url" -> entity.url, "useragent" -> userAgent).getJson)
+              event.persist
+              ServiceFactory.getReportingService.recordChannelStatsDelta(entity.clientId, entity.contextId, None, channel, entity.appName, event.eventType)
+              ConnektLogger(LogFile.SERVICE).debug(s"Received callback event ${event.toString}")
             }
-
-            event.persist
-            ServiceFactory.getReportingService.recordChannelStatsDelta(entity.clientId, entity.contextId, None, channel, entity.appName, event.eventType)
-            ConnektLogger(LogFile.SERVICE).debug(s"Received callback event ${event.toString}")
-
             redirect(entity.url, StatusCodes.Found)
           }
         }
