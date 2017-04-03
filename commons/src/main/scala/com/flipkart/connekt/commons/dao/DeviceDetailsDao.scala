@@ -194,8 +194,8 @@ class DeviceDetailsDao(tableName: String, hTableFactory: THTableFactory) extends
         deleteTokenIdIndex(appName, deviceId, existingDetails.token)
       if (!StringUtils.isNullOrEmpty(existingDetails.userId) && existingDetails.userId != update.userId)
         deleteUserIdIndex(appName, deviceId, existingDetails.userId)
-      add(appName, update)
     })
+    add(appName, update)
   }
 
   @Timed("delete")
