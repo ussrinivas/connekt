@@ -12,18 +12,34 @@
  */
 package com.flipkart.connekt.commons.helpers
 
-import com.flipkart.connekt.commons.iomodels.{ConnektRequest, PNRequestInfo}
+import com.flipkart.connekt.commons.iomodels.{ConnektRequest, EmailRequestInfo, PNRequestInfo, SmsRequestInfo}
 
 object ConnektRequestHelper {
 
   abstract class FlatConnektRequest
 
-  implicit class FlatPNRequest(request: ConnektRequest) extends FlatConnektRequest {
-    val pnInfo = request.channelInfo.asInstanceOf[PNRequestInfo]
+  implicit class FlatRequest(request: ConnektRequest) extends FlatConnektRequest {
 
     def id = request.id
-    def deviceId = Option(pnInfo).map(_.deviceIds).orNull
-    def appName = Option(pnInfo).map(_.appName).orNull
-    def platform = Option(pnInfo).map(_.platform).orNull
+
+    def destinations: Set[String] = request.channelInfo match {
+      case pn: PNRequestInfo => pn.deviceIds
+      case email: EmailRequestInfo => email.to.map(_.address) ++ email.cc.map(_.address) ++ email.bcc.map(_.address)
+      case sms: SmsRequestInfo => sms.receivers
+      case _ => null
+    }
+
+    def appName: String = request.channelInfo match {
+      case pn: PNRequestInfo => pn.appName
+      case email: EmailRequestInfo => email.appName
+      case sms: SmsRequestInfo => sms.appName
+      case _ => null
+    }
+
+    def platform = request.channelInfo match {
+      case pn: PNRequestInfo => pn.platform
+      case _ => null
+    }
   }
+
 }

@@ -31,6 +31,6 @@ class UserConfigurationServiceTest extends CommonsBaseTest {
   }
 
   ignore /*"getTopicNames in MessageService"*/ should "return relevant platform topics" in {
-    ServiceFactory.getPNMessageService.getTopicNames(Channel.PUSH, Option(MobilePlatform.ANDROID)).get contains clientQueueName shouldEqual true
+    ServiceFactory.getMessageService(Channel.PUSH).getTopicNames(Channel.PUSH, Option(MobilePlatform.ANDROID)).get contains clientQueueName shouldEqual true
   }
 }

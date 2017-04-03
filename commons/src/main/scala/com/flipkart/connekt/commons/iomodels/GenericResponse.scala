@@ -18,13 +18,13 @@ import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
 case class GenericResponse(status: Int, request: AnyRef, response: ResponseBody)
 
 @JsonTypeInfo(
-use = JsonTypeInfo.Id.NAME,
-include = JsonTypeInfo.As.PROPERTY,
-property = "type"
+  use = JsonTypeInfo.Id.NAME,
+  include = JsonTypeInfo.As.PROPERTY,
+  property = "type"
 )
 @JsonSubTypes(Array(
-new Type(value = classOf[Response], name = "RESPONSE"),
-new Type(value = classOf[SendResponse], name = "SEND_RESPONSE")
+  new Type(value = classOf[Response], name = "RESPONSE"),
+  new Type(value = classOf[SendResponse], name = "SEND_RESPONSE")
 ))
 abstract class ResponseBody
 

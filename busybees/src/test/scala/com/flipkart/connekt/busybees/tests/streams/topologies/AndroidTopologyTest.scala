@@ -31,15 +31,12 @@ class AndroidTopologyTest extends TopologyUTSpec {
 
   "AndroidTopology Test" should "run" in {
 
-    val credentials = KeyChainManager.getGoogleCredential("ConnektSampleApp").get
-
     lazy implicit val poolClientFlow = Http().cachedHostConnectionPoolHttps[GCMRequestTracker]("fcm.googleapis.com", 443)
 
     val cRequest = s"""
                      |{ "id" : "123456789",
                      |	"channel": "PN",
                      |	"sla": "H",
-                     |	"scheduleTs": 12312312321,
                      |	"channelData": {
                      |		"type": "PN",
                      |		"data": {

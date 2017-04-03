@@ -12,6 +12,9 @@
  */
 package com.flipkart.connekt.commons.dao
 
+import java.util.concurrent.TimeUnit
+
+import com.aerospike.client.async.AsyncClient
 import com.couchbase.client.java.Bucket
 import com.flipkart.connekt.commons.connections.TConnectionProvider
 import com.flipkart.connekt.commons.factories.{HTableFactory, MySQLFactory, THTableFactory, TMySQLFactory}
@@ -21,13 +24,13 @@ object DaoFactory {
 
   var connectionProvider: TConnectionProvider = null
 
-  var daoMap = Map[DaoType.Value, Dao]()
+  private var daoMap = Map[DaoType.Value, Dao]()
   var mysqlFactoryWrapper: TMySQLFactory = null
 
-  var hTableFactory: THTableFactory = null
+  private var hTableFactory: THTableFactory = null
 
-  var couchBaseCluster: com.couchbase.client.java.Cluster = null
-  var couchbaseBuckets: Map[String, Bucket] = null
+  private var couchBaseCluster: com.couchbase.client.java.Cluster = null
+  private var couchbaseBuckets: Map[String, Bucket] = null
 
   def setUpConnectionProvider(provider: TConnectionProvider): Unit = {
     this.connectionProvider = provider
@@ -37,8 +40,13 @@ object DaoFactory {
     hTableFactory = new HTableFactory(hConnectionConfig, connectionProvider)
 
     daoMap += DaoType.DEVICE_DETAILS -> DeviceDetailsDao("connekt-registry", hTableFactory)
+    daoMap += DaoType.EXCLUSION_DETAILS -> ExclusionDao("fk-connekt-exclusions", hTableFactory)
     daoMap += DaoType.PN_REQUEST_INFO -> PNRequestDao(tableName = "fk-connekt-pn-info", hTableFactory = hTableFactory)
+    daoMap += DaoType.SMS_REQUEST_INFO -> SmsRequestDao(tableName = "fk-connekt-sms-info", hTableFactory = hTableFactory)
+    daoMap += DaoType.EMAIL_REQUEST_INFO -> new EmailRequestDao(tableName = "fk-connekt-email-info", hTableFactory = hTableFactory)
     daoMap += DaoType.CALLBACK_PN -> PNCallbackDao("fk-connekt-events", hTableFactory)
+    daoMap += DaoType.CALLBACK_EMAIL -> new EmailCallbackDao("fk-connekt-email-events", hTableFactory)
+    daoMap += DaoType.CALLBACK_SMS -> new SmsCallbackDao("fk-connekt-sms-events", hTableFactory)
   }
 
   def getHTableFactory = hTableFactory
@@ -65,6 +73,7 @@ object DaoFactory {
     daoMap += DaoType.SUBSCRIPTION -> SubscriptionDao("SUBSCRIPTIONS", mysqlFactoryWrapper)
     daoMap += DaoType.STENCIL -> StencilDao("STENCIL_STORE", "STENCIL_HISTORY_STORE", "STENCILS_ENSEMBLE", "BUCKET_REGISTRY", mysqlFactoryWrapper)
     daoMap += DaoType.KEY_CHAIN -> KeyChainDao("DATA_STORE", mysqlFactoryWrapper)
+    daoMap += DaoType.APP_CONFIG -> UserProjectConfigDao("APP_CONFIG", mysqlFactoryWrapper)
   }
 
   def initCouchbaseCluster(config: Config) {
@@ -76,7 +85,7 @@ object DaoFactory {
     couchbaseBuckets.get(name) match {
       case Some(x) => x
       case None =>
-        val bucket = couchBaseCluster.openBucket(name)
+        val bucket = couchBaseCluster.openBucket(name, 10, TimeUnit.SECONDS)
         couchbaseBuckets += name -> bucket
         bucket
     }
@@ -86,17 +95,33 @@ object DaoFactory {
     Option(couchBaseCluster).foreach(_.disconnect())
   }
 
+
+  def initAeroSpike(config: Config): Unit ={
+    val aeroSpikeClient = connectionProvider.createAeroSpikeConnection(config.getString("hosts").split(",").toList)
+    daoMap += DaoType.PULL_MESSAGE -> new MessageQueueDao("pull", aeroSpikeClient)
+  }
+
   def initReportingDao(bucket: Bucket): Unit = {
     daoMap += DaoType.STATS_REPORTING -> StatsReportingDao(bucket)
   }
 
+  def getMessageQueueDao : MessageQueueDao = daoMap(DaoType.PULL_MESSAGE).asInstanceOf[MessageQueueDao]
+
   def getDeviceDetailsDao: DeviceDetailsDao = daoMap(DaoType.DEVICE_DETAILS).asInstanceOf[DeviceDetailsDao]
 
+  def getExclusionDao: ExclusionDao = daoMap(DaoType.EXCLUSION_DETAILS).asInstanceOf[ExclusionDao]
+
   def getPNRequestDao: PNRequestDao = daoMap(DaoType.PN_REQUEST_INFO).asInstanceOf[PNRequestDao]
+
+  def getSmsRequestDao: SmsRequestDao = daoMap(DaoType.SMS_REQUEST_INFO).asInstanceOf[SmsRequestDao]
 
   def getPNCallbackDao: PNCallbackDao = daoMap(DaoType.CALLBACK_PN).asInstanceOf[PNCallbackDao]
 
   def getEmailCallbackDao: EmailCallbackDao = daoMap(DaoType.CALLBACK_EMAIL).asInstanceOf[EmailCallbackDao]
+
+  def getSmsCallbackDao: SmsCallbackDao = daoMap(DaoType.CALLBACK_SMS).asInstanceOf[SmsCallbackDao]
+
+  def getEmailRequestDao: EmailRequestDao = daoMap(DaoType.EMAIL_REQUEST_INFO).asInstanceOf[EmailRequestDao]
 
   def getPrivDao: PrivDao = daoMap(DaoType.PRIVILEGE).asInstanceOf[PrivDao]
 
@@ -105,6 +130,8 @@ object DaoFactory {
   def getKeyChainDao: TKeyChainDao = daoMap(DaoType.KEY_CHAIN).asInstanceOf[KeyChainDao]
 
   def getUserConfigurationDao: TUserConfiguration = daoMap(DaoType.USER_CONFIG).asInstanceOf[UserConfigurationDao]
+
+  def getUserProjectConfigDao:UserProjectConfigDao = daoMap(DaoType.APP_CONFIG).asInstanceOf[UserProjectConfigDao]
 
   def getStencilDao: TStencilDao = daoMap(DaoType.STENCIL).asInstanceOf[StencilDao]
 
@@ -116,14 +143,20 @@ object DaoFactory {
 object DaoType extends Enumeration {
   val DEVICE_DETAILS,
   REQUEST_META,
+  EXCLUSION_DETAILS,
   PN_REQUEST_INFO,
+  EMAIL_REQUEST_INFO,
+  SMS_REQUEST_INFO,
   CALLBACK_EMAIL,
+  CALLBACK_SMS,
   CALLBACK_PN,
   PRIVILEGE,
   USER_INFO,
   USER_CONFIG,
+  APP_CONFIG,
   STENCIL,
   STATS_REPORTING,
   SUBSCRIPTION,
-  KEY_CHAIN = Value
+  KEY_CHAIN,
+  PULL_MESSAGE = Value
 }

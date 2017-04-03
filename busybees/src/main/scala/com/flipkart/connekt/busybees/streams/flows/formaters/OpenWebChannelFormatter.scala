@@ -63,7 +63,10 @@ class OpenWebChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExe
           if (device.token != null && device.token.nonEmpty && device.token.isValidUrl) {
             val token = device.token.replace("https://android.googleapis.com/gcm/send", "https://gcm-http.googleapis.com/gcm")
             val headers = scala.collection.mutable.Map("TTL" -> ttl.toString)
-            val appDataWithId = stencilService.materialize(openWebStencil, message.channelData.asInstanceOf[PNRequestData].data).asInstanceOf[String].getObj[ObjectNode].put("messageId", message.id).put("deviceId", device.deviceId).getJson
+            val appDataWithId = stencilService.materialize(openWebStencil, message.channelData.asInstanceOf[PNRequestData].data).asInstanceOf[String].getObj[ObjectNode]
+              .put("messageId", message.id)
+              .put("contextId", message.contextId.orEmpty)
+              .put("deviceId", device.deviceId).getJson
 
             val vapIdKeyPair = KeyChainManager.getKeyPairCredential(message.appName).get
 
@@ -123,7 +126,7 @@ class OpenWebChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExe
     catch {
       case e: Exception =>
         ConnektLogger(LogFile.PROCESSORS).error(s"OpenWebChannelFormatter error for ${message.id}", e)
-        throw new ConnektPNStageException(message.id, message.clientId, message.deviceId, InternalStatus.StageError, message.appName, message.platform, message.contextId.orEmpty, message.meta, "OpenWebChannelFormatter::".concat(e.getMessage), e)
+        throw ConnektPNStageException(message.id, message.clientId, message.destinations, InternalStatus.StageError, message.appName, message.platform, message.contextId.orEmpty, message.meta, "OpenWebChannelFormatter::".concat(e.getMessage), e)
     }
   }
 

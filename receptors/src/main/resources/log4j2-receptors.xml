@@ -79,19 +79,19 @@
 
   <!-- Receptors loggers -->
   <Loggers>
-    <Logger name="DEFAULT" level="trace" additivity="false">
+    <Logger name="DEFAULT" level="INFO" additivity="false">
       <AppenderRef ref="DEFAULT"/>
     </Logger>
-    <Logger name="ACCESS" level="debug" additivity="false">
+    <Logger name="ACCESS" level="INFO" additivity="false">
       <AppenderRef ref="ACCESS"/>
     </Logger>
-    <Logger name="FACTORY" level="debug" additivity="false">
+    <Logger name="FACTORY" level="INFO" additivity="false">
       <AppenderRef ref="FACTORY"/>
     </Logger>
-    <Logger name="DAO" level="debug" additivity="false">
+    <Logger name="DAO" level="INFO" additivity="false">
       <AppenderRef ref="DAO"/>
     </Logger>
-    <Logger name="SERVICE" level="debug" additivity="false">
+    <Logger name="SERVICE" level="INFO" additivity="false">
       <AppenderRef ref="SERVICE"/>
     </Logger>
 
@@ -100,7 +100,7 @@
     <Logger name="org.apache" level="error" />
     <Logger name="com.couchbase.client" level="error" />
 
-    <Logger name="com.flipkart" level="debug"  />
+    <Logger name="com.flipkart" level="INFO"  />
     <Logger name="com.flipkart.kloud.config" level="error"/>
 
     <Root level="INFO">

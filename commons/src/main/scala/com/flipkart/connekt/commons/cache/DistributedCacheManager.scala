@@ -21,41 +21,44 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 import rx.lang.scala.Observable
 
 import scala.collection.{Map, concurrent}
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.{Duration, DurationInt}
 import scala.reflect.runtime.universe._
 
 object DistributedCacheManager extends CacheManager {
 
   private var cacheTTLMap: Map[DistributedCacheType.Value, CacheProperty] = Map[DistributedCacheType.Value, CacheProperty]()
   cacheTTLMap += DistributedCacheType.TransientUsers -> CacheProperty(0, 6.hours)
+  cacheTTLMap += DistributedCacheType.ExclusionDetails -> CacheProperty(0, 0.second)
   cacheTTLMap += DistributedCacheType.IdempotentCheck -> CacheProperty(0, 1.day)
   cacheTTLMap += DistributedCacheType.Default -> CacheProperty(0, 24.hours)
-  cacheTTLMap += DistributedCacheType.DeviceDetails -> CacheProperty(0, 0.seconds)
+  cacheTTLMap += DistributedCacheType.DeviceDetails -> CacheProperty(0, Duration.Inf)
 
   private var cacheStorage = concurrent.TrieMap[DistributedCacheType.Value, Caches]()
 
   /**
-   * Get Map for given cacheType
-   * @param cacheName: cache
-   * @tparam V: classType of cache value
-   * @return [[Caches]]
-   */
+    * Get Map for given cacheType
+    *
+    * @param cacheName : cache
+    * @tparam V : classType of cache value
+    * @return [[Caches]]
+    */
   def getCache[V <: Any](cacheName: DistributedCacheType.Value)(implicit cTag: reflect.ClassTag[V]): Caches = {
     cacheStorage.get(cacheName) match {
       case Some(x) => x.asInstanceOf[Caches]
       case None =>
         val cacheStorageBucket = DaoFactory.getCouchbaseBucket(cacheName.toString)
-        val cache = new DistributedCaches(cacheName.toString,cacheStorageBucket, cacheTTLMap(cacheName))
+        val cache = new DistributedCaches(cacheName.toString, cacheStorageBucket, cacheTTLMap(cacheName))
         cacheStorage += cacheName -> cache.asInstanceOf[Caches]
         cache
     }
   }
 
   /**
-   * Delete the given key from the distributed cache.
-   * @param cacheName: cache Name
-   * @param key: cache key
-   */
+    * Delete the given key from the distributed cache.
+    *
+    * @param cacheName : cache Name
+    * @param key       : cache key
+    */
   def delCacheItem(cacheName: DistributedCacheType.Value, key: String): Unit = {
     //DistributedCacheManager.getCache[Any](cacheType).remove(key)
     //    cacheStorage(cacheName).re
@@ -65,12 +68,17 @@ object DistributedCacheManager extends CacheManager {
 
 }
 
-  class DistributedCaches(name:String, cacheStorageBucket:Bucket, props: CacheProperty) extends Caches {
+class DistributedCaches(name: String, cacheStorageBucket: Bucket, props: CacheProperty) extends Caches {
 
+  private def toCouchbaseExpiry( ttl: Duration):Int = {
+    if (ttl.isFinite()){
+      ((System.currentTimeMillis + ttl.toMillis)/1000).toInt
+    } else 0
+  }
 
-  override def put[T](key: String, value: T)(implicit cTag: reflect.ClassTag[T]): Boolean = {
+  override def put[T](key: String, value: T, ttl: Duration)(implicit cTag: reflect.ClassTag[T]): Boolean = {
     try {
-      cacheStorageBucket.upsert(StringDocument.create(key, props.ttl.toSeconds.toInt, value.asInstanceOf[AnyRef].getJson))
+      cacheStorageBucket.upsert(StringDocument.create(key, toCouchbaseExpiry(ttl), value.asInstanceOf[AnyRef].getJson))
       true
     } catch {
       case e: Exception =>
@@ -79,9 +87,13 @@ object DistributedCacheManager extends CacheManager {
     }
   }
 
+  override def put[T](key: String, value: T)(implicit cTag: reflect.ClassTag[T]): Boolean = {
+    put[T](key, value, props.ttl)
+  }
+
   override def put[T](kv: List[(String, T)])(implicit cTag: reflect.ClassTag[T]): Boolean = {
     try {
-      val documents = kv.map(doc => StringDocument.create(doc._1, props.ttl.toSeconds.toInt, doc._2.asInstanceOf[AnyRef].getJson))
+      val documents = kv.map(doc => StringDocument.create(doc._1, toCouchbaseExpiry(props.ttl), doc._2.asInstanceOf[AnyRef].getJson))
       Observable.from(documents).flatMap(doc => {
         rx.lang.scala.JavaConversions.toScalaObservable(cacheStorageBucket.async().upsert(doc))
       }).last.toBlocking.single

@@ -69,7 +69,7 @@ class ClientRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                           case None =>
                             complete(GenericResponse(StatusCodes.BadRequest.intValue, null, Response(s"User $clientName: does not exist.", null)))
                           case Some(userInfo) =>
-                            val mSvc = ServiceFactory.getPNMessageService
+                            val mSvc = ServiceFactory.getMessageService(Channel.PUSH)
 
                             UserConfigurationService.get(userConfig.userId, userConfig.channel).get match {
                               case Some(uConfig) =>

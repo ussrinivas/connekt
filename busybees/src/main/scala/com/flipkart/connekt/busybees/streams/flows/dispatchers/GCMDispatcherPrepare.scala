@@ -12,8 +12,6 @@
  */
 package com.flipkart.connekt.busybees.streams.flows.dispatchers
 
-import java.net.URL
-
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.RawHeader
 import com.flipkart.connekt.busybees.models.GCMRequestTracker
@@ -26,8 +24,7 @@ import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.services.KeyChainManager
 import com.flipkart.connekt.commons.utils.StringUtils._
 
-class GCMDispatcherPrepare(uri: URL = new URL("https", "fcm.googleapis.com", 443, "/fcm/send"))
-  extends MapFlowStage[GCMPayloadEnvelope, (HttpRequest, GCMRequestTracker)] {
+class GCMDispatcherPrepare extends MapFlowStage[GCMPayloadEnvelope, (HttpRequest, GCMRequestTracker)] {
 
   override implicit val map: GCMPayloadEnvelope => List[(HttpRequest, GCMRequestTracker)] = message => {
     try {
@@ -36,7 +33,7 @@ class GCMDispatcherPrepare(uri: URL = new URL("https", "fcm.googleapis.com", 443
 
       val requestEntity = HttpEntity(ContentTypes.`application/json`, message.gcmPayload.getJson)
       val requestHeaders = scala.collection.immutable.Seq[HttpHeader](RawHeader("Authorization", "key=" + KeyChainManager.getGoogleCredential(message.appName).get.apiKey))
-      val httpRequest = HttpRequest(HttpMethods.POST, uri.getPath, requestHeaders, requestEntity)
+      val httpRequest = HttpRequest(HttpMethods.POST, "/fcm/send", requestHeaders, requestEntity)
       val requestTrace = GCMRequestTracker(message.messageId, message.clientId, message.deviceId, message.appName, message.contextId, message.meta)
 
       List(httpRequest -> requestTrace)

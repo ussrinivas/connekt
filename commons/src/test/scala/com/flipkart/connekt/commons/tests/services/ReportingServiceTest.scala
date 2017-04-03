@@ -24,7 +24,7 @@ class ReportingServiceTest extends CommonsBaseTest {
   val date = DateTimeUtils.calenderDate.print(Calendar.getInstance().getTimeInMillis)
 
   "ReportingService" should "get all report details " in {
-    ServiceFactory.getReportingService.getAllDetails(date, "clientId", None, None, None, None) shouldEqual Map()
+    ServiceFactory.getReportingService.getAllDetails(date, "clientId", None, None, None, None, None) shouldEqual Map()
   }
 
   "ReportingService" should "adds delta count " in {
@@ -34,7 +34,7 @@ class ReportingServiceTest extends CommonsBaseTest {
   "ReportingService" should "get single report details " in {
     ServiceFactory.getReportingService.recordPushStatsDelta("clientId-test", None, None, None, "APP_NAME", null, 10)
     ServiceFactory.getReportingService.statsUpdateTask.run()
-    ServiceFactory.getReportingService.getAllDetails(date, "clientId-test", None, None, None, None) shouldEqual Map("push.app_name" -> 10)
+    ServiceFactory.getReportingService.getAllDetails(date, "clientId-test",None, None, None, None, None) shouldEqual Map("push.app_name" -> 10)
   }
 
 }

@@ -15,7 +15,7 @@ package com.flipkart.connekt.commons.tests
 import com.flipkart.connekt.commons.dao.DaoFactory
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.{KafkaConsumerHelper, KafkaProducerHelper}
-import com.flipkart.connekt.commons.services.ConnektConfig
+import com.flipkart.connekt.commons.services.{ConnektConfig, EventsDaoContainer, RequestDaoContainer}
 import com.flipkart.connekt.commons.sync.SyncManager
 import com.flipkart.connekt.commons.tests.connections.MockConnectionProvider
 import com.flipkart.connekt.commons.utils.ConfigUtils
@@ -65,13 +65,22 @@ class CommonsBaseTest extends ConnektUTSpec {
     val couchbaseCf = ConnektConfig.getConfig("connections.couchbase").getOrElse(ConfigFactory.empty())
     DaoFactory.initCouchbaseCluster(couchbaseCf)
 
+    val aeroSpikeCf = ConnektConfig.getConfig("connections.aerospike").getOrElse(ConfigFactory.empty())
+    DaoFactory.initAeroSpike(aeroSpikeCf)
+
+
     DaoFactory.initReportingDao(DaoFactory.getCouchbaseBucket("StatsReporting"))
 
-    ServiceFactory.initPNMessageService(DaoFactory.getPNRequestDao, DaoFactory.getUserConfigurationDao, getKafkaProducerHelper, getKafkaConsumerConf,null)
-    ServiceFactory.initCallbackService(null, DaoFactory.getPNCallbackDao, DaoFactory.getPNRequestDao, null,getKafkaProducerHelper)
+    ServiceFactory.initPNMessageService(DaoFactory.getPNRequestDao, DaoFactory.getUserConfigurationDao, getKafkaProducerHelper, getKafkaConsumerConf, null)
+    ServiceFactory.initEmailMessageService(DaoFactory.getEmailRequestDao, DaoFactory.getUserConfigurationDao, getKafkaProducerHelper, getKafkaConsumerConf)
+
+    val eventsDao = EventsDaoContainer(pnEventsDao = DaoFactory.getPNCallbackDao, emailEventsDao = DaoFactory.getEmailCallbackDao, smsEventsDao = DaoFactory.getSmsCallbackDao)
+    val requestDao = RequestDaoContainer(smsRequestDao = DaoFactory.getSmsRequestDao, pnRequestDao = DaoFactory.getPNRequestDao, emailRequestDao = DaoFactory.getEmailRequestDao)
+    ServiceFactory.initCallbackService(eventsDao, requestDao, getKafkaProducerHelper)
 
     ServiceFactory.initAuthorisationService(DaoFactory.getPrivDao, DaoFactory.getUserInfoDao)
     ServiceFactory.initStorageService(DaoFactory.getKeyChainDao)
+    ServiceFactory.initProjectConfigService(DaoFactory.getUserProjectConfigDao)
     ServiceFactory.initStatsReportingService(DaoFactory.getStatsReportingDao)
     ServiceFactory.initStencilService(DaoFactory.getStencilDao)
 

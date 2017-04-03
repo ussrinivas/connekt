@@ -5,6 +5,7 @@ hbase org.apache.hadoop.hbase.util.RegionSplitter 'connekt-registry' HexStringSp
 hbase org.apache.hadoop.hbase.util.RegionSplitter 'connekt-registry-user-index' HexStringSplit -c 32 -f d
 hbase org.apache.hadoop.hbase.util.RegionSplitter 'connekt-registry-token-index' HexStringSplit -c 32 -f d
 hbase org.apache.hadoop.hbase.util.RegionSplitter 'fk-connekt-events' HexStringSplit -c 64 -f e
+hbase org.apache.hadoop.hbase.util.RegionSplitter 'fk-connekt-email-events' HexStringSplit -c 64 -f e
 hbase org.apache.hadoop.hbase.util.RegionSplitter 'fk-connekt-pn-info' HexStringSplit -c 64 -f r:t:c
 
 $> hbase shell
@@ -32,3 +33,4 @@ enable 'fk-connekt-events'
 create 'connekt-scheduled-requests', {NAME => 'd', VERSIONS => '1', TTL => '1296000',  COMPRESSION => 'SNAPPY'}
 create 'connekt-schedule-checkpoints', {NAME => 'd', VERSIONS => '1', COMPRESSION => 'SNAPPY'}
 
+create 'fk-connekt-email-info', {NAME => 'r', TTL => '31536000', COMPRESSION => 'SNAPPY'}, {NAME => 'c', TTL => '31536000', COMPRESSION => 'SNAPPY'}, {NAME => 't', TTL => '2592000', COMPRESSION => 'SNAPPY'}

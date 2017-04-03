@@ -15,25 +15,28 @@ package com.flipkart.connekt.busybees.streams.flows
 import akka.stream._
 import akka.stream.scaladsl.Flow
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
-import com.flipkart.connekt.busybees.streams.errors.ConnektPNStageException
+import com.flipkart.connekt.busybees.streams.errors.{ConnektPNStageException, ConnektStageException}
+import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
-import com.flipkart.connekt.commons.iomodels.PNCallbackEvent
+import com.flipkart.connekt.commons.iomodels.{EmailCallbackEvent, PNCallbackEvent, SmsCallbackEvent}
+import com.flipkart.connekt.commons.metrics.Instrumented
 
 import scala.concurrent.Future
 import scala.util.control.NonFatal
 
-private[busybees] abstract class MapFlowStage[In, Out] {
+private[busybees] abstract class MapFlowStage[In, Out] extends Instrumented {
 
   protected val stageName: String = this.getClass.getSimpleName
 
   val map: In => List[Out]
 
   def flow = Flow[In].mapConcat(map).named(stageName)
+
 }
 
-private[busybees] abstract class MapAsyncFlowStage[In, Out](parallelism: Int) {
+private[busybees] abstract class MapAsyncFlowStage[In, Out](parallelism: Int) extends Instrumented{
 
   protected val stageName: String = this.getClass.getSimpleName
 
@@ -95,9 +98,28 @@ object StageSupervision {
     case cEx: ConnektPNStageException =>
       ServiceFactory.getReportingService.recordPushStatsDelta(cEx.client, Option(cEx.context), cEx.meta.get("stencilId").map(_.toString), Option(cEx.platform), cEx.appName, InternalStatus.StageError.toString)
       ConnektLogger(LogFile.PROCESSORS).warn("StageSupervision Handle ConnektPNStageException")
-      cEx.deviceId
+      cEx.destinations
         .map(PNCallbackEvent(cEx.messageId, cEx.client, _, cEx.eventType, cEx.platform, cEx.appName, cEx.context, cEx.getMessage, cEx.timeStamp))
         .persist
+
+      Supervision.Resume
+
+    case cEx: ConnektStageException =>
+      Channel.withName(cEx.channel.toLowerCase) match {
+        case Channel.EMAIL =>
+          ServiceFactory.getReportingService.recordChannelStatsDelta(cEx.client, Option(cEx.context), cEx.meta.get("stencilId").map(_.toString), Channel.EMAIL, cEx.appName, InternalStatus.StageError.toString)
+          ConnektLogger(LogFile.PROCESSORS).warn("StageSupervision Handle ConnektEmailStageException")
+          cEx.destinations
+            .map(EmailCallbackEvent(cEx.messageId, cEx.client, _, cEx.eventType, cEx.appName, cEx.context, cEx.getMessage, cEx.timeStamp))
+            .persist
+        case Channel.SMS =>
+          ServiceFactory.getReportingService.recordChannelStatsDelta(cEx.client, Option(cEx.context), cEx.meta.get("stencilId").map(_.toString), Channel.SMS, cEx.appName, InternalStatus.StageError.toString)
+          ConnektLogger(LogFile.PROCESSORS).warn("StageSupervision Handle ConnektSmsStageException")
+          cEx.destinations
+            .map(SmsCallbackEvent(cEx.messageId, cEx.eventType, _, cEx.client, cEx.appName, cEx.context, cEx.getMessage))
+            .persist
+      }
+
       Supervision.Resume
 
     case e: Throwable =>

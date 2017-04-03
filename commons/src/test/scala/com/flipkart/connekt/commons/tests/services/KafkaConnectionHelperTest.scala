@@ -18,13 +18,13 @@ import com.flipkart.connekt.commons.helpers.KafkaConnectionHelper
 import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.tests.CommonsBaseTest
 import com.typesafe.config.ConfigFactory
-import kafka.consumer.ConsumerConnector
+import kafka.consumer.{ConsumerConnector, ConsumerTimeoutException}
 import kafka.producer.{KeyedMessage, Producer}
 import org.apache.commons.pool.impl.GenericObjectPool
 
 class KafkaConnectionHelperTest extends CommonsBaseTest with KafkaConnectionHelper {
 
-  val topicName = "fk-connekt-proto"
+  val topicName = "hello-world"
   var kafkaConsumerPool: GenericObjectPool[ConsumerConnector] = null
   var kafkaProducerPool: GenericObjectPool[Producer[String, String]] = null
 
@@ -35,7 +35,8 @@ class KafkaConnectionHelperTest extends CommonsBaseTest with KafkaConnectionHelp
     consumerConnProps.setProperty("zookeeper.session.timeout.ms", "5000")
     consumerConnProps.setProperty("zookeeper.sync.time.ms", "200")
     consumerConnProps.setProperty("auto.commit.interval.ms", "1000")
-    
+    consumerConnProps.setProperty("consumer.timeout.ms", "5000")
+
     val consumerFactoryConf = ConfigFactory.parseProperties(consumerConnProps)
     createKafkaConsumerPool(consumerFactoryConf, Some(5), Some(1), Some(1000L * 60L * 30L), Some(-1), enableLifo = false)
   }
@@ -65,32 +66,36 @@ class KafkaConnectionHelperTest extends CommonsBaseTest with KafkaConnectionHelp
   "Sending a keyed-message" should "succeed" in {
     val producer = kafkaProducerPool.borrowObject()
     try {
-        noException should be thrownBy producer.send(new KeyedMessage[String, String](topicName, "SampleProtoMessage at %s".format(System.currentTimeMillis)))
+      1 to 100 foreach { _ =>
+       noException should be thrownBy producer.send(new KeyedMessage[String, String](topicName, "SampleProtoMessage at %s".format(System.currentTimeMillis)))
+      }
     } finally {
       kafkaProducerPool.returnObject(producer)
     }
   }
 
-//  "Consuming messages" should "succeed" in {
-//    val consumer = kafkaConsumerPool.borrowObject()
-//    try {
-//      val streams = consumer.createMessageStreams(Map[String, Int](topicName -> 1))
-//      streams.keys.foreach(topic => {
-//          streams.get(topic).map(_.zipWithIndex).foreach(l => {
-//            println("Reading streams for topic %s".format(topic))
-//            l.foreach(x => {
-//              val streamIterator = x._1.iterator()
-//              while (streamIterator.hasNext()) {
-//                val msg = streamIterator.next()
-//                println("stream: %s message: %s".format(x._2, new String(msg.message)))
-//              }
-//            })
-//          })
-//      })
-//    } finally {
-//      kafkaConsumerPool.returnObject(consumer)
-//    }
-//  }
+  "Consuming messages" should "succeed" in {
+    val consumer = kafkaConsumerPool.borrowObject()
+    try {
+      val streams = consumer.createMessageStreams(Map[String, Int](topicName -> 1))
+      streams.keys.foreach(topic => {
+          streams.get(topic).map(_.zipWithIndex).foreach(l => {
+            println("Reading streams for topic %s".format(topic))
+            l.foreach(x => {
+              val streamIterator = x._1.iterator()
+              while (streamIterator.hasNext()) {
+                val msg = streamIterator.next()
+                println("stream: %s message: %s".format(x._2, new String(msg.message)))
+              }
+            })
+          })
+      })
+    } catch {
+      case _:ConsumerTimeoutException =>
+    }finally {
+      kafkaConsumerPool.returnObject(consumer)
+    }
+  }
 
   override def afterAll() = {
     println("triggering cleanup afterAll")

@@ -22,7 +22,11 @@ sealed case class DeviceCallbackEvent(deviceId: String, userId: String, osName: 
 
   override def contactId: String = throw new RuntimeException(s"`contactId` undefined for DeviceCallbackEvent")
 
+  override def contextId: String = throw new RuntimeException(s"`contextId` undefined for DeviceCallbackEvent")
+
   override def messageId: String = throw new RuntimeException(s"`messageId` undefined for DeviceCallbackEvent")
+
+  override def eventType: String = throw new RuntimeException(s"`eventType` undefined for DeviceCallbackEvent")
 
   override def eventId: String = throw new RuntimeException(s"`eventId` undefined for DeviceCallbackEvent")
 
@@ -33,4 +37,5 @@ sealed case class DeviceCallbackEvent(deviceId: String, userId: String, osName: 
     appName = appName, appVersion = appVersion, brand = brand, model = model, state = state,
     ts = DateTimeUtils.getStandardFormatted(), active = active
   )
+
 }

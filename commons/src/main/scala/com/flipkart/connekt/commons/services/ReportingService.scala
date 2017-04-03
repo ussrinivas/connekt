@@ -18,6 +18,7 @@ import java.util.concurrent.{ConcurrentHashMap, ScheduledThreadPoolExecutor, Tim
 
 import com.flipkart.connekt.commons.dao.StatsReportingDao
 import com.flipkart.connekt.commons.entities.Channel
+import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.DateTimeUtils
@@ -28,8 +29,6 @@ import scala.collection.JavaConverters._
 import scala.util.Try
 
 class ReportingService(reportManagerDao: StatsReportingDao) extends TService with Instrumented {
-
-  private val cbKeyLastSent = "LAST-SENT"
 
   def init() = {
 
@@ -52,16 +51,13 @@ class ReportingService(reportManagerDao: StatsReportingDao) extends TService wit
           (tag, tagCount.getAndSet(0))
       }).filter(_._2 > 0).toList
       reportManagerDao.counter(tagStats)
-      mapCounter.retain((key, counterValue) => counterValue.get() > 0L)
-      val lastSeenSnapshot = mapLastSeenTime.toList
-      reportManagerDao.put(lastSeenSnapshot)
-      mapLastSeenTime.retain((key, _) => !lastSeenSnapshot.map(_._1).contains(key))
+      mapCounter.retain((_, counterValue) => counterValue.get() > 0L)
     }
   }
 
-  def getAllDetails(date: String, clientId: String, campaignId: Option[String], appName: Option[String], platform: Option[String], channel: Option[String]): Map[String, Long] = {
+  def getAllDetails(date: String, clientId: String, contextId: Option[String], stencilId: Option[String], appName: Option[String], platform: Option[String], channel: Option[String]): Map[String, Long] = {
 
-    val prefixString = List(date, clientId, campaignId.orNull, appName.orNull, platform.orNull, channel.orNull).filter(_ != null).mkString(".")
+    val prefixString = List(date, clientId, contextId.orNull, appName.orNull, platform.orNull, channel.orNull).filter(_ != null).mkString(".")
     val allKeys: List[String] = reportManagerDao.prefix(prefixString)
     val resultMap = reportManagerDao.get(allKeys)
     resultMap.map {
@@ -72,14 +68,17 @@ class ReportingService(reportManagerDao: StatsReportingDao) extends TService wit
 
   @Timed("pushStatsUpdate")
   def recordPushStatsDelta(clientId: String, contextId: Option[String], stencilId: Option[String], platform: Option[String], appName: String, event: String, count: Int = 1): Unit = {
-
     val datePrefix = DateTimeUtils.calenderDate.print(Calendar.getInstance().getTimeInMillis) + "."
     updateTagCounters(clientId, count.toLong, datePrefix, contextId.orNull, Channel.PUSH, stencilId.orNull)(platform.orNull, appName.toLowerCase, event)
-    contextId.foreach(id => updateLastSeen(s"$datePrefix${clientId}.$id"))
+  }
+
+  @Timed("channelStatsUpdate")
+  def recordChannelStatsDelta(clientId: String, contextId: Option[String], stencilId: Option[String], channel: Channel, appName: String, event: String, count: Int = 1): Unit = {
+    val datePrefix = DateTimeUtils.calenderDate.print(Calendar.getInstance().getTimeInMillis) + "."
+    updateTagCounters(clientId, count.toLong, datePrefix, contextId.orNull, channel, stencilId.orNull)(appName.toLowerCase, event)
   }
 
   private val mapCounter = new ConcurrentHashMap[String, AtomicLong]().asScala
-  private val mapLastSeenTime = new ConcurrentHashMap[String, Long]().asScala
 
   private def updateTagCounters(clientId: String, count: Long, datePrefix: String, primaryTags: String*)(channelTags: String*): Unit = {
 
@@ -91,7 +90,6 @@ class ReportingService(reportManagerDao: StatsReportingDao) extends TService wit
     mapCounter.putIfAbsent(key, new AtomicLong(delta)).map(_.getAndAdd(delta))
   }
 
-  private def updateLastSeen(key: String): Unit = mapLastSeenTime.update(s"${key}.$cbKeyLastSent", System.currentTimeMillis())
 
   private def getAllCombinations(list: List[String]): List[String] = {
     list.toSet[String].subsets().map(_.mkString(".")).toList.drop(1)

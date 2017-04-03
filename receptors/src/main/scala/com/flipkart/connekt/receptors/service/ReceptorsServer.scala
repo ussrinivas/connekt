@@ -19,6 +19,7 @@ import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http.ServerBinding
 import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.model.headers.{HttpChallenge, `WWW-Authenticate`}
 import akka.http.scaladsl.server._
 import akka.http.scaladsl.util.FastFuture
 import akka.http.scaladsl.{ConnectionContext, Http}
@@ -50,10 +51,16 @@ object ReceptorsServer extends BaseJsonHandler with AccessLogDirective with CORS
   var httpService: Future[ServerBinding] = null
   var httpsService: Future[ServerBinding] = null
 
+  val basicAuthChallenge = HttpChallenge("Basic", "Connekt")
+  val apiAuthChallenge = HttpChallenge("API-Key", "Connekt")
+
   implicit def rejectionHandler: RejectionHandler = RejectionHandler.newBuilder()
-    .handle{
-      case AuthenticationFailedRejection(cause, _ ) =>  logTimedRequestResult {
-        complete(GenericResponse(StatusCodes.Unauthorized.intValue, null, Response("Authentication Failed, Please Contact connekt-dev@flipkart.com", null)))
+    .handle {
+      case AuthenticationFailedRejection(cause, _) => logTimedRequestResult {
+        complete(
+          GenericResponse(StatusCodes.Unauthorized.intValue, null, Response("Authentication Failed, Please Contact connekt-dev@flipkart.com", null))
+            .respondWithHeaders(scala.collection.immutable.Seq(`WWW-Authenticate`(basicAuthChallenge, apiAuthChallenge)))
+        )
       }
       case AuthorizationFailedRejection => logTimedRequestResult {
         complete(GenericResponse(StatusCodes.Forbidden.intValue, null, Response("UnAuthorised Access, Please Contact connekt-dev@flipkart.com", null)))
@@ -68,13 +75,13 @@ object ReceptorsServer extends BaseJsonHandler with AccessLogDirective with CORS
         complete(GenericResponse(StatusCodes.NotAcceptable.intValue, null, Response(s"Dropping idempotent message with requestId `$requestId`", Map("requestId" -> requestId))))
       }
     }.handleAll[MethodRejection] { methodRejections =>
-      val names = methodRejections.map(_.supported.name)
-      complete(GenericResponse(StatusCodes.MethodNotAllowed.intValue, null, Response(s"Can't do that! Supported: ${names mkString " or "}!", null)))
-    }.handleNotFound {
-      logTimedRequestResult {
-        complete(GenericResponse(StatusCodes.NotFound.intValue, null, Response("Oh man, what you are looking for is long gone.", null)))
-      }
-    }.result()
+    val names = methodRejections.map(_.supported.name)
+    complete(GenericResponse(StatusCodes.MethodNotAllowed.intValue, null, Response(s"Can't do that! Supported: ${names mkString " or "}!", null)))
+  }.handleNotFound {
+    logTimedRequestResult {
+      complete(GenericResponse(StatusCodes.NotFound.intValue, null, Response("Oh man, what you are looking for is long gone.", null)))
+    }
+  }.result()
 
   implicit def exceptionHandler: ExceptionHandler = ExceptionHandler {
     case rejection: IllegalArgumentException => logTimedRequestResult {
@@ -108,7 +115,7 @@ object ReceptorsServer extends BaseJsonHandler with AccessLogDirective with CORS
 
     httpService = Http().bindAndHandle(routeWithLogging, bindHost, bindPort)
 
-    if(enableHttps) {
+    if (enableHttps) {
 
       ConnektLogger(LogFile.SERVICE).info("Receptor Server HTTPS enabled... enabling https port")
 
@@ -128,11 +135,11 @@ object ReceptorsServer extends BaseJsonHandler with AccessLogDirective with CORS
         context.init(keyManagerFactory.getKeyManagers, trustManagerFactory.getTrustManagers, new SecureRandom)
 
         //Best ciphers based on http://security.stackexchange.com/questions/76993/now-that-it-is-2015-what-ssl-tls-cipher-suites-should-be-used-in-a-high-securit
-        val allowedCiphers  = context.getDefaultSSLParameters.getCipherSuites.toSeq
-          .intersect(Seq("TLS_DHE_RSA_WITH_AES_256_CBC_SHA256", "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384", "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384", "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384","TLS_DHE_RSA_WITH_AES_256_GCM_SHA384","TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"))
+        val allowedCiphers = context.getDefaultSSLParameters.getCipherSuites.toSeq
+          .intersect(Seq("TLS_DHE_RSA_WITH_AES_256_CBC_SHA256", "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384", "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384", "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_DHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"))
 
         ConnectionContext.https(
-          sslContext =  context,
+          sslContext = context,
           enabledProtocols = Option(immutable.Seq("TLSv1"))
           //enabledCipherSuites = Option(immutable.Seq[String](allowedCiphers: _*)) //For enhanced security
         )
@@ -146,20 +153,20 @@ object ReceptorsServer extends BaseJsonHandler with AccessLogDirective with CORS
     val httpShutdown = httpService.flatMap(_.unbind())
     val httpsShutdown = Option(httpsService).map(_.flatMap(_.unbind())).getOrElse(FastFuture.successful(Unit))
 
-    Future.sequence(List(httpShutdown,httpsShutdown)).onComplete(_ => {
-        ConnektLogger(LogFile.SERVICE).info("receptor server unbinding complete")
+    Future.sequence(List(httpShutdown, httpsShutdown)).onComplete(_ => {
+      ConnektLogger(LogFile.SERVICE).info("receptor server unbinding complete")
 
       /**
-       * Shutdown  will sometimes throw error message like
-       *
-       * 2016-05-12 01:48:34,514 ERROR ActorSystemImpl [ckt-receptors-akka.actor.default-dispatcher-6] Outgoing response stream error
-       * akka.stream.AbruptTerminationException: Processor actor [Actor[akka://ckt-receptors/user/StreamSupervisor-0/flow-2-0-unknown-operation#-100715831]] terminated abruptly
-       * [ERROR] [05/12/2016 01:48:34.501] [ckt-receptors-akka.actor.default-dispatcher-11] [akka.actor.ActorSystemImpl(ckt-receptors)] Outgoing response stream error (akka.stream.AbruptTerminationException)
-       *
-       * But this can be ignored. Ref : https://github.com/akka/akka/issues/18747
-       */
-        system.terminate()
-      })
+        * Shutdown  will sometimes throw error message like
+        *
+        * 2016-05-12 01:48:34,514 ERROR ActorSystemImpl [ckt-receptors-akka.actor.default-dispatcher-6] Outgoing response stream error
+        * akka.stream.AbruptTerminationException: Processor actor [Actor[akka://ckt-receptors/user/StreamSupervisor-0/flow-2-0-unknown-operation#-100715831]] terminated abruptly
+        * [ERROR] [05/12/2016 01:48:34.501] [ckt-receptors-akka.actor.default-dispatcher-11] [akka.actor.ActorSystemImpl(ckt-receptors)] Outgoing response stream error (akka.stream.AbruptTerminationException)
+        *
+        * But this can be ignored. Ref : https://github.com/akka/akka/issues/18747
+        */
+      system.terminate()
+    })
   }
 
 }

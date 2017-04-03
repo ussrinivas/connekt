@@ -68,6 +68,7 @@ trait KafkaConnectionHelper {
     factoryProps.setProperty("serializer.class", factoryConf.getString("serializer.class"))
     factoryProps.setProperty("request.required.acks", factoryConf.getString("request.required.acks"))
     factoryProps.setProperty("producer.type", Try(factoryConf.getString("producer.type")).getOrElse("sync"))
+    factoryProps.setProperty("compression.codec", "1")
 
     val kafkaProducerFactory = new KafkaProducerFactory[String, String](factoryProps)
 
@@ -93,7 +94,13 @@ trait KafkaConnectionHelper {
     consumerProps.setProperty("zookeeper.sync.time.ms", kafkaConsumerConf.getString("zookeeper.sync.time.ms"))
     consumerProps.setProperty("auto.commit.interval.ms", kafkaConsumerConf.getString("auto.commit.interval.ms"))
     consumerProps.setProperty("consumer.timeout.ms", kafkaConsumerConf.getString("consumer.timeout.ms"))
-    
+    consumerProps.setProperty("fetch.message.max.bytes", "2097152")
+    consumerProps.setProperty("num.consumer.fetchers", "4")
+    consumerProps.setProperty("rebalance.max.retries", "6")
+    consumerProps.setProperty("rebalance.backoff.ms", "5000")
+    consumerProps.setProperty("queued.max.message.chunks", "200")
+    consumerProps.setProperty("socket.receive.buffer.bytes", "104857600")
+
     Consumer.create(new ConsumerConfig(consumerProps))
   }
   
@@ -104,6 +111,7 @@ trait KafkaConnectionHelper {
     producerProps.setProperty("serializer.class", kafkaProducerConf.getString("serializer.class"))
     producerProps.setProperty("request.required.acks", kafkaProducerConf.getString("request.required.acks"))
     producerProps.setProperty("producer.type", Try(kafkaProducerConf.getString("producer.type")).getOrElse("sync"))
+    producerProps.setProperty("compression.codec", "2")
 
     new Producer[K, M](new ProducerConfig(producerProps))
   }

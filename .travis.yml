@@ -30,7 +30,7 @@ before_install:
   - cd chronosq
   - mvn install -DskipTests=true -B -V
   - cd ..
-  - git clone https://gist.github.com/a8040d74a167e1754a35af623adc580e.git ckt-concord
+  - git clone https://gist.github.com/f33ad41bac5e4550a3b2dbccf4a4a77b.git ckt-concord
   - cd ckt-concord
   - sbt publishM2
   - popd > /dev/null

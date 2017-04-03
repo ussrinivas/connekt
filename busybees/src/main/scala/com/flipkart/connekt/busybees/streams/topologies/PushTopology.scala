@@ -16,11 +16,10 @@ import akka.NotUsed
 import akka.stream._
 import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl._
-import com.flipkart.connekt.busybees.BusyBeesBoot
 import com.flipkart.connekt.busybees.models.WNSRequestTracker
 import com.flipkart.connekt.busybees.streams.ConnektTopology
 import com.flipkart.connekt.busybees.streams.flows.dispatchers._
-import com.flipkart.connekt.busybees.streams.flows.eventcreators.PNBigfootEventCreator
+import com.flipkart.connekt.busybees.streams.flows.eventcreators.{NotificationQueueRecorder, PNBigfootEventCreator}
 import com.flipkart.connekt.busybees.streams.flows.formaters._
 import com.flipkart.connekt.busybees.streams.flows.profilers.TimedFlowOps._
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers._
@@ -36,22 +35,12 @@ import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.typesafe.config.Config
 
-import scala.collection.mutable.ListBuffer
 import scala.concurrent.Promise
 
 
 class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallbackEvent] with SyncDelegate {
 
   SyncManager.get().addObserver(this, List(SyncType.CLIENT_QUEUE_CREATE))
-
-  implicit val system = BusyBeesBoot.system
-  implicit val ec = BusyBeesBoot.system.dispatcher
-  implicit val mat = BusyBeesBoot.mat
-  val ioMat = BusyBeesBoot.ioMat
-
-  val ioDispatcher = system.dispatchers.lookup("akka.actor.io-dispatcher")
-
-  val sourceSwitches: scala.collection.mutable.ListBuffer[Promise[String]] = ListBuffer()
 
   private def createMergedSource(checkpointGroup: CheckPointGroup, topics: Seq[String]): Source[ConnektRequest, NotUsed] = Source.fromGraph(GraphDSL.create() { implicit b =>
 
@@ -72,7 +61,7 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
 
   override def sources: Map[CheckPointGroup, Source[ConnektRequest, NotUsed]] = {
     List(MobilePlatform.ANDROID, MobilePlatform.IOS, MobilePlatform.WINDOWS, MobilePlatform.OPENWEB).flatMap {platform =>
-      ServiceFactory.getPNMessageService.getTopicNames(Channel.PUSH, Option(platform)).get match {
+      ServiceFactory.getMessageService(Channel.PUSH).getTopicNames(Channel.PUSH, Option(platform)).get match {
         case platformTopics if platformTopics.nonEmpty => Option(platform.toString -> createMergedSource(platform, platformTopics))
         case _ => None
       }
@@ -91,12 +80,14 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
     val render = b.add(new RenderFlow().flow)
     val fmtAndroidParallelism = ConnektConfig.getInt("topology.push.androidFormatter.parallelism").get
     val androidFilter = b.add(Flow[ConnektRequest].filter(m => MobilePlatform.ANDROID.toString.equalsIgnoreCase(m.channelInfo.asInstanceOf[PNRequestInfo].platform.toLowerCase)))
+    val notificationQueueParallelism = ConnektConfig.getInt("topology.push.queue.parallelism").get
+    val notificationQueueRecorder = b.add(new NotificationQueueRecorder(notificationQueueParallelism)(ioDispatcher).flow)
     val fmtAndroid = b.add(new AndroidChannelFormatter(fmtAndroidParallelism)(ioDispatcher).flow)
     val gcmHttpPrepare = b.add(new GCMDispatcherPrepare().flow)
     val gcmPoolFlow = b.add(HttpDispatcher.gcmPoolClientFlow.timedAs("gcmRTT"))
     val gcmResponseHandle = b.add(new GCMResponseHandler()(ioMat, ioDispatcher).flow)
 
-    render.out ~> androidFilter ~> fmtAndroid ~> gcmHttpPrepare ~> gcmPoolFlow ~> gcmResponseHandle
+    render.out ~> androidFilter ~> notificationQueueRecorder ~> fmtAndroid ~> gcmHttpPrepare ~> gcmPoolFlow ~> gcmResponseHandle
 
     FlowShape(render.in, gcmResponseHandle.out)
   })
@@ -114,12 +105,14 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
     val fmtIOSParallelism = ConnektConfig.getInt("topology.push.iosFormatter.parallelism").get
     val apnsDispatcherParallelism = ConnektConfig.getInt("topology.push.apnsDispatcher.parallelism").getOrElse(1024)
     val iosFilter = b.add(Flow[ConnektRequest].filter(m => MobilePlatform.IOS.toString.equalsIgnoreCase(m.channelInfo.asInstanceOf[PNRequestInfo].platform.toLowerCase)))
+    val notificationQueueParallelism = ConnektConfig.getInt("topology.push.queue.parallelism").get
+    val notificationQueueRecorder = b.add(new NotificationQueueRecorder(notificationQueueParallelism)(ioDispatcher).flow)
     val fmtIOS = b.add(new IOSChannelFormatter(fmtIOSParallelism)(ioDispatcher).flow)
     val apnsPrepare = b.add(new APNSDispatcherPrepare().flow)
     val apnsDispatcher = b.add(new APNSDispatcher(apnsDispatcherParallelism)(ioDispatcher).flow.timedAs("apnsRTT"))
     val apnsResponseHandle = b.add(new APNSResponseHandler().flow)
 
-    render.out ~> iosFilter ~> fmtIOS ~> apnsPrepare ~> apnsDispatcher ~> apnsResponseHandle
+    render.out ~> iosFilter ~> notificationQueueRecorder ~> fmtIOS ~> apnsPrepare ~> apnsDispatcher ~> apnsResponseHandle
 
     FlowShape(render.in, apnsResponseHandle.out)
   })
@@ -143,6 +136,9 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
     val wnsPayloadMerge = b.add(MergePreferred[WNSPayloadEnvelope](1))
     val wnsRetryMapper = b.add(Flow[WNSRequestTracker].map(_.request) /*.buffer(10, OverflowStrategy.backpressure)*/)
 
+    val notificationQueueParallelism = ConnektConfig.getInt("topology.push.queue.parallelism").get
+    val notificationQueueRecorder = b.add(new NotificationQueueRecorder(notificationQueueParallelism)(ioDispatcher).flow)
+
     val fmtWindowsParallelism = ConnektConfig.getInt("topology.push.windowsFormatter.parallelism").get
     val fmtWindows = b.add(new WindowsChannelFormatter(fmtWindowsParallelism)(ioDispatcher).flow)
 
@@ -153,7 +149,7 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
       case Left(_) => 1
     }))
 
-    render.out ~> windowsFilter ~>  fmtWindows ~>  wnsPayloadMerge
+    render.out ~> windowsFilter ~> notificationQueueRecorder ~>  fmtWindows ~>  wnsPayloadMerge
     wnsPayloadMerge.out ~> wnsHttpPrepare  ~> wnsPoolFlow ~> wnsRHandler ~> wnsRetryPartition.in
     wnsPayloadMerge.preferred <~ wnsRetryMapper <~ wnsRetryPartition.out(1).map(_.left.get).outlet
 
@@ -173,14 +169,16 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
     val render = b.add(new RenderFlow().flow)
     val fmtOpenWebParallelism = ConnektConfig.getInt("topology.push.openwebFormatter.parallelism").get
     val openWebFilter = b.add(Flow[ConnektRequest].filter(m => MobilePlatform.OPENWEB.toString.equalsIgnoreCase(m.channelInfo.asInstanceOf[PNRequestInfo].platform.toLowerCase)))
+    val notificationQueueParallelism = ConnektConfig.getInt("topology.push.queue.parallelism").get
+    val notificationQueueRecorder = b.add(new NotificationQueueRecorder(notificationQueueParallelism)(ioDispatcher).flow)
     val fmtOpenWeb = b.add(new OpenWebChannelFormatter(fmtOpenWebParallelism)(ioDispatcher).flow)
 
     //providers [standard]
     val openWebHttpPrepare = b.add(new OpenWebDispatcherPrepare().flow)
     val openWebPoolFlow = b.add(HttpDispatcher.openWebPoolClientFlow.timedAs("openWebRTT"))
-    val openWebResponseHandle = b.add(new OpenWebResponseHandler().flow)
+    val openWebResponseHandle = b.add(new OpenWebResponseHandler()(ioMat, ioDispatcher).flow)
 
-    render.out ~> openWebFilter ~> fmtOpenWeb ~> openWebHttpPrepare ~> openWebPoolFlow ~> openWebResponseHandle
+    render.out ~> openWebFilter ~> notificationQueueRecorder ~> fmtOpenWeb ~> openWebHttpPrepare ~> openWebPoolFlow ~> openWebResponseHandle
 
     FlowShape(render.in, openWebResponseHandle.out)
   })
