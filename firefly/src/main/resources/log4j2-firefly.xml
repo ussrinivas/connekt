@@ -18,7 +18,7 @@
         <Pattern>%n%d %p %c{1} [%t] %m%n</Pattern>
       </PatternLayout>
       <Policies>
-        <SizeBasedTriggeringPolicy size="1024 MB"/>
+        <SizeBasedTriggeringPolicy size="512 MB"/>
       </Policies>
       <DefaultRolloverStrategy max="4"/>
     </RollingRandomAccessFile>
@@ -28,7 +28,7 @@
         <Pattern>%n%d %p %c{1} [%t] %m%n</Pattern>
       </PatternLayout>
       <Policies>
-        <SizeBasedTriggeringPolicy size="1024 MB"/>
+        <SizeBasedTriggeringPolicy size="512 MB"/>
       </Policies>
       <DefaultRolloverStrategy max="4"/>
     </RollingRandomAccessFile>
