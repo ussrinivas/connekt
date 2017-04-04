@@ -100,7 +100,7 @@ object TrackingService extends Instrumented {
   private def processATag(tag: Element, trackerOptions: TrackerOptions, urlTransformer: TURLTransformer): String = {
     val allElements = tag.getAllElements.asScala
 
-    val lName = allElements.find(p => p.hasAttr("lname")).getOrElse("-").toString
+    val lName = allElements.find(p => p.hasAttr("lname")).map(_.attr("lname")).getOrElse("-")
 
     val url = allElements.map { element =>
       if (!element.attr("href").startsWith("mailto")) {
