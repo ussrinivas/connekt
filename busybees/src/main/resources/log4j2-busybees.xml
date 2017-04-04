@@ -91,25 +91,25 @@
 
   <!--  BusyBees loggers -->
   <Loggers>
-    <Logger name="DEFAULT" level="trace" additivity="false">
+    <Logger name="DEFAULT" level="INFO" additivity="false">
       <AppenderRef ref="DEFAULT"/>
     </Logger>
-    <Logger name="WORKERS" level="debug" additivity="false">
+    <Logger name="WORKERS" level="INFO" additivity="false">
       <AppenderRef ref="WORKERS"/>
     </Logger>
-    <Logger name="CLIENTS" level="debug" additivity="false">
+    <Logger name="CLIENTS" level="INFO" additivity="false">
       <AppenderRef ref="CLIENTS"/>
     </Logger>
     <Logger name="PROCESSORS" level="INFO" additivity="false">
       <AppenderRef ref="PROCESSORS"/>
     </Logger>
-    <Logger name="FACTORY" level="debug" additivity="false">
+    <Logger name="FACTORY" level="INFO" additivity="false">
       <AppenderRef ref="FACTORY"/>
     </Logger>
-    <Logger name="DAO" level="debug" additivity="false">
+    <Logger name="DAO" level="INFO" additivity="false">
       <AppenderRef ref="DAO"/>
     </Logger>
-    <Logger name="SERVICE" level="debug" additivity="false">
+    <Logger name="SERVICE" level="INFO" additivity="false">
       <AppenderRef ref="SERVICE"/>
     </Logger>
 
@@ -118,9 +118,10 @@
     <Logger name="org.apache" level="ERROR"/>
     <Logger name="com.couchbase.client" level="ERROR"/>
 
-    <Logger name="com.flipkart" level="DEBUG"/>
+    <Logger name="com.flipkart" level="INFO"/>
     <Logger name="com.flipkart.kloud.config" level="ERROR"/>
     <Logger name="com.relayrides.pushy" level="INFO"/>
+    <Logger name="net.htmlparser.jericho" level="FATAL"/>
 
 
     <Root level="INFO" includeLocation="false">

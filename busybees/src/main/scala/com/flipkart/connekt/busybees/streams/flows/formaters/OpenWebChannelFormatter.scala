@@ -13,7 +13,7 @@
 package com.flipkart.connekt.busybees.streams.flows.formaters
 
 import java.net.URL
-import java.util.{Base64, Date}
+import java.util.Base64
 
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.flipkart.connekt.busybees.encryption.WebPushEncryptionUtils
@@ -30,6 +30,7 @@ import com.flipkart.connekt.commons.utils.NetworkUtils.URLFunctions
 import com.flipkart.connekt.commons.utils.StringUtils._
 import org.bouncycastle.jce.interfaces.ECPublicKey
 import org.jose4j.jws.{AlgorithmIdentifiers, JsonWebSignature}
+import org.jose4j.jwt.JwtClaims
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
@@ -62,7 +63,10 @@ class OpenWebChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExe
           if (device.token != null && device.token.nonEmpty && device.token.isValidUrl) {
             val token = device.token.replace("https://android.googleapis.com/gcm/send", "https://gcm-http.googleapis.com/gcm")
             val headers = scala.collection.mutable.Map("TTL" -> ttl.toString)
-            val appDataWithId = stencilService.materialize(openWebStencil, message.channelData.asInstanceOf[PNRequestData].data).asInstanceOf[String].getObj[ObjectNode].put("messageId", message.id).put("deviceId", device.deviceId).getJson
+            val appDataWithId = stencilService.materialize(openWebStencil, message.channelData.asInstanceOf[PNRequestData].data).asInstanceOf[String].getObj[ObjectNode]
+              .put("messageId", message.id)
+              .put("contextId", message.contextId.orEmpty)
+              .put("deviceId", device.deviceId).getJson
 
             val vapIdKeyPair = KeyChainManager.getKeyPairCredential(message.appName).get
 
@@ -74,13 +78,14 @@ class OpenWebChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExe
                     "Content-Encoding" -> "aesgcm"
                   )
 
+                  val claims = new JwtClaims()
+                  claims.setAudience(new URL(token).origin)
+                  claims.setExpirationTimeMinutesInTheFuture(12 * 60)
+                  claims.setSubject("mailto:connekt-dev@flipkart.com")
+
                   val jws = new JsonWebSignature()
                   jws.setHeader("typ", "JWT")
-                  jws.setPayload(Map(
-                    "sub" -> "mailto:connekt-dev@flipkart.com",
-                    "aud" -> new URL(token).origin,
-                    "exp" -> (new Date(System.currentTimeMillis() + 6.hours.toMillis).getTime / 1000)
-                  ).getJson)
+                  jws.setPayload(claims.toJson)
                   jws.setKey(WebPushEncryptionUtils.loadPrivateKey(vapIdKeyPair.privateKey))
                   jws.setAlgorithmHeaderValue(AlgorithmIdentifiers.ECDSA_USING_P256_CURVE_AND_SHA256)
                   val compactJws = jws.getCompactSerialization.stripSuffix("=")
@@ -121,7 +126,7 @@ class OpenWebChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExe
     catch {
       case e: Exception =>
         ConnektLogger(LogFile.PROCESSORS).error(s"OpenWebChannelFormatter error for ${message.id}", e)
-        throw new ConnektPNStageException(message.id, message.clientId, message.deviceId, InternalStatus.StageError, message.appName, message.platform, message.contextId.orEmpty, message.meta, "OpenWebChannelFormatter::".concat(e.getMessage), e)
+        throw ConnektPNStageException(message.id, message.clientId, message.destinations, InternalStatus.StageError, message.appName, message.platform, message.contextId.orEmpty, message.meta, "OpenWebChannelFormatter::".concat(e.getMessage), e)
     }
   }
 

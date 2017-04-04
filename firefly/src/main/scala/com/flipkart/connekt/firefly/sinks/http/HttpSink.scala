@@ -22,6 +22,7 @@ import akka.stream.{ActorMaterializer, SinkShape}
 import com.flipkart.connekt.commons.entities.{HTTPEventSink, Subscription, SubscriptionEvent}
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.metrics.Instrumented
+import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.firefly.dispatcher.HttpDispatcher
 
 import scala.collection._
@@ -29,7 +30,7 @@ import scala.concurrent.{ExecutionContext, Promise}
 
 class HttpSink(subscription: Subscription, retryLimit: Int, topologyShutdownTrigger: Promise[String])(implicit am: ActorMaterializer, sys: ActorSystem, ec: ExecutionContext) extends Instrumented {
 
-  val httpCachedClient = HttpDispatcher.httpFlow
+  private val httpCachedClient = HttpDispatcher.httpFlow
 
   def getHttpSink: Sink[SubscriptionEvent, NotUsed] = {
 
@@ -42,11 +43,13 @@ class HttpSink(subscription: Subscription, retryLimit: Int, topologyShutdownTrig
       httpRequestMergePref.out ~> httpCachedClient ~> httpResponseHandler.in
       httpResponseHandler.out(0) ~> httpRequestMergePref.preferred
       httpResponseHandler.out(1) ~> Sink.foreach[(HttpRequest, HttpRequestTracker)] { event =>
-        ConnektLogger(LogFile.SERVICE).debug(s"HttpSink message delivered: $event")
+        ConnektLogger(LogFile.SERVICE).info(s"HttpSink message delivered to ${event._1._2}")
+        ConnektLogger(LogFile.SERVICE).debug(s"HttpSink message delivered to {}", supplier(event))
       }
 
       httpResponseHandler.out(2) ~> Sink.foreach[(HttpRequest, HttpRequestTracker)] { event =>
-        ConnektLogger(LogFile.SERVICE).warn(s"HttpSink message discarded: $event")
+        ConnektLogger(LogFile.SERVICE).warn(s"HttpSink message failed to deliver to ${event._1._2}")
+        ConnektLogger(LogFile.SERVICE).debug(s"HttpSink message failed {}", supplier(event))
       }
 
       SinkShape(event2HttpRequestMapper.in)
@@ -58,9 +61,10 @@ class HttpSink(subscription: Subscription, retryLimit: Int, topologyShutdownTrig
     val sink = subscription.sink.asInstanceOf[HTTPEventSink]
 
     val httpEntity = HttpEntity(ContentTypes.`application/json`, event.payload.toString)
+    val url = Option(event.destination).getOrElse(sink.url)
     val httpRequest = event.header match {
-      case null => HttpRequest(method = HttpMethods.getForKey(sink.method.toUpperCase).get, uri = sink.url, entity = httpEntity)
-      case _ => HttpRequest(method = HttpMethods.getForKey(sink.method.toUpperCase).get, uri = sink.url, entity = httpEntity,
+      case null => HttpRequest(method = HttpMethods.getForKey(sink.method.toUpperCase).get, uri = url, entity = httpEntity)
+      case _ => HttpRequest(method = HttpMethods.getForKey(sink.method.toUpperCase).get, uri = url, entity = httpEntity,
         headers = immutable.Seq[HttpHeader]( event.header.map { case (key, value) => RawHeader(key, value) }.toArray: _ *))
     }
 

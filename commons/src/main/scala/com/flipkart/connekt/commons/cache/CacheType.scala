@@ -15,9 +15,9 @@ package com.flipkart.connekt.commons.cache
 trait CacheType extends Enumeration
 
 object DistributedCacheType extends CacheType {
-  val Default, DeviceDetails, TransientUsers, IdempotentCheck = Value
+  val Default, DeviceDetails, TransientUsers, IdempotentCheck, ExclusionDetails = Value
 }
 
 object LocalCacheType extends CacheType {
-  val Default, UserInfo, UserGroups, ResourcePriv, UserConfiguration, WnsAccessToken, Stencils, StencilsBucket, StencilsEnsemble, AppCredential, EngineFabrics , Subscription = Value
+  val Default, UserInfo, UserGroups, ResourcePriv, UserConfiguration, WnsAccessToken, Stencils, StencilsBucket, StencilsEnsemble, AppCredential, EngineFabrics , Subscription, UserProjectConfig = Value
 }

@@ -12,8 +12,6 @@
  */
 package com.flipkart.connekt.commons.services
 
-import java.util.UUID
-
 import com.flipkart.connekt.commons.entities.AppUser
 import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.iomodels.ConnektRequest
@@ -21,8 +19,6 @@ import com.flipkart.connekt.commons.iomodels.ConnektRequest
 import scala.util.Try
 
 trait TMessageService extends TService {
-
-  protected def generateId: String = UUID.randomUUID().toString
 
   def saveRequest(request: ConnektRequest, requestBucket: String, isCrucial: Boolean = true): Try[String]
 

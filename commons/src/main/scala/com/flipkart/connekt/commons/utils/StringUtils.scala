@@ -16,6 +16,7 @@ import java.io.InputStream
 import java.lang.reflect.{ParameterizedType, Type => JType}
 import java.math.BigInteger
 import java.security.SecureRandom
+import java.util.UUID
 
 import akka.http.scaladsl.model.HttpEntity
 import akka.stream.Materializer
@@ -30,8 +31,8 @@ import org.apache.commons.codec.CharEncoding
 import org.apache.commons.validator.routines.UrlValidator
 
 import scala.collection.JavaConversions._
-import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext}
 import scala.reflect.runtime.universe._
 import scala.reflect.{ClassTag, _}
 
@@ -40,9 +41,11 @@ object StringUtils {
 
   val currentMirror = runtimeMirror(getClass.getClassLoader)
 
-  private val urlValidator = new UrlValidator(Array("http","https"))
+  private val urlValidator = new UrlValidator(Array("http", "https"))
 
   implicit def enum2String(enumValue: Enumeration#Value): String = enumValue.toString
+
+  implicit def generateUUID: String = UUID.randomUUID().toString
 
   implicit class StringHandyFunctions(val s: String) {
     def getUtf8Bytes = s.getBytes(CharEncoding.UTF_8)
@@ -55,7 +58,7 @@ object StringUtils {
 
     def isValidUrl = urlValidator.isValid(s)
 
-    def stripNewLines = s.replaceAll("\n", "").replaceAll("\r","")
+    def stripNewLines = s.replaceAll("\n", "").replaceAll("\r", "")
 
   }
 
@@ -75,16 +78,8 @@ object StringUtils {
     def getString = obj.map(_.toString).get
   }
 
-  implicit class ByteArrayHandyFunctions(val b: Array[Byte]) {
-    def getString = new String(b, CharEncoding.UTF_8)
 
-    def getStringNullable = b.unwrap match {
-      case array if array.isEmpty => null
-      case value => new String(value, CharEncoding.UTF_8)
-    }
-  }
-
-  implicit class ObjectHandyFunction (val obj:AnyRef){
+  implicit class ObjectHandyFunction(val obj: AnyRef) {
     def asMap: Map[String, Any] = {
       val fieldsAsPairs = for (field <- obj.getClass.getDeclaredFields) yield {
         field.setAccessible(true)
@@ -102,6 +97,17 @@ object StringUtils {
     def getJson = objMapper.writeValueAsString(o)
 
     def getJsonNode = objMapper.convertValue(o, classOf[ObjectNode])
+  }
+
+  implicit class ByteArrayHandyFunctions(val b: Array[Byte]) {
+    def getString = new String(b, CharEncoding.UTF_8)
+
+    def getObj[T: ClassTag] = objMapper.readValue(b, classTag[T].runtimeClass).asInstanceOf[T]
+
+    def getStringNullable = b.unwrap match {
+      case array if array.isEmpty => null
+      case value => new String(value, CharEncoding.UTF_8)
+    }
   }
 
   implicit class JSONUnMarshallFunctions(val s: String) {
@@ -136,10 +142,12 @@ object StringUtils {
 
   implicit class HttpEntity2String(val entity: HttpEntity) {
     def getString(implicit mat: Materializer): String = {
-      Await.result(entity.dataBytes.runFold(ByteString.empty)(_ ++ _)(mat).map(bb => new String(bb.toArray))(mat.executionContext), 60.seconds)
+      import akka.http.scaladsl.unmarshalling._
+      implicit val ec = mat.executionContext
+      val futureString = Unmarshal(entity).to[String]
+      Await.result(futureString, 60.seconds)
     }
   }
-
 
   def isNullOrEmpty(o: Any): Boolean = o match {
     case m: Map[_, _] => m.isEmpty

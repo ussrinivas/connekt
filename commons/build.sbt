@@ -13,19 +13,20 @@ envKey := {
 
 
 /** all akka only **/
-val akkaVersion = "2.4.4"
+val akkaVersion = "2.4.17"
+val akkaHttpVersion = "10.0.4"
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % akkaVersion withSources() withJavadoc(),
   "com.typesafe.akka" %% "akka-stream" % akkaVersion withSources() withJavadoc(),
-  "com.typesafe.akka" %% "akka-http-core" % akkaVersion withSources() withJavadoc(),
   "com.typesafe.akka" %% "akka-slf4j" % akkaVersion withSources(),
-  "com.typesafe.akka" %% "akka-http-experimental" % akkaVersion withSources() withJavadoc(),
-  "com.typesafe.akka" %% "akka-http-testkit" % akkaVersion % Test withSources() withJavadoc()
+  "com.typesafe.akka" %% "akka-http-core" % akkaHttpVersion withSources() withJavadoc(),
+  "com.typesafe.akka" %% "akka-http" % akkaHttpVersion withSources() withJavadoc(),
+  "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test withSources() withJavadoc()
 )
 
 libraryDependencies ++= Seq(
-  "com.flipkart.connekt" %% "concord" % "0.2.0",
-  "com.flipkart.connekt" %% "connekt-concord" % "0.2.0" excludeAll ExclusionRule(organization = "com.google.guava", name = "guava") ,
+  "com.flipkart.connekt" %% "concord" % "0.2.1",
+  "com.flipkart.connekt" %% "connekt-concord" % "0.2.10" excludeAll ExclusionRule(organization = "com.google.guava", name = "guava"),
   /* Logging Dependencies.Since we want to use log4j2 */
   "com.lmax" % "disruptor" % "3.3.4",
   "org.apache.logging.log4j" % "log4j-api" % "2.5",
@@ -36,11 +37,11 @@ libraryDependencies ++= Seq(
   "org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.5", /* For SLF4J Bridge */
   /* End of Logging Libraries dependency */
   "commons-pool" % "commons-pool" % "1.6",
-  "org.apache.kafka" % "kafka_2.11" % "0.8.2.2" excludeAll(
+  "org.apache.kafka" %% "kafka" % "0.8.2.2" excludeAll(
     ExclusionRule(organization = "org.slf4j", name = "slf4j-log4j12"),
     ExclusionRule(organization = "log4j"),
     ExclusionRule("io.netty")
-    ),
+  ),
   "com.typesafe" % "config" % "1.3.0",
   "commons-beanutils" % "commons-beanutils" % "1.8.0",
   "org.ow2.asm" % "asm" % "4.1",
@@ -50,23 +51,23 @@ libraryDependencies ++= Seq(
     ExclusionRule("log4j"),
     ExclusionRule(organization = "org.slf4j"),
     ExclusionRule(organization = "asm")
-    ),
+  ),
   "io.netty" % "netty-all" % "4.1.0.Final",
   "org.apache.hbase" % "hbase-common" % "1.2.1" excludeAll(
     ExclusionRule("log4j"),
     ExclusionRule("io.netty"),
     ExclusionRule(organization = "org.slf4j")
-    ),
+  ),
   "org.apache.hadoop" % "hadoop-common" % "2.7.2" excludeAll(
     ExclusionRule("org.slf4j"),
     ExclusionRule("io.netty"),
     ExclusionRule("asm"),
     ExclusionRule("log4j"),
     ExclusionRule("org.apache.curator")
-    ),
+  ),
   "com.google.guava" % "guava" % "12.0.1",
-  "org.scalatest" % "scalatest_2.11" % "2.2.4" % Test,
-  "com.fasterxml.jackson.module" % "jackson-module-scala_2.11" % "2.7.2",
+  "org.scalatest" %% "scalatest" % "2.2.4" % Test,
+  "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.8.7",
   "commons-lang" % "commons-lang" % "2.6",
   "commons-pool" % "commons-pool" % "1.6",
   "org.springframework" % "spring-jdbc" % "4.2.3.RELEASE",
@@ -90,19 +91,19 @@ libraryDependencies ++= Seq(
     ExclusionRule(organization = "log4j"),
     ExclusionRule(organization = "org.slf4j"),
     ExclusionRule(organization = "io.netty")
-    ),
+  ),
   "joda-time" % "joda-time" % "2.3",
-  "com.flipkart" %% "espion" % "1.0.1",
+  "com.flipkart" %% "espion" % "1.0.4",
   "com.flipkart" %% "util-http" % "0.0.6",
   "commons-validator" % "commons-validator" % "1.5.0" excludeAll ExclusionRule("commons-beanutils", "commons-beanutils"),
-  "org.bouncycastle" % "bcprov-jdk15on" % "1.54",
+  "org.bouncycastle" % "bcprov-jdk15on" % "1.56",
   "chronosQ" % "chronosQ-client" % "1.1-SNAPSHOT" excludeAll(
     ExclusionRule(organization = "log4j"),
     ExclusionRule(organization = "org.slf4j"),
     ExclusionRule(organization = "com.codahale.metrics"),
     ExclusionRule(organization = "org.mockito", name = "mockito-all"),
     ExclusionRule(organization = "org.hamcrest", name = "hamcrest-core")
-    ),
+  ),
   "chronosQ" % "chronosQ-reservation-impl-hbase" % "1.1-hdp-SNAPSHOT" excludeAll(
     ExclusionRule("org.slf4j"),
     ExclusionRule("io.netty"),
@@ -112,8 +113,14 @@ libraryDependencies ++= Seq(
     ExclusionRule("org.apache.curator"),
     ExclusionRule(organization = "org.mockito", name = "mockito-all"),
     ExclusionRule(organization = "org.hamcrest", name = "hamcrest-core")
-    ),
-    "com.rabbitmq" % "amqp-client" % "4.0.1" withSources()
+  ),
+  "javax.mail" % "mail" % "1.5.0-b01",
+  "net.htmlparser.jericho" % "jericho-html" % "3.3",
+  "org.jsoup" % "jsoup" % "1.8.3",
+  "com.googlecode.libphonenumber" % "libphonenumber" % "8.3.1",
+  "com.rabbitmq" % "amqp-client" % "4.0.1",
+  "net.freeutils" % "jcharset" % "2.0",
+  "com.aerospike" % "aerospike-client" % "3.3.3"
 )
 
 
@@ -122,7 +129,7 @@ test in assembly := {}
 parallelExecution in Test := false
 
 assemblyExcludedJars in assembly <<= (fullClasspath in assembly) map { cp =>
-  cp filter {_.data.getName == "bcprov-jdk15on-1.54.jar"}
+  cp filter {_.data.getName == "bcprov-jdk15on-1.56.jar"}
 }
 
 assemblyMergeStrategy in assembly := AppBuild.mergeStrategy

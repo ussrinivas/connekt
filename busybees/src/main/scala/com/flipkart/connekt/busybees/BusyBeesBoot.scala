@@ -16,22 +16,19 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings}
+import com.flipkart.connekt.busybees.discovery.DiscoveryManager
 import com.flipkart.connekt.busybees.streams.flows.StageSupervision
 import com.flipkart.connekt.busybees.streams.flows.dispatchers.HttpDispatcher
-import com.flipkart.connekt.busybees.streams.topologies.PushTopology
-import com.flipkart.connekt.busybees.discovery.{DiscoveryManager, PathCacheZookeeper, ServiceHostsDiscovery}
+import com.flipkart.connekt.busybees.streams.topologies.{EmailTopology, PushTopology, SmsTopology}
 import com.flipkart.connekt.commons.connections.ConnectionProvider
 import com.flipkart.connekt.commons.core.BaseApp
 import com.flipkart.connekt.commons.dao.DaoFactory
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.KafkaProducerHelper
-import com.flipkart.connekt.commons.services.{ConnektConfig, DeviceDetailsService}
+import com.flipkart.connekt.commons.services._
 import com.flipkart.connekt.commons.sync.SyncManager
 import com.flipkart.connekt.commons.utils.ConfigUtils
 import com.typesafe.config.ConfigFactory
-import org.apache.curator.RetryPolicy
-import org.apache.curator.framework.CuratorFrameworkFactory
-import org.apache.curator.retry.ExponentialBackoffRetry
 
 object BusyBeesBoot extends BaseApp {
 
@@ -48,6 +45,8 @@ object BusyBeesBoot extends BaseApp {
   lazy val ioMat = ActorMaterializer(settings.withDispatcher("akka.actor.io-dispatcher"))
 
   var pushTopology: PushTopology = _
+  var smsTopology: SmsTopology = _
+  var emailTopology: EmailTopology = _
 
   def start() {
 
@@ -60,7 +59,7 @@ object BusyBeesBoot extends BaseApp {
       ConnektLogger.init(loggerConfigFile)
 
       val applicationConfigFile = ConfigUtils.getSystemProperty("busybees.appConfigurationFile").getOrElse("busybees-config.json")
-      ConnektConfig(configServiceHost, configServicePort, apiVersion)(Seq("fk-connekt-root", "fk-connekt-".concat(ConfigUtils.getConfEnvironment),"fk-connekt-busybees", "fk-connekt-busybees-akka-nm"))(applicationConfigFile)
+      ConnektConfig(configServiceHost, configServicePort, apiVersion)(Seq("fk-connekt-root", "fk-connekt-".concat(ConfigUtils.getConfEnvironment), "fk-connekt-busybees", "fk-connekt-busybees-akka-nm"))(applicationConfigFile)
 
       SyncManager.create(ConnektConfig.getString("sync.zookeeper").get)
 
@@ -75,9 +74,13 @@ object BusyBeesBoot extends BaseApp {
       val couchbaseCf = ConnektConfig.getConfig("connections.couchbase").getOrElse(ConfigFactory.empty())
       DaoFactory.initCouchbaseCluster(couchbaseCf)
 
+      val aeroSpikeCf = ConnektConfig.getConfig("connections.aerospike").getOrElse(ConfigFactory.empty())
+      DaoFactory.initAeroSpike(aeroSpikeCf)
+
       DaoFactory.initReportingDao(DaoFactory.getCouchbaseBucket("StatsReporting"))
 
       ServiceFactory.initStorageService(DaoFactory.getKeyChainDao)
+      ServiceFactory.initProjectConfigService(DaoFactory.getUserProjectConfigDao)
 
       val kafkaConnConf = ConnektConfig.getConfig("connections.kafka.consumerConnProps").getOrElse(ConfigFactory.empty())
       ConnektLogger(LogFile.SERVICE).info(s"Kafka Conf: ${kafkaConnConf.toString}")
@@ -85,9 +88,16 @@ object BusyBeesBoot extends BaseApp {
       val kafkaProducerConnConf = ConnektConfig.getConfig("connections.kafka.producerConnProps").getOrElse(ConfigFactory.empty())
       val kafkaProducerPoolConf = ConnektConfig.getConfig("connections.kafka.producerPool").getOrElse(ConfigFactory.empty())
       val kafkaProducerHelper = KafkaProducerHelper.init(kafkaProducerConnConf, kafkaProducerPoolConf)
-      ServiceFactory.initCallbackService(null, DaoFactory.getPNCallbackDao, DaoFactory.getPNRequestDao, null,kafkaProducerHelper)
+
+      ServiceFactory.initMessageQueueService(DaoFactory.getMessageQueueDao)
+
+      val eventsDao = EventsDaoContainer(pnEventsDao = DaoFactory.getPNCallbackDao, emailEventsDao = DaoFactory.getEmailCallbackDao, smsEventsDao = DaoFactory.getSmsCallbackDao)
+      val requestDao = RequestDaoContainer(smsRequestDao = DaoFactory.getSmsRequestDao, pnRequestDao = DaoFactory.getPNRequestDao, emailRequestDao = DaoFactory.getEmailRequestDao)
+      ServiceFactory.initCallbackService(eventsDao, requestDao, kafkaProducerHelper)
 
       ServiceFactory.initPNMessageService(DaoFactory.getPNRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf, null)
+      ServiceFactory.initEmailMessageService(DaoFactory.getEmailRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf)
+      ServiceFactory.initSMSMessageService(DaoFactory.getSmsRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf, null)
 
       ServiceFactory.initStatsReportingService(DaoFactory.getStatsReportingDao)
       ServiceFactory.initStencilService(DaoFactory.getStencilDao)
@@ -95,12 +105,19 @@ object BusyBeesBoot extends BaseApp {
       DeviceDetailsService.bootstrap()
 
       HttpDispatcher.init(ConnektConfig.getConfig("react").get)
-      pushTopology = new PushTopology(kafkaConnConf)
-      pushTopology.run
 
       // Starting xmpp zookeeper lookup
       DiscoveryManager.instance.init(ConnektConfig.getConfig("discovery").get)
       DiscoveryManager.instance.start()
+
+      pushTopology = new PushTopology(kafkaConnConf)
+      pushTopology.run
+
+      emailTopology = new EmailTopology(kafkaConnConf)
+      emailTopology.run
+
+      smsTopology = new SmsTopology(kafkaConnConf)
+      smsTopology.run
 
       ConnektLogger(LogFile.SERVICE).info("Started `Busybees` app")
     }
@@ -112,6 +129,8 @@ object BusyBeesBoot extends BaseApp {
       DiscoveryManager.instance.shutdown()
       DaoFactory.shutdownHTableDaoFactory()
       Option(pushTopology).foreach(_.shutdown())
+      Option(smsTopology).foreach(_.shutdown())
+      Option(emailTopology).foreach(_.shutdown())
 
       ConnektLogger.shutdown()
     }

@@ -12,7 +12,7 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
-import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.services.TStencilService
@@ -46,6 +46,7 @@ case class ConnektRequest(@JsonProperty(required = false) id: String,
     require(contextId.forall(_.length <= 20), "`contextId` can be max 20 characters")
   }
 
+  @JsonIgnore
   def isTestRequest : Boolean = meta.get("x-perf-test").exists(v => v.trim.equalsIgnoreCase("true"))
 
   def getComputedChannelData(implicit stencilService: TStencilService): ChannelRequestData =
@@ -54,6 +55,13 @@ case class ConnektRequest(@JsonProperty(required = false) id: String,
         case Channel.PUSH =>
           val pushType = if (channelData != null) channelData.asInstanceOf[PNRequestData].pushType else null
           PNRequestData(pushType = pushType, data = stencilService.materialize(stencil.head, channelDataModel).asInstanceOf[String].getObj[ObjectNode])
+        case Channel.SMS =>
+          SmsRequestData(body = stencilService.materialize(stencil.head, channelDataModel).asInstanceOf[String])
+        case Channel.EMAIL =>
+          val subject = stencilService.materialize(stencil.filter(_.component.equalsIgnoreCase("subject")).head, channelDataModel).asInstanceOf[String]
+          val html = stencilService.materialize(stencil.filter(_.component.equalsIgnoreCase("html")).head, channelDataModel).asInstanceOf[String]
+          val txt = stencilService.materialize(stencil.filter(_.component.equalsIgnoreCase("text")).head, channelDataModel).asInstanceOf[String]
+          EmailRequestData(subject = subject, html = html, text = txt, attachments = Option(channelData).map(_.asInstanceOf[EmailRequestData].attachments).orNull)
         case unsupportedChannel =>
           throw new Exception(s"`channelData` compute undefined for $unsupportedChannel")
       }

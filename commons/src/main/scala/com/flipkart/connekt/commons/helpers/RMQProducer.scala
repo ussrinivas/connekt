@@ -12,7 +12,7 @@
  */
 package com.flipkart.connekt.commons.helpers
 
-import com.rabbitmq.client.{Address, Channel, Connection, ConnectionFactory}
+import com.rabbitmq.client._
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.typesafe.config.{Config, ConfigFactory}
 
@@ -47,7 +47,7 @@ class RMQProducer {
 
 
   def writeMessage(queue: String, message: AnyRef) = {
-    channel.basicPublish("", queue, null, message.getJson.getBytes)
+    channel.basicPublish("", queue, MessageProperties.PERSISTENT_TEXT_PLAIN, message.getJson.getBytes)
   }
 
   def close() = {

@@ -31,6 +31,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.ClassTag
 import scala.util.Try
+import com.flipkart.connekt.commons.utils.CollectionUtils.iteratorUtils
 
 class KafkaSource[V: ClassTag](kafkaConsumerConf: Config, topic: String, groupId: String)(shutdownTrigger: Future[String])(implicit val ec: ExecutionContext) extends GraphStage[SourceShape[V]] with KafkaConnectionHelper with Instrumented {
 
@@ -74,7 +75,7 @@ class KafkaSource[V: ClassTag](kafkaConsumerConf: Config, topic: String, groupId
         scheduleOnce(TimerPollTrigger, timerDelayInMs)
       }
 
-      def safeHasNext = try { iterator.hasNext } catch { case e: ConsumerTimeoutException => false }
+      def safeHasNext = try { iterator.hasNext } catch { case _: ConsumerTimeoutException => false }
     }
 
     setHandler(out, new OutHandler {

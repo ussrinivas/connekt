@@ -19,7 +19,7 @@ import com.flipkart.connekt.commons.utils.GenericUtils
 import com.google.common.cache.{CacheBuilder, CacheStats}
 
 import scala.collection.{Map, concurrent}
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.{Duration, DurationInt}
 import scala.reflect.runtime.universe._
 
 object LocalCacheManager extends CacheManager {
@@ -38,6 +38,7 @@ object LocalCacheManager extends CacheManager {
   cacheTTLMap += LocalCacheType.AppCredential -> CacheProperty(100, 2.hour)
   cacheTTLMap += LocalCacheType.EngineFabrics -> CacheProperty(1000, 24.hour)
   cacheTTLMap += LocalCacheType.Subscription -> CacheProperty(500, 10.hour)
+  cacheTTLMap += LocalCacheType.UserProjectConfig -> CacheProperty(1000, 24.hour)
 
   private var cacheStorage = concurrent.TrieMap[LocalCacheType.Value, Caches]()
 
@@ -62,12 +63,14 @@ class LocalCaches(val cacheName: LocalCacheType.Value, props: CacheProperty) ext
     .recordStats()
     .build[String, AnyRef]()
 
+  override def put[T](key: String, value: T, ttl: Duration)(implicit cTag: reflect.ClassTag[T]): Boolean = put(key, value)
+
   override def put[T](key: String, value: T)(implicit cTag: reflect.ClassTag[T]): Boolean = {
     try {
       cache.put(key, value.asInstanceOf[AnyRef])
       true
     } catch {
-      case e: Exception => ConnektLogger(LogFile.SERVICE).error("Local cache write failure",e)
+      case e: Exception => ConnektLogger(LogFile.SERVICE).error("Local cache write failure", e)
         false
     }
   }
@@ -89,17 +92,19 @@ class LocalCaches(val cacheName: LocalCacheType.Value, props: CacheProperty) ext
   }
 
   /**
-   * Get Local Cache Stat's
-   * @return
-   */
+    * Get Local Cache Stat's
+    *
+    * @return
+    */
   def getStats: CacheStats = {
     cache.stats()
   }
 
   /**
-   * Delete the given key from the local cache.
-   * @param key
-   */
+    * Delete the given key from the local cache.
+    *
+    * @param key
+    */
   def remove(key: String) {
     cache.invalidate(key)
   }

@@ -22,9 +22,9 @@ import scala.util.{Failure, Success, Try}
 
 object BigfootService extends Instrumented {
 
-  lazy val phantomSocketPath: String = ConnektConfig.getString("connections.specter.socket").get
-  lazy val ingestionEnabled = ConnektConfig.getBoolean("flags.bf.enabled").getOrElse(false)
-  lazy val jUnixSocketLibPath = ConnektConfig.getString("connections.specter.lib.path").get
+  private lazy val phantomSocketPath: String = ConnektConfig.getString("connections.specter.socket").get
+  private lazy val ingestionEnabled = ConnektConfig.getBoolean("flags.bf.enabled").getOrElse(false)
+  private lazy val jUnixSocketLibPath = ConnektConfig.getString("connections.specter.lib.path").get
 
   lazy val phantomPublisher: TPublisher[String] = {
     if(ingestionEnabled) {

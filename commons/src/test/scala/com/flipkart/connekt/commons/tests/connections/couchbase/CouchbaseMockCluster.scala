@@ -49,7 +49,7 @@ class CouchbaseMockCluster extends Cluster {
     }
   }
 
-  override def openBucket(s: String, l: Long, timeUnit: TimeUnit): Bucket = ???
+  override def openBucket(s: String, l: Long, timeUnit: TimeUnit): Bucket = openBucket(s)
 
   override def openBucket(s: String, s1: String): Bucket = ???
 

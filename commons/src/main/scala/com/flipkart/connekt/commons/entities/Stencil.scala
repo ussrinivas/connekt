@@ -69,6 +69,13 @@ class Stencil() {
     require(`type`.isDefined, "`type` must be defined.")
   }
 
+  private [connekt] def this(id:String, engine: StencilEngine.StencilEngine, fabric:String) {
+    this()
+    this.id = id
+    this.engine = engine
+    this.engineFabric = fabric
+  }
+
 }
 
 object StencilEngine extends Enumeration {

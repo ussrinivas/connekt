@@ -12,7 +12,6 @@
  */
 package com.flipkart.connekt.receptors.tests.routes.commons
 
-import akka.http.javadsl.server.values.FormFields
 import akka.http.scaladsl.model._
 import com.flipkart.connekt.commons.entities.AppUser
 import com.flipkart.connekt.commons.utils.StringUtils
@@ -38,7 +37,6 @@ class KeyChainRouteTest extends BaseRouteTest {
 
   "StorageRoute PUT test" should "return Ok for successful  " in {
     val payload = "abc"
-    FormFields
     val entity = FormData(("clientId", StringUtils.generateRandomStr(6)), ("secret", StringUtils.generateRandomStr(6)))
 
     Post(s"/v1/keychain/$appName/$os", entity).addHeader(header) ~>

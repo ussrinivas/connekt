@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-time=`date "+%d%m%Y%H%M%S"`
+time=`date +%s`
 
 export PACKAGE=${PACKAGE:-"fk-pf-connekt"}
 export TARGET=${TARGET:-local}
@@ -14,6 +14,7 @@ bash $LOCAL_DIR/make-$PACKAGE-deb
 cd $LOCAL_DIR/deb
 
 sed -i -e "s/_VERSION_/$time/g" DEBIAN/control
+echo "Version: 1.$time"
 
 cd $LOCAL_DIR
 

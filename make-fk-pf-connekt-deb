@@ -69,7 +69,9 @@ APP_BUILD_DIR="${TARGET_DIR}/${PACKAGE}"
 APP_BUILD_BINARY="${TARGET_DIR}/${PACKAGE}.jar"
 
 
-export JAVA_HOME=/usr/lib/jvm/java-8-oracle
+export JAVA_HOME=$(readlink -f /usr/bin/java | sed "s:jre/bin/java::")
+
+export JAVA_HOME=/usr/lib/jvm/j2sdk1.8-oracle
 export PATH=${JAVA_HOME}/bin:${PATH}
 
 #Setting path to proper sbt version (0.13.2)
