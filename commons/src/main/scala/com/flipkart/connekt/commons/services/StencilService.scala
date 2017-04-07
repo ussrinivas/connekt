@@ -78,7 +78,6 @@ class StencilService(stencilDao: TStencilDao) extends TStencilService with Instr
       LocalCacheManager.getCache(LocalCacheType.Stencils).remove(stencilCacheKey(stn.name))
       SyncManager.get().publish(SyncMessage(SyncType.STENCIL_CHANGE, List(stn.name)))
     }
-    LocalCacheManager.getCache(LocalCacheType.Stencils).remove(stencilCacheKey(id))
     Success(Unit)
   }
 
