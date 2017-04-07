@@ -65,30 +65,30 @@ class StencilService(stencilDao: TStencilDao) extends TStencilService with Instr
 
   @Timed("add")
   def add(id: String, stencils: List[Stencil]): Try[Unit] = {
-    stencils.foreach(stencil => {
-      stencilDao.writeStencil(stencil)
-    })
-    LocalCacheManager.getCache(LocalCacheType.Stencils).put[List[Stencil]](stencilCacheKey(id), stencils)
+    stencils.foreach(stencilDao.writeStencil)
     Success(Unit)
   }
 
   @Timed("update")
   def update(id: String, stencils: List[Stencil]): Try[Unit] = {
-    stencils.foreach(stencil => {
-      stencilDao.writeStencil(stencil)
-    })
-    SyncManager.get().publish(new SyncMessage(SyncType.STENCIL_CHANGE, List(id)))
-    LocalCacheManager.getCache(LocalCacheType.Stencils).put[List[Stencil]](stencilCacheKey(id), stencils)
+    stencils.foreach(stencilDao.writeStencil)
+    LocalCacheManager.getCache(LocalCacheType.Stencils).remove(stencilCacheKey(id))
+    SyncManager.get().publish(SyncMessage(SyncType.STENCIL_CHANGE, List(id)))
+    stencils.headOption.foreach { stn =>
+      LocalCacheManager.getCache(LocalCacheType.Stencils).remove(stencilCacheKey(stn.name))
+      SyncManager.get().publish(SyncMessage(SyncType.STENCIL_CHANGE, List(stn.name)))
+    }
+    LocalCacheManager.getCache(LocalCacheType.Stencils).remove(stencilCacheKey(id))
     Success(Unit)
   }
 
   @Timed("update")
   def updateWithIdentity(id: String, prevName: String, stencils: List[Stencil]): Try[Unit] = {
-    stencils.foreach(stencil => {
-      stencilDao.updateStencilWithIdentity(prevName, stencil)
-    })
-    SyncManager.get().publish(new SyncMessage(SyncType.STENCIL_CHANGE, List(id)))
-    LocalCacheManager.getCache(LocalCacheType.Stencils).put[List[Stencil]](stencilCacheKey(id), stencils)
+    stencils.foreach(stencilDao.updateStencilWithIdentity(prevName, _))
+    SyncManager.get().publish(SyncMessage(SyncType.STENCIL_CHANGE, List(id)))
+    SyncManager.get().publish(SyncMessage(SyncType.STENCIL_CHANGE, List(prevName)))
+    LocalCacheManager.getCache(LocalCacheType.Stencils).remove(stencilCacheKey(id))
+    LocalCacheManager.getCache(LocalCacheType.Stencils).remove(stencilCacheKey(prevName))
     Success(Unit)
   }
 
@@ -163,7 +163,7 @@ class StencilService(stencilDao: TStencilDao) extends TStencilService with Instr
 
 
   override def onUpdate(syncType: SyncType, args: List[AnyRef]): Unit = {
-    ConnektLogger(LogFile.SERVICE).info("StencilService STENCIL_CHANGE : {} Message : {} ", syncType, args.map(_.toString))
+    ConnektLogger(LogFile.SERVICE).info("StencilService.onUpdate ChangeType : {} Message : {} ", syncType, args.map(_.toString))
     syncType match {
       case SyncType.STENCIL_CHANGE => Try_ {
         LocalCacheManager.getCache(LocalCacheType.Stencils).remove(stencilCacheKey(args.head.toString))
