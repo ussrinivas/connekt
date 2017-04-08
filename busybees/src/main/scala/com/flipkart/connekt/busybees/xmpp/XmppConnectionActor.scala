@@ -341,7 +341,7 @@ private[xmpp] class XmppConnectionActor(googleCredential: GoogleCredential, appI
     PingManager.getInstanceFor(connection).setPingInterval(600)
     connection.addConnectionListener(new ConnektXmppConnectionListener(connection, self))
 
-    ProviderManager.addExtensionProvider(GCM_ELEMENT_NAME, GCM_NAMESPACE,
+    ProviderManager.addExtensionProvider(GCM_ELEMENT_NAME, GOOGLE_NAMESPACE,
       new ExtensionElementProvider[GcmXmppPacketExtension]() {
         override def parse(parser: XmlPullParser, initialDepth: Int): GcmXmppPacketExtension = {
           val json: String = parser.nextText()
@@ -351,7 +351,7 @@ private[xmpp] class XmppConnectionActor(googleCredential: GoogleCredential, appI
     )
 
     val stanzaFilter = new StanzaFilter() {
-      override def accept(stanza: Stanza): Boolean = stanza.hasExtension(GCM_ELEMENT_NAME, GCM_NAMESPACE)
+      override def accept(stanza: Stanza): Boolean = stanza.hasExtension(GCM_ELEMENT_NAME, GOOGLE_NAMESPACE)
     }
     val stanzaListener = new ConnektStanzaListener(self, stageLogicRef)
     connection.addAsyncStanzaListener(stanzaListener, stanzaFilter)

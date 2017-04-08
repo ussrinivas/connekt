@@ -94,10 +94,7 @@ private[busybees] class XMPPStageLogic(val shape: FanOutShape2[(FCMXmppRequest, 
       inFlightRequestCount.incrementAndGet()
       xmppGateway(new XmppOutStreamRequest(requestPair)).andThen {
         case _ => inFlightRequestCount.decrementAndGet()
-      }.onComplete {
-        case Success(response) => self.ref ! Tuple2(Success(response), requestPair._2)
-        case Failure(ex) => self.ref ! Tuple2(Failure(ex), requestPair._2)
-      }
+      }.onComplete(result => self.ref ! Tuple2(result, requestPair._2))
 
       /**
         * Why bound with inFlightRequestCount ?
@@ -110,12 +107,12 @@ private[busybees] class XMPPStageLogic(val shape: FanOutShape2[(FCMXmppRequest, 
     }
 
     override def onUpstreamFinish(): Unit = {
-      ConnektLogger(LogFile.CLIENTS).trace("GcmXmppDispatcher: upstream finished:shutting down")
+      ConnektLogger(LogFile.CLIENTS).trace("GcmXmppDispatcher: upstream finished :shutting down")
       xmppGateway.shutdown()
 
-      ConnektLogger(LogFile.CLIENTS).trace("GcmXmppDispatcher :upstream finished:downstreamcount:" + downstreamBuffer.size())
+      ConnektLogger(LogFile.CLIENTS).trace("GcmXmppDispatcher :upstream finished :downstreamcount: " + downstreamBuffer.size())
       emitMultiple[DownStreamResponse](outDownstream, downstreamBuffer.iterator.asScala, () => {
-        ConnektLogger(LogFile.CLIENTS).trace("GcmXmppDispatcher :emitted all:" + downstreamBuffer.size())
+        ConnektLogger(LogFile.CLIENTS).trace("GcmXmppDispatcher :emitted all: " + downstreamBuffer.size())
         completeStage() //Mark stage as completed when the emit current buffer completes.
       })
 

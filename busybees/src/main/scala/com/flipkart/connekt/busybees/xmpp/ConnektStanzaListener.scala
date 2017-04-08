@@ -25,8 +25,9 @@ import scala.util.{Failure, Success, Try}
 private [xmpp] class ConnektStanzaListener(connectionActor:ActorRef, stageLogicRef:ActorRef) extends StanzaListener() {
 
   override def processPacket(packet: Stanza)  {
+
     // Extract the GCM message from the packet.
-    val packetExtension:GcmXmppPacketExtension = packet.getExtension(Internal.GCM_NAMESPACE).asInstanceOf[GcmXmppPacketExtension]
+    val packetExtension:GcmXmppPacketExtension = packet.getExtension(Internal.GOOGLE_NAMESPACE).asInstanceOf[GcmXmppPacketExtension]
     //ConnektLogger(LogFile.CLIENTS).trace("Response from GCM:" + packetExtension.json)
 
     Try (packetExtension.json.getObj[XmppResponse]) match {
@@ -37,7 +38,7 @@ private [xmpp] class ConnektStanzaListener(connectionActor:ActorRef, stageLogicR
         ConnektLogger(LogFile.CLIENTS).debug("De Serialised to upstream:" + upstream)
         stageLogicRef ! PendingUpstreamMessage(connectionActor,upstream)
       case Failure(thrown) =>
-        ConnektLogger(LogFile.CLIENTS).error("Failed to down/upstream:" + packetExtension.json)
+        ConnektLogger(LogFile.CLIENTS).error("Failed to down/upstream:" + packetExtension.json, thrown)
       case _ =>
         ConnektLogger(LogFile.CLIENTS).error("StanzaListener Unhandled Match:" + packetExtension.json)
 

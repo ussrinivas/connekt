@@ -31,14 +31,14 @@ import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise}
 
-private[xmpp] class XMPPGateway(stageActor: StageActor)(implicit actorSystem: ActorSystem) extends SyncDelegate{
+private[xmpp] class XMPPGateway(stageActor: StageActor)(implicit actorSystem: ActorSystem) extends SyncDelegate {
 
   SyncManager.get().addObserver(this, List(SyncType.DISCOVERY_CHANGE))
 
-  val defaultXMPPConnectionCount = ConnektConfig.getInt("fcm.xmpp.defaultConnections").getOrElse(30)
-  final val MAX_GOOGLE_ALLOWED_CONNECTIONS = ConnektConfig.getInt("fcm.xmpp.maxConnections").getOrElse(100)
+  private final val defaultXMPPConnectionCount: Int = ConnektConfig.getInt("fcm.xmpp.defaultConnections").getOrElse(30)
+  private final val MAX_GOOGLE_ALLOWED_CONNECTIONS: Int = ConnektConfig.getInt("fcm.xmpp.maxConnections").getOrElse(100)
 
-  val xmppRequestRouters: mutable.Map[String, ActorRef] = mutable.Map[String, ActorRef]()
+  private val xmppRequestRouters: mutable.Map[String, ActorRef] = mutable.Map[String, ActorRef]()
 
   /**
     * Send a request through the corresponding pool. If the pool is not running, it will be started
@@ -71,8 +71,8 @@ private[xmpp] class XMPPGateway(stageActor: StageActor)(implicit actorSystem: Ac
       }
       Await.result(Future.sequence(futures.values), 15.second)
     } catch {
-      case e:Throwable =>
-        ConnektLogger(LogFile.CLIENTS).error("Timeout for gracefully shutting down xmpp actors. Forcing")
+      case e: Throwable =>
+        ConnektLogger(LogFile.CLIENTS).error(s"Timeout for gracefully shutting down xmpp actors E [${e.getMessage}]. Forcing shutdown")
         xmppRequestRouters.foreach {
           case (appId, xmppRouter) =>
             actorSystem.stop(xmppRouter)
@@ -100,8 +100,8 @@ private[xmpp] class XMPPGateway(stageActor: StageActor)(implicit actorSystem: Ac
 
     _type match {
       case SyncType.DISCOVERY_CHANGE =>
-        ConnektLogger(LogFile.SERVICE).error(s"Will Re-balance Router Size Now. New Length ${args.length}, Data : $args")
-        if(args.nonEmpty ) {
+        ConnektLogger(LogFile.SERVICE).error(s"XMPPGateway.onUpdate DISCOVERY_CHANGE : Will Re-balance Router Size Now. New Length ${args.length}, Data : $args")
+        if (args.nonEmpty) {
           xmppRequestRouters.foreach {
             case (appId, xmppRouter) =>
               xmppRouter ! ReSize(getPoolSize(args.length))

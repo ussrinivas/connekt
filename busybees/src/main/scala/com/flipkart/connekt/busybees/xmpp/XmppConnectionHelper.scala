@@ -38,7 +38,7 @@ private[xmpp] object Internal {
   case class ConnectionClosed(connection: XMPPTCPConnection) extends DeadLetterSuppression
   case class ReSize(count: Int)
 
-  final val GCM_NAMESPACE: String = "google:mobile:data"
+  final val GOOGLE_NAMESPACE: String = "google:mobile:data"
   final val GCM_ELEMENT_NAME: String = "gcm"
 
 }

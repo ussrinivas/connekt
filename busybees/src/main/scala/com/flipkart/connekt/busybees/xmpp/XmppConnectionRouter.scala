@@ -68,7 +68,7 @@ class XmppConnectionRouter (var connectionPoolSize:Int, googleCredential: Google
       } else {
         //create some new
         ConnektLogger(LogFile.CLIENTS).debug(s"XmppConnectionRouter: Resize XMPP Actor : Increase")
-        for(i <- currentCount+1 to count) router = router.addRoutee(createRoutee())
+        for(_ <- currentCount+1 to count) router = router.addRoutee(createRoutee())
       }
 
     case FreeConnectionAvailable =>
