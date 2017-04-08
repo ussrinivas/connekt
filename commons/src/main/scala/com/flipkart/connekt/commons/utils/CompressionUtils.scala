@@ -48,4 +48,5 @@ object CompressionUtils {
     def decompress: Try[String] = inflate(s)
   }
 
+
 }

@@ -36,6 +36,7 @@ import org.jivesoftware.smack.roster.Roster
 import org.jivesoftware.smack.tcp.{XMPPTCPConnection, XMPPTCPConnectionConfiguration}
 import org.jivesoftware.smack.util.stringencoder.java7.{Java7Base64Encoder, Java7Base64UrlSafeEncoder}
 import org.jivesoftware.smack.{ConnectionConfiguration, ReconnectionManager}
+import org.jivesoftware.smackx.ping.PingManager
 import org.xmlpull.v1.XmlPullParser
 
 import scala.collection.JavaConverters._
@@ -45,6 +46,7 @@ import scala.util.{Failure, Success, Try}
 private[xmpp] class XmppConnectionActor(googleCredential: GoogleCredential, appId: String, stageLogicRef :ActorRef) extends Actor with ActorLogging with Instrumented {
 
   private val maxPendingAckCount = ConnektConfig.getInt("fcm.xmpp.maxPendingAcks").getOrElse(4)
+  private val xmppDebug = ConnektConfig.getBoolean("fcm.xmpp.debug").getOrElse(false)
 
   org.jivesoftware.smack.util.stringencoder.Base64.setEncoder(Java7Base64Encoder.getInstance())
   org.jivesoftware.smack.util.stringencoder.Base64UrlSafeEncoder.setEncoder(Java7Base64UrlSafeEncoder.getInstance())
@@ -331,11 +333,12 @@ private[xmpp] class XmppConnectionActor(googleCredential: GoogleCredential, appI
       .setSocketFactory(SSLSocketFactory.getDefault)
       .setServiceName(appId)
       .setSendPresence(false)
-      .setDebuggerEnabled(false)
+      .setDebuggerEnabled(xmppDebug)
       .build())
 
     ConnektLogger(LogFile.CLIENTS).debug(s"Configuring XMPPConnection")
     Roster.getInstanceFor(connection).setRosterLoadedAtLogin(false)
+    PingManager.getInstanceFor(connection).setPingInterval(600)
     connection.addConnectionListener(new ConnektXmppConnectionListener(connection, self))
 
     ProviderManager.addExtensionProvider(GCM_ELEMENT_NAME, GCM_NAMESPACE,

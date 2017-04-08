@@ -20,6 +20,8 @@ import com.flipkart.connekt.busybees.discovery.DiscoveryManager
 import com.flipkart.connekt.busybees.streams.flows.StageSupervision
 import com.flipkart.connekt.busybees.streams.flows.dispatchers.HttpDispatcher
 import com.flipkart.connekt.busybees.streams.topologies.{EmailTopology, PushTopology, SmsTopology}
+import com.flipkart.connekt.busybees.streams.topologies.PushTopology
+import com.flipkart.connekt.busybees.discovery.{DiscoveryManager, PathCacheZookeeper, ServiceHostsDiscovery}
 import com.flipkart.connekt.commons.connections.ConnectionProvider
 import com.flipkart.connekt.commons.core.BaseApp
 import com.flipkart.connekt.commons.dao.DaoFactory
@@ -104,11 +106,11 @@ object BusyBeesBoot extends BaseApp {
 
       DeviceDetailsService.bootstrap()
 
-      HttpDispatcher.init(ConnektConfig.getConfig("react").get)
-
       // Starting xmpp zookeeper lookup
       DiscoveryManager.instance.init(ConnektConfig.getConfig("discovery").get)
       DiscoveryManager.instance.start()
+
+      HttpDispatcher.init(ConnektConfig.getConfig("react").get)
 
       pushTopology = new PushTopology(kafkaConnConf)
       pushTopology.run

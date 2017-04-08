@@ -40,7 +40,7 @@ private[busybees] class XMPPStageLogic(val shape: FanOutShape2[(FCMXmppRequest, 
 
   type DownStreamResponse = (Try[XmppDownstreamResponse], GCMRequestTracker)
 
-  private val maxStageBufferCount = ConnektConfig.get("fcm.xmpp.stageBuffer").getOrElse("10").toInt
+  private val maxStageBufferCount = ConnektConfig.getInt("fcm.xmpp.stageBuffer").getOrElse(10)
 
   private val inFlightRequestCount = new AtomicInteger(0)
 
