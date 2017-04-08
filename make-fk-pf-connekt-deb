@@ -43,19 +43,6 @@ esac
 
 echo "Running Build on...  `hostname -f`"
 
-##No Squeeze build on nm.
-if [ "$TARGET" == "nm" ]; then
-    ##check if Squeeze build
-    OS=$(lsb_release -c)
-    case ${OS} in
-        *squeeze* )
-            die "Unsupported build environment"
-            ;;
-        *)
-            ;;
-    esac
-fi
-
 # Create base dir for debian packaging
 BASE_DIR="$LOCAL_DIR"
 BUILD_DIR="$LOCAL_DIR/build/$PACKAGE"
