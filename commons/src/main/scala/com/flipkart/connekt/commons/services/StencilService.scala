@@ -28,7 +28,7 @@ import scala.util.{Failure, Success, Try}
 
 class StencilService(stencilDao: TStencilDao) extends TStencilService with Instrumented with SyncDelegate {
 
-  SyncManager.get().addObserver(this, List(SyncType.STENCIL_CHANGE, SyncType.STENCIL_BUCKET_CHANGE, SyncType.STENCIL_COMPONENTS_UPDATE, SyncType.STENCIL_FABRIC_CHANGE))
+  SyncManager.get().addObserver(this, List(SyncType.STENCIL_CHANGE, SyncType.STENCIL_COMPONENTS_UPDATE, SyncType.STENCIL_FABRIC_CHANGE))
 
   private def stencilCacheKey(id: String, version: Option[String] = None) = id + version.getOrElse("")
 
@@ -152,6 +152,7 @@ class StencilService(stencilDao: TStencilDao) extends TStencilService with Instr
   def addStencilComponents(stencilComponents: StencilsEnsemble): Try[Unit] = {
     stencilDao.writeStencilsEnsemble(stencilComponents)
     LocalCacheManager.getCache(LocalCacheType.StencilsEnsemble).put[StencilsEnsemble](stencilComponents.id, stencilComponents)
+    SyncManager.get().publish(SyncMessage(SyncType.STENCIL_COMPONENTS_UPDATE, List(stencilComponents.id)))
     Success(Unit)
   }
 
@@ -170,9 +171,6 @@ class StencilService(stencilDao: TStencilDao) extends TStencilService with Instr
       }
       case SyncType.STENCIL_FABRIC_CHANGE => Try_ {
         LocalCacheManager.getCache(LocalCacheType.EngineFabrics).remove(args.head.toString)
-      }
-      case SyncType.STENCIL_BUCKET_CHANGE => Try_ {
-        LocalCacheManager.getCache(LocalCacheType.StencilsBucket).remove(args.head.toString)
       }
       case SyncType.STENCIL_COMPONENTS_UPDATE => Try_ {
         LocalCacheManager.getCache(LocalCacheType.StencilsEnsemble).remove(args.head.toString)

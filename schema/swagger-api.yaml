@@ -6,6 +6,7 @@ info:
 host: 127.0.0.1:28000
 schemes:
   - http
+  - https
 basePath: /v1
 tags:
 - name: "Registration"
@@ -128,18 +129,18 @@ parameters:
       - GLOBAL
       - GROUP
     format: string
-  stencilName:
-    name: stencilName
+  stencilId:
+    name: stencilId
     in: path
-    description: StencilName.
+    description: stencil Id.
     required: true
     type: string
     format: string
   stencilVersion:
-    name: stencilVersion
-    in: path
+    name: v
+    in: query
     description: stencilVersion.
-    required: true
+    required: false
     type: string
     format: string
   bucketName:
@@ -149,10 +150,10 @@ parameters:
     required: true
     type: string
     format: string
-  StencilsEnsembleId:
-    name: StencilsEnsembleId
+  StencilsEnsembleName:
+    name: StencilsEnsembleName
     in: path
-    description: StencilsEnsembleId.
+    description: StencilsEnsembleName.
     required: true
     type: string
     format: string
@@ -809,13 +810,12 @@ paths:
         creating bucket for user
       parameters:
         - $ref: '#/parameters/api-key'
-        - $ref: '#/parameters/bucketName'
-        - name: createStencilBucket
-          in: body
-          description: createStencilBucket.
+        - name: bucketName
+          in: path
+          description: bucketName.
           required: true
-          schema:
-            type: object
+          type: string
+          format: string
       tags:
         - "Stencil"
       responses:
@@ -880,14 +880,14 @@ paths:
             $ref: '#/definitions/Error'
 
 
-  /stencils/components/registry/{StencilsEnsembleId}:
+  /stencils/components/registry/{StencilsEnsembleName}:
     put:
       summary: update stencil ENSEMBLE
       description: |
         creating stencil
       parameters:
         - $ref: '#/parameters/api-key'
-        - $ref: '#/parameters/StencilsEnsembleId'
+        - $ref: '#/parameters/StencilsEnsembleName'
         - name: updateStencil
           in: body
           description: updateStencil.
@@ -909,7 +909,7 @@ paths:
         get stencil ENSEMBLE
       parameters:
         - $ref: '#/parameters/api-key'
-        - $ref: '#/parameters/StencilsEnsembleId'
+        - $ref: '#/parameters/StencilsEnsembleName'
       tags:
         - "Stencil"
       responses:
@@ -942,14 +942,15 @@ paths:
           description: Unexpected error
           schema:
             $ref: '#/definitions/Error'
-  /stencils/{stencilName}:
+  /stencils/{stencilId}:
     get:
       summary: get stencil data
       description: |
         get stencil data
       parameters:
         - $ref: '#/parameters/api-key'
-        - $ref: '#/parameters/stencilName'
+        - $ref: '#/parameters/stencilId'
+        - $ref: '#/parameters/stencilVersion'
       tags:
         - "Stencil"
       responses:
@@ -965,7 +966,7 @@ paths:
         updating stencil
       parameters:
         - $ref: '#/parameters/api-key'
-        - $ref: '#/parameters/stencilName'
+        - $ref: '#/parameters/stencilId'
         - name: updateStencil
           in: body
           description: updateStencil.
@@ -981,41 +982,18 @@ paths:
           description: Unexpected error
           schema:
             $ref: '#/definitions/Error'
-  /stencils/{stencilName}/preview:
+  /stencils/{stencilId}/preview:
     post:
       summary: previewing stencil
       description: |
         previewing stencil
       parameters:
         - $ref: '#/parameters/api-key'
-        - $ref: '#/parameters/stencilName'
-        - name: previewStencil
-          in: body
-          description: previewStencil.
-          required: true
-          schema:
-            type: object
-      tags:
-        - "Stencil"
-      responses:
-        '200':
-          description:  stencil preview
-        default:
-          description: Unexpected error
-          schema:
-            $ref: '#/definitions/Error'
-  /stencils/{stencilName}/{stencilVersion}/preview:
-    post:
-      summary: previewing stencil
-      description: |
-        previewing stencil for particular version
-      parameters:
-        - $ref: '#/parameters/api-key'
-        - $ref: '#/parameters/stencilName'
+        - $ref: '#/parameters/stencilId'
         - $ref: '#/parameters/stencilVersion'
-        - name: previewStencil
+        - name: stencilPayload
           in: body
-          description: previewStencil.
+          description: Stencil Payload
           required: true
           schema:
             type: object
@@ -1074,7 +1052,7 @@ paths:
           description: Unexpected error
           schema:
             $ref: '#/definitions/Error'
-  /suppressions/{channel}/{appName}/{suppressionType}:
+  /suppressions/{channel}/{appName}/{suppressionType}/all:
     get:
       tags:
       -  "Suppressions"
