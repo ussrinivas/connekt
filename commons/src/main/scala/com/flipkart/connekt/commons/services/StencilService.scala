@@ -90,6 +90,8 @@ class StencilService(stencilDao: TStencilDao) extends TStencilService with Instr
   def updateWithIdentity(id: String, prevName: String, stencils: List[Stencil]): Try[Unit] = Try_ {
     update(id, stencils)
     stencilDao.deleteStencilByName(prevName, id)
+    SyncManager.get().publish(SyncMessage(SyncType.STENCIL_CHANGE, List(prevName)))
+    LocalCacheManager.getCache(LocalCacheType.Stencils).remove(stencilCacheKey(prevName))
   }
 
   @Timed("get")
