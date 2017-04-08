@@ -12,8 +12,9 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
+import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.fasterxml.jackson.annotation.JsonSubTypes.Type
-import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.{JsonInclude, JsonSubTypes, JsonTypeInfo}
 
 case class GenericResponse(status: Int, request: AnyRef, response: ResponseBody)
 
@@ -28,6 +29,6 @@ case class GenericResponse(status: Int, request: AnyRef, response: ResponseBody)
 ))
 abstract class ResponseBody
 
-case class Response(message: String, data: Any) extends ResponseBody
+case class Response(@JsonInclude(Include.NON_NULL) message: String, data: Any) extends ResponseBody
 
-case class SendResponse(message: String, success: Map[String, Set[String]], failure: List[String]) extends ResponseBody
+case class SendResponse(@JsonInclude(Include.NON_NULL) message: String, success: Map[String, Set[String]], failure: List[String]) extends ResponseBody
