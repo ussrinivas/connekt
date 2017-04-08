@@ -46,6 +46,7 @@ class ProjectConfigRoute(implicit am: ActorMaterializer) extends BaseJsonHandler
                     } ~ put {
                       entity(as[UserProjectConfig]) { projectConfig =>
                         projectConfig.updatedBy = user.userId
+                        projectConfig.createdBy = user.userId
                         projectConfig.name = propertyName
                         projectConfig.appName = appName
                         projectConfig.validate()

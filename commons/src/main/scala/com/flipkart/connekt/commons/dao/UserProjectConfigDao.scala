@@ -24,7 +24,7 @@ class UserProjectConfigDao(table: String, mysqlFactory: TMySQLFactory) extends M
     implicit val j = mysqlHelper.getJDBCInterface
     val q =
       s"""
-         |INSERT INTO $table(appName, name, value, format,  updatedBy, createdBy) VALUES(?, ?, ?, ?, ? , ?, )
+         |INSERT INTO $table(appName, name, value, format,  updatedBy, createdBy) VALUES(?, ?, ?, ?, ? , ? )
          |ON DUPLICATE KEY UPDATE  value = ?, format = ?, updatedBy = ?
       """.stripMargin
 
