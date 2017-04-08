@@ -27,10 +27,9 @@ class AndroidHttpChannelFormatter (parallelism: Int)(implicit ec: ExecutionConte
 
     val pnInfo = message.channelInfo.asInstanceOf[PNRequestInfo]
     val timeToLive = message.expiryTs.map(expiry => (expiry - System.currentTimeMillis) / 1000).getOrElse(6.hour.toSeconds)
-    val dryRun = message.meta.get("x-perf-test").map(v => v.trim.equalsIgnoreCase("true"))
     val tokens = devicesInfo.map(_.token)
     val validDeviceIds = devicesInfo.map(_.deviceId)
-    val payload = GCMHttpPNPayload(registration_ids = tokens, delay_while_idle = Option(pnInfo.delayWhileIdle), appDataWithId, time_to_live = Some(timeToLive), dry_run = dryRun)
+    val payload = GCMHttpPNPayload(registration_ids = tokens, delay_while_idle = Option(pnInfo.delayWhileIdle), appDataWithId, time_to_live = Some(timeToLive), dry_run = Option(message.isTestRequest))
 
     List(GCMPayloadEnvelope(message.id, message.clientId, validDeviceIds, pnInfo.appName, message.contextId.orEmpty, payload, message.meta))
   }

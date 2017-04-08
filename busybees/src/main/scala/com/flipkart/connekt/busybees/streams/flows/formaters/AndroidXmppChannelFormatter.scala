@@ -20,22 +20,21 @@ import scala.concurrent.ExecutionContextExecutor
 import com.flipkart.connekt.commons.utils.StringUtils._
 import scala.concurrent.duration._
 
-class AndroidXmppChannelFormatter (parallelism: Int)(implicit ec: ExecutionContextExecutor) extends AndroidChannelFormatter(parallelism)(ec) {
+class AndroidXmppChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecutor) extends AndroidChannelFormatter(parallelism)(ec) {
 
-  val  deliveryReceiptRequired = Some(true)
+  private val deliveryReceiptRequired = Some(true)
 
   override def createPayload(message: ConnektRequest,
-                           devicesInfo:Seq[DeviceDetails],
-                           appDataWithId: Any): List[GCMPayloadEnvelope] = {
+                             devicesInfo: Seq[DeviceDetails],
+                             appDataWithId: Any): List[GCMPayloadEnvelope] = {
 
     val pnInfo = message.channelInfo.asInstanceOf[PNRequestInfo]
     val timeToLive = message.expiryTs.map(expiry => (expiry - System.currentTimeMillis) / 1000).getOrElse(6.hour.toSeconds)
-    val dryRun = message.meta.get("x-perf-test").map(v => v.trim.equalsIgnoreCase("true"))
 
-    devicesInfo.map{ device => {
+    devicesInfo.map { device =>
       val messageId = XmppMessageIdHelper.generateMessageId(message, device.deviceId)
-      val payload = GCMXmppPNPayload(device.token, messageId, Option(pnInfo.delayWhileIdle), appDataWithId, Some(timeToLive), deliveryReceiptRequired, dryRun)
+      val payload = GCMXmppPNPayload(device.token, messageId, Option(pnInfo.delayWhileIdle), appDataWithId, Some(timeToLive), deliveryReceiptRequired, Option(message.isTestRequest))
       GCMPayloadEnvelope(message.id, message.clientId, Seq(device.deviceId), pnInfo.appName, message.contextId.orEmpty, payload, message.meta)
-    }}.toList
+    }.toList
   }
 }

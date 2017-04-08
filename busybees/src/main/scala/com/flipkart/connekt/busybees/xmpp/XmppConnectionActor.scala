@@ -75,7 +75,7 @@ private[xmpp] class XmppConnectionActor(googleCredential: GoogleCredential, appI
 
   val archivedConnections = new scala.collection.mutable.HashSet[XMPPTCPConnection]()
 
-  override def postStop = {
+  override def postStop() = {
     ConnektLogger(LogFile.CLIENTS).info("ConnectionActor:In poststop")
     if (connection != null && connection.isConnected) {
       connection.disconnect()
@@ -84,9 +84,9 @@ private[xmpp] class XmppConnectionActor(googleCredential: GoogleCredential, appI
     archivedConnections.foreach(conn => {
       conn.disconnect(); conn.instantShutdown()
     })
-    messageDataCache.asMap().asScala.foreach { entry =>
-      ConnektLogger(LogFile.CLIENTS).error(s"XmppConnectionActor:PostStop:Never received GCM acknowledgement for tracker id ${entry._1}")
-      entry._2._1.responsePromise.failure(StoppingException())
+    messageDataCache.asMap().asScala.foreach { case (messageId, (request, sentTime)) =>
+      ConnektLogger(LogFile.CLIENTS).error(s"XmppConnectionActor:PostStop:Never received GCM acknowledgement for tracker id $messageId")
+      request.responsePromise.failure(StoppingException())
     }
   }
 

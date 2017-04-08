@@ -29,14 +29,14 @@ import scala.util.{Failure, Success, Try}
 
 class XmppDownstreamHandler(implicit m: Materializer, ec: ExecutionContext) extends PNProviderResponseHandler[(Try[XmppDownstreamResponse], GCMRequestTracker)](96) with Instrumented {
 
-  val badRegistrationError = "BAD_REGISTRATION"
-  val deviceUnregistered = "DEVICE_UNREGISTERED"
-  val invalidJson = "INVALID_JSON"
-  val rateExceededError = "DEVICE_MESSAGE_RATE_EXCEEDED"
+  val badRegistrationError: String = "BAD_REGISTRATION"
+  val deviceUnregistered: String = "DEVICE_UNREGISTERED"
+  val invalidJson: String = "INVALID_JSON"
+  val rateExceededError: String = "DEVICE_MESSAGE_RATE_EXCEEDED"
 
   override val map: ((Try[XmppDownstreamResponse], GCMRequestTracker)) => Future[List[PNCallbackEvent]] = responseTrackerPair => Future(profile("map") {
 
-    val (xmppResponse,requestTracker) = responseTrackerPair
+    val (xmppResponse, requestTracker) = responseTrackerPair
 
     val messageId = requestTracker.messageId
     val appName = requestTracker.appName
@@ -45,9 +45,9 @@ class XmppDownstreamHandler(implicit m: Materializer, ec: ExecutionContext) exte
     val eventTS = System.currentTimeMillis()
 
     val (responseStatus, responseMessage) = xmppResponse match {
-      case Success(response:XmppAck) =>
+      case Success(response: XmppAck) =>
         ConnektLogger(LogFile.PROCESSORS).info(s"XmppDownstreamHandler received xmpp response for: $messageId")
-        if(response.updatedTokenId != null){
+        if (response.updatedTokenId != null) {
           DeviceDetailsService.get(appName, deviceId).foreach(_.foreach(d => {
             ConnektLogger(LogFile.PROCESSORS).info(s"XmppDownstreamHandler device token update notified on. $messageId of device: $deviceId")
             DeviceDetailsService.update(d.deviceId, d.copy(token = response.updatedTokenId))
