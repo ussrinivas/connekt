@@ -23,6 +23,12 @@ class Bucket {
 
   override def toString = s"Bucket($name, $id)"
 
+  def this(id:String, name:String){
+    this()
+    this.id = id
+    this.name = name
+  }
+
   def canEqual(other: Any): Boolean = other.isInstanceOf[Bucket]
 
   override def equals(other: Any): Boolean = other match {

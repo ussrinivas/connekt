@@ -48,7 +48,7 @@ class SuppressionsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                             }
                           }
                         }
-                    } ~ pathEnd {
+                    } ~ path("all") {
                       get {
                         val results = ExclusionService.getAll(channel, appName.toLowerCase, exclusionType).get
                         complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Get Suppression list for channel `$channel`, appname `$appName` and exclusionType `$exclusionType`", results)))
