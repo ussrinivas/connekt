@@ -33,7 +33,9 @@ import scala.util.control.NonFatal
 
 object APNSDispatcher {
 
-  private val apnsHost:String = ConnektConfig.getOrElse("ios.apns.host", ApnsClient.PRODUCTION_APNS_HOST)
+  private val apnsHost: String = ConnektConfig.get("ios.apns.hostname").getOrElse(ApnsClient.PRODUCTION_APNS_HOST)
+  private val apnsPort: Int = ConnektConfig.getInt("ios.apns.port").getOrElse(ApnsClient.DEFAULT_APNS_PORT)
+
   private [busybees] val clientGatewayCache = new ConcurrentHashMap[String, Future[ApnsClient[SimpleApnsPushNotification]]]
 
   private def createAPNSClient(appName: String): ApnsClient[SimpleApnsPushNotification] = {
@@ -42,7 +44,7 @@ object APNSDispatcher {
     //TODO: shutdown this eventloop when client is closed.
     val eventLoop = new NioEventLoopGroup(4, new ThreadFactoryBuilder().setNameFormat(s"apns-nio-$appName-${StringUtils.generateRandomStr(4)}-%s").build())
     val client = new ApnsClient[SimpleApnsPushNotification](credential.getCertificateFile, credential.passkey,eventLoop)
-    client.connect(apnsHost).await(120, TimeUnit.SECONDS)
+    client.connect(apnsHost,apnsPort).await(120, TimeUnit.SECONDS)
     if (!client.isConnected)
       ConnektLogger(LogFile.PROCESSORS).error(s"APNSDispatcher Unable to connect [$appName] apns-client in 2minutes")
     client
