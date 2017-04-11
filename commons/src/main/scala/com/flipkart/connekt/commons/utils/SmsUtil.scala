@@ -75,11 +75,14 @@ object SmsUtil {
           parts
         else {
           var countParts = 0
-          content7bit.map(c => {
+          var pointer = 0
+          while (pointer < content7bit.length) {
             countParts += 1
-            if (content7bit.length >= 152 && content7bit.charAt(152) == GSM_7BIT_ESC) content7bit.delete(0, 152)
-            else content7bit.delete(0, 153)
-          })
+            if (content7bit.length >= (pointer + 152) && content7bit.charAt(pointer + 152) == GSM_7BIT_ESC)
+              pointer += 152
+            else
+              pointer += 153
+          }
           countParts
         }
     }

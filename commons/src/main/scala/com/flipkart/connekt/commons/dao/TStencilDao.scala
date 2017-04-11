@@ -22,9 +22,9 @@ trait TStencilDao extends Dao {
 
   def writeStencil(stencil: Stencil): Unit
 
-  def updateStencilWithIdentity(prevName: String, stencil: Stencil): Unit
+  def deleteStencilByName(name: String, id:String): Unit
 
-  def deleteStencil(prevName: String, stencil: Stencil): Unit
+  def deleteStencil(id:String): Unit
 
   def getBucket(name: String): Option[Bucket]
 
