@@ -21,7 +21,6 @@ import akka.actor.{Actor, ActorLogging, ActorRef, DeadLetterSuppression}
 import akka.event.LoggingReceive
 import com.flipkart.connekt.busybees.xmpp.Internal._
 import com.flipkart.connekt.busybees.xmpp.XmppConnectionActor.{SendXmppOutStreamRequest, Shutdown, StartShuttingDown}
-import com.flipkart.connekt.busybees.xmpp.XmppConnectionHelper._
 import com.flipkart.connekt.commons.entities.GoogleCredential
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels._
@@ -45,6 +44,9 @@ import scala.util.{Failure, Success, Try}
 
 private[xmpp] class XmppConnectionActor(googleCredential: GoogleCredential, appId: String, stageLogicRef :ActorRef) extends Actor with ActorLogging with Instrumented {
 
+  private val xmppHost: String = ConnektConfig.get("fcm.ccs.hostname").getOrElse("fcm-xmpp.googleapis.com")
+  private val xmppPort: Int = ConnektConfig.getInt("fcm.ccs.port").getOrElse(5235)
+
   private val maxPendingAckCount = ConnektConfig.getInt("fcm.xmpp.maxPendingAcks").getOrElse(4)
   private val xmppDebug = ConnektConfig.getBoolean("fcm.xmpp.debug").getOrElse(false)
 
@@ -57,7 +59,7 @@ private[xmpp] class XmppConnectionActor(googleCredential: GoogleCredential, appI
         val messageData: SendXmppOutStreamRequest = removal.getValue._1
         ConnektLogger(LogFile.CLIENTS).error(s"XmppConnectionActor RemoveListener:Cache timed out with tracker id ${removal.getKey}")
         messageData.responsePromise.failure(new XmppNeverAckException(removal.getKey))
-        registry.timer(s"$appId.lost").update(System.currentTimeMillis() - removal.getValue._2, TimeUnit.MILLISECONDS)
+        timer(s"$appId.lost").update(System.currentTimeMillis() - removal.getValue._2, TimeUnit.MILLISECONDS)
         pendingAckCount.decrementAndGet()
       }
     }
@@ -281,7 +283,7 @@ private[xmpp] class XmppConnectionActor(googleCredential: GoogleCredential, appI
       messageDataCache.invalidate(ack.messageId)
       pendingAckCount.decrementAndGet()
       outStreamRequest.responsePromise.success(ack)
-      registry.timer(s"$appId.ack").update(System.currentTimeMillis() - sentTime, TimeUnit.MILLISECONDS)
+      timer(s"$appId.ack").update(System.currentTimeMillis() - sentTime, TimeUnit.MILLISECONDS)
     }
   }
 
@@ -291,7 +293,7 @@ private[xmpp] class XmppConnectionActor(googleCredential: GoogleCredential, appI
       messageDataCache.invalidate(nack.messageId)
       pendingAckCount.decrementAndGet()
       outStreamRequest.responsePromise.failure(new XmppNackException(nack))
-      registry.timer(s"$appId.nack").update(System.currentTimeMillis() - sentTime, TimeUnit.MILLISECONDS)
+      timer(s"$appId.nack").update(System.currentTimeMillis() - sentTime, TimeUnit.MILLISECONDS)
     }
   }
 

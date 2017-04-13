@@ -41,7 +41,7 @@ import scala.concurrent.{ExecutionContextExecutor, Promise}
 
 class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCallbackEvent] with SyncDelegate {
 
-  val blockingDispatcher = system.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
+  private val blockingDispatcher = system.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
   SyncManager.get().addObserver(this, List(SyncType.CLIENT_QUEUE_CREATE))
 
   override def onUpdate(_type: SyncType, args: List[AnyRef]): Any = {

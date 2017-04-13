@@ -16,18 +16,10 @@ import akka.actor.{ActorSystem, DeadLetterSuppression}
 import akka.dispatch.{PriorityGenerator, UnboundedPriorityMailbox}
 import com.flipkart.connekt.busybees.models.GCMRequestTracker
 import com.flipkart.connekt.commons.iomodels.{FCMXmppRequest, XmppNack}
-import com.flipkart.connekt.commons.services.ConnektConfig
 import com.typesafe.config.Config
 import org.jivesoftware.smack.tcp.XMPPTCPConnection
 
 import scala.util.control.NoStackTrace
-
-object XmppConnectionHelper {
-
-  lazy val xmppHost: String = ConnektConfig.get("fcm.ccs.fcmServer").getOrElse("fcm-xmpp.googleapis.com")
-  lazy val xmppPort: Int = ConnektConfig.get("fcm.ccs.fcmPort").getOrElse("5235").toInt
-
-}
 
 private[xmpp] object Internal {
 
