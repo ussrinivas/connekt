@@ -15,37 +15,44 @@ package com.flipkart.connekt.busybees.xmpp
 import akka.actor.ActorRef
 import com.flipkart.connekt.busybees.xmpp.Internal.ConnectionClosed
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
+import com.flipkart.connekt.commons.metrics.Instrumented
 import org.jivesoftware.smack.tcp.XMPPTCPConnection
 import org.jivesoftware.smack.{ConnectionListener, XMPPConnection}
 
-private [xmpp] class ConnektXmppConnectionListener(conn:XMPPTCPConnection, actorRef: ActorRef) extends ConnectionListener {
+private [xmpp] class ConnektXmppConnectionListener(appId:String, conn:XMPPTCPConnection, actorRef: ActorRef) extends ConnectionListener with Instrumented{
+
   override def connected(connection: XMPPConnection): Unit = {
-    ConnektLogger(LogFile.CLIENTS).debug(s"XMPPConnectionListener -> connected: ${conn.getStreamId}")
+    counter(s"$appId.connected").inc()
+    ConnektLogger(LogFile.CLIENTS).debug(s"XMPPConnectionListener($appId) -> connected : ${conn.getStreamId}")
   }
 
   override def authenticated(connection: XMPPConnection, resumed: Boolean): Unit = {
-    ConnektLogger(LogFile.CLIENTS).info(s"XMPPConnectionListener -> authenticated: ${conn.getStreamId}")
+    ConnektLogger(LogFile.CLIENTS).info(s"XMPPConnectionListener($appId) -> authenticated: ${conn.getStreamId}")
   }
 
   override def connectionClosed(): Unit = {
-    ConnektLogger(LogFile.CLIENTS).error(s"XMPPConnectionListener -> connectionClosed ${conn.getStreamId}")
+    counter(s"$appId.closed").inc()
+    ConnektLogger(LogFile.CLIENTS).error(s"XMPPConnectionListener($appId) -> connectionClosed ${conn.getStreamId}")
     actorRef ! ConnectionClosed(conn)
   }
 
   override def connectionClosedOnError(e: Exception): Unit = {
-    ConnektLogger(LogFile.CLIENTS).error(s"XMPPConnectionListener -> connectionClosedOnError: ${conn.getStreamId} ${e.getMessage}", e)
+    counter(s"$appId.closed").inc()
+    ConnektLogger(LogFile.CLIENTS).error(s"XMPPConnectionListener($appId) -> connectionClosedOnError: ${conn.getStreamId} ${e.getMessage}", e)
   }
 
   override def reconnectionSuccessful(): Unit = {
-    ConnektLogger(LogFile.CLIENTS).debug(s"XMPPConnectionListener -> reConnectionSuccess: ${conn.getStreamId}")
+    counter(s"$appId.reconnectionSuccessful").inc()
+    ConnektLogger(LogFile.CLIENTS).debug(s"XMPPConnectionListener($appId) -> reConnectionSuccess: ${conn.getStreamId}")
   }
 
   override def reconnectingIn(seconds: Int): Unit = {
-    ConnektLogger(LogFile.CLIENTS).debug(s"XMPPConnectionListener -> reConnectingIn: ${conn.getStreamId} $seconds")
+    ConnektLogger(LogFile.CLIENTS).debug(s"XMPPConnectionListener($appId) -> reConnectingIn: ${conn.getStreamId} $seconds")
   }
 
   override def reconnectionFailed(e: Exception): Unit = {
-    ConnektLogger(LogFile.CLIENTS).error(s"XMPPConnectionListener -> reConnectionFailure: ${conn.getStreamId} ${e.getMessage}", e)
+    counter(s"$appId.reconnectionFailed").inc()
+    ConnektLogger(LogFile.CLIENTS).error(s"XMPPConnectionListener($appId) -> reConnectionFailure: ${conn.getStreamId} ${e.getMessage}", e)
     actorRef ! ConnectionClosed(conn)
   }
 }

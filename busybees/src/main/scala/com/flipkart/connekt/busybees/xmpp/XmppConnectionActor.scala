@@ -339,7 +339,7 @@ private[xmpp] class XmppConnectionActor(googleCredential: GoogleCredential, appI
     ConnektLogger(LogFile.CLIENTS).debug(s"Configuring XMPPConnection")
     Roster.getInstanceFor(connection).setRosterLoadedAtLogin(false)
     PingManager.getInstanceFor(connection).setPingInterval(600)
-    connection.addConnectionListener(new ConnektXmppConnectionListener(connection, self))
+    connection.addConnectionListener(new ConnektXmppConnectionListener(appId, connection, self))
 
     ProviderManager.addExtensionProvider(GCM_ELEMENT_NAME, GOOGLE_NAMESPACE,
       new ExtensionElementProvider[GcmXmppPacketExtension]() {
