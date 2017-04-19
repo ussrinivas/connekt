@@ -29,6 +29,11 @@ before_install:
   - git clone --depth=10 --branch=hbase1.2 https://github.com/kingster/chronosq chronosq
   - cd chronosq
   - mvn install -DskipTests=true -B -V
+  - pushy=`mktemp -d -t pushy.XXX`
+  - pushd $pushy > /dev/null
+  - git clone --depth=10 --branch=v10 https://github.com/kingster/pushy pushy
+  - cd pushy
+  - mvn install -DskipTests=true -B -V
   - cd ..
   - git clone https://gist.github.com/f33ad41bac5e4550a3b2dbccf4a4a77b.git ckt-concord
   - cd ckt-concord
