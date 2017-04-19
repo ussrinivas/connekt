@@ -92,7 +92,7 @@ object ServiceFactory {
 
   def getReportingService = serviceCache(ServiceType.STATS_REPORTING).asInstanceOf[ReportingService]
 
-  def getStencilService = serviceCache(ServiceType.STENCIL).asInstanceOf[TStencilService]
+  def getStencilService = serviceCache(ServiceType.STENCIL).asInstanceOf[StencilService]
 
   def getUserProjectConfigService = serviceCache(ServiceType.APP_CONFIG).asInstanceOf[UserProjectConfigService]
 

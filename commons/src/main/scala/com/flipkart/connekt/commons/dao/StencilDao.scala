@@ -64,10 +64,11 @@ class StencilDao(tableName: String, historyTableName: String, stencilComponentsT
 
   override def writeStencil(stencil: Stencil): Unit = {
     implicit val j = mysqlHelper.getJDBCInterface
+    j.execute("START TRANSACTION")
     val q1 =
       s"""
          |INSERT INTO $tableName (id, name, component, type, engine, engineFabric, createdBy, updatedBy, version, bucket) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-         |ON DUPLICATE KEY UPDATE component = ?, engine = ?, engineFabric = ?, updatedBy = ?, version = version + 1, bucket = ?
+         |ON DUPLICATE KEY UPDATE name = ?, engine = ?, engineFabric = ?, updatedBy = ?, version = version + 1, bucket = ?
       """.stripMargin
 
     val q2 =
@@ -76,34 +77,8 @@ class StencilDao(tableName: String, historyTableName: String, stencilComponentsT
       """.stripMargin
 
     try {
-      update(q1, stencil.id, stencil.name, stencil.component, stencil.`type`, stencil.engine.toString, stencil.engineFabric, stencil.createdBy, stencil.updatedBy, stencil.version.toString, stencil.bucket, stencil.component, stencil.engine.toString, stencil.engineFabric, stencil.updatedBy, stencil.bucket)
+      update(q1, stencil.id, stencil.name, stencil.component, stencil.`type`, stencil.engine.toString, stencil.engineFabric, stencil.createdBy, stencil.updatedBy, stencil.version.toString, stencil.bucket, stencil.name, stencil.engine.toString, stencil.engineFabric, stencil.updatedBy, stencil.bucket)
       update(q2, stencil.id, stencil.name, stencil.component, stencil.`type`, stencil.engine.toString, stencil.engineFabric, stencil.updatedBy, stencil.updatedBy, stencil.id, stencil.component, stencil.name, stencil.bucket)
-    } catch {
-      case e: Exception =>
-        ConnektLogger(LogFile.DAO).error(s"Error updating stencil [${stencil.id}] ${e.getMessage}", e)
-        throw e
-    }
-  }
-
-  override def updateStencilWithIdentity(prevName: String, stencil: Stencil): Unit = {
-
-    implicit val j = mysqlHelper.getJDBCInterface
-    j.execute("START TRANSACTION")
-
-    val q1 =
-      s"""
-         UPDATE  $tableName SET name = ?,component = ?, engine = ?, engineFabric = ?, updatedBy = ?, version = version + 1, bucket = ? WHERE id = ? AND component = ?
-      """.stripMargin
-
-    val q2 =
-      s"""
-         |INSERT INTO $historyTableName (id, name, component, engine, engineFabric, createdBy, updatedBy, version, bucket) VALUES(?, ?, ?, ?, ?, ?, ? ,(SELECT version from $tableName where id = ? and component = ? and name = ? ), ?)
-      """.stripMargin
-
-    try {
-      update(q1, stencil.name, stencil.component, stencil.engine.toString, stencil.engineFabric, stencil.updatedBy, stencil.bucket, stencil.id, stencil.component)
-      update(q2, stencil.id, stencil.name, stencil.component, stencil.engine.toString, stencil.engineFabric, stencil.updatedBy, stencil.updatedBy, stencil.id, stencil.component, stencil.name, stencil.bucket)
-      deleteStencil(prevName, stencil)
     } catch {
       case e: Exception =>
         ConnektLogger(LogFile.DAO).error(s"Error updating stencil [${stencil.id}] ${e.getMessage}", e)
@@ -113,18 +88,27 @@ class StencilDao(tableName: String, historyTableName: String, stencilComponentsT
     j.execute("COMMIT")
   }
 
-  override def deleteStencil(prevName: String, stencil: Stencil): Unit = {
-    implicit val j = mysqlHelper.getJDBCInterface
 
+  override def deleteStencilByName(name: String, id:String): Unit = {
+    implicit val j = mysqlHelper.getJDBCInterface
     try {
-      val q =
-        s"""
-           |DELETE FROM $tableName WHERE id = ? AND name = ? AND component = ?
-            """.stripMargin
-      update(q, stencil.id, prevName, stencil.component)
+      val q = s"DELETE FROM $tableName WHERE name = ? and id = ?"
+      update(q, name, id)
     } catch {
       case e: Exception =>
-        ConnektLogger(LogFile.DAO).error(s"Error deleting bucket [$stencil.id] ${e.getMessage}", e)
+        ConnektLogger(LogFile.DAO).error(s"Error deleting stencilByName [$name / $id] ${e.getMessage}", e)
+        throw e
+    }
+  }
+
+  override def deleteStencil(id:String): Unit = {
+    implicit val j = mysqlHelper.getJDBCInterface
+    try {
+      val q = s"DELETE FROM $tableName WHERE id = ?"
+      update(q, id)
+    } catch {
+      case e: Exception =>
+        ConnektLogger(LogFile.DAO).error(s"Error deleting bucket [$id] ${e.getMessage}", e)
         throw e
     }
   }
