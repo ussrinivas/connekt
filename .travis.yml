@@ -24,19 +24,17 @@ branches:
     - master
 
 before_install:
-  - csq=`mktemp -d -t csq.XXX` 
-  - pushd $csq > /dev/null
+  - csq=`mktemp -d -t csq.XXX`
   - git clone --depth=10 --branch=hbase1.2 https://github.com/kingster/chronosq chronosq
-  - cd chronosq
+  - pushd chronosq > /dev/null
   - mvn install -DskipTests=true -B -V
-  - pushy=`mktemp -d -t pushy.XXX`
-  - pushd $pushy > /dev/null
+  - popd > /dev/null
   - git clone --depth=10 --branch=v10 https://github.com/kingster/pushy pushy
-  - cd pushy
+  - pushd pushy > /dev/null
   - mvn install -DskipTests=true -B -V
-  - cd ..
+  - popd > /dev/null
   - git clone https://gist.github.com/f33ad41bac5e4550a3b2dbccf4a4a77b.git ckt-concord
-  - cd ckt-concord
+  - pushd ckt-concord > /dev/null
   - sbt publishM2
   - popd > /dev/null
 
