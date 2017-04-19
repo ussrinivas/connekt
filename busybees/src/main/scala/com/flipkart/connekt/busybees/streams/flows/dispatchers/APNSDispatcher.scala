@@ -35,6 +35,8 @@ object APNSDispatcher {
 
   private val apnsHost: String = ConnektConfig.get("ios.apns.hostname").getOrElse(ApnsClient.PRODUCTION_APNS_HOST)
   private val apnsPort: Int = ConnektConfig.getInt("ios.apns.port").getOrElse(ApnsClient.DEFAULT_APNS_PORT)
+  private val pingInterval = ConnektConfig.getInt("sys.ping.interval").getOrElse(30)
+
   private [busybees] val clientGatewayCache = new ConcurrentHashMap[String, Future[ApnsClient]]
 
   private def createAPNSClient(appName: String): ApnsClient = {
@@ -45,7 +47,7 @@ object APNSDispatcher {
     val client =  new ApnsClientBuilder()
       .setClientCredentials(credential.getCertificateFile,credential.passkey)
       .setEventLoopGroup(eventLoop)
-      .setIdlePingInterval(25, TimeUnit.SECONDS)
+      .setIdlePingInterval(pingInterval, TimeUnit.SECONDS)
       .build()
     client.connect(apnsHost).await(60, TimeUnit.SECONDS)
     if (!client.isConnected)

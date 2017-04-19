@@ -50,6 +50,8 @@ private[xmpp] class XmppConnectionActor(googleCredential: GoogleCredential, appI
   private val maxPendingAckCount = ConnektConfig.getInt("fcm.xmpp.maxPendingAcks").getOrElse(4)
   private val xmppDebug = ConnektConfig.getBoolean("fcm.xmpp.debug").getOrElse(false)
 
+  private val pingInterval = ConnektConfig.getInt("sys.ping.interval").getOrElse(30)
+
   org.jivesoftware.smack.util.stringencoder.Base64.setEncoder(Java7Base64Encoder.getInstance())
   org.jivesoftware.smack.util.stringencoder.Base64UrlSafeEncoder.setEncoder(Java7Base64UrlSafeEncoder.getInstance())
 
@@ -340,7 +342,7 @@ private[xmpp] class XmppConnectionActor(googleCredential: GoogleCredential, appI
 
     ConnektLogger(LogFile.CLIENTS).debug(s"Configuring XMPPConnection")
     Roster.getInstanceFor(connection).setRosterLoadedAtLogin(false)
-    PingManager.getInstanceFor(connection).setPingInterval(600)
+    PingManager.getInstanceFor(connection).setPingInterval(pingInterval)
     connection.addConnectionListener(new ConnektXmppConnectionListener(appId, connection, self))
 
     ProviderManager.addExtensionProvider(GCM_ELEMENT_NAME, GOOGLE_NAMESPACE,
