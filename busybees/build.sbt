@@ -10,10 +10,9 @@ libraryDependencies ++= Seq(
   "org.isomorphism" % "token-bucket" % "1.6" excludeAll ExclusionRule("com.google.guava", "guava"),
 
   /** apns using pushy,  **/
-  "com.relayrides" % "pushy" % "0.7.2" excludeAll ExclusionRule("io.netty"),
-  "io.netty" % "netty-tcnative-openssl102" % "1.1.33.Fork14" classifier "linux-x86_64",
-  "io.netty" % "netty-tcnative" % "1.1.33.Fork14" classifier "osx-x86_64",
-  "org.eclipse.jetty.alpn" % "alpn-api" % "1.1.2.v20150522",
+  "com.relayrides" % "pushy" % "0.10-SNAPSHOT" changing(),
+  "io.netty" % "netty-tcnative-boringssl-static" % "2.0.0.Final",
+  "org.eclipse.jetty.alpn" % "alpn-api" % "1.1.3.v20160715",
   "org.bitbucket.b_c" % "jose4j" % "0.5.5",
   "io.jsonwebtoken" % "jjwt" % "0.7.0" % Test
   /** pushy dependecy ends **/
@@ -23,10 +22,6 @@ libraryDependencies ++= Seq(
 test in assembly := {}
 
 parallelExecution in Test := false
-
-assemblyExcludedJars in assembly <<= (fullClasspath in assembly) map { cp =>
-  cp filter {_.data.getName == "netty-tcnative-1.1.33.Fork14-osx-x86_64.jar"}
-}
 
 
 assemblyMergeStrategy in assembly := AppBuild.mergeStrategy

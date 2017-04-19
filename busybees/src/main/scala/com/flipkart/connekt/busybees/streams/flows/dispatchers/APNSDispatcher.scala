@@ -23,7 +23,7 @@ import com.flipkart.connekt.commons.utils.FutureUtils._
 import com.flipkart.connekt.commons.utils.StringUtils
 import com.google.common.util.concurrent.ThreadFactoryBuilder
 import com.relayrides.pushy.apns.util.SimpleApnsPushNotification
-import com.relayrides.pushy.apns.{ApnsClient, ClientNotConnectedException, PushNotificationResponse}
+import com.relayrides.pushy.apns.{ApnsClient, ApnsClientBuilder, ClientNotConnectedException, PushNotificationResponse}
 import io.netty.channel.nio.NioEventLoopGroup
 
 import scala.collection.JavaConverters._
@@ -35,23 +35,26 @@ object APNSDispatcher {
 
   private val apnsHost: String = ConnektConfig.get("ios.apns.hostname").getOrElse(ApnsClient.PRODUCTION_APNS_HOST)
   private val apnsPort: Int = ConnektConfig.getInt("ios.apns.port").getOrElse(ApnsClient.DEFAULT_APNS_PORT)
+  private [busybees] val clientGatewayCache = new ConcurrentHashMap[String, Future[ApnsClient]]
 
-  private [busybees] val clientGatewayCache = new ConcurrentHashMap[String, Future[ApnsClient[SimpleApnsPushNotification]]]
-
-  private def createAPNSClient(appName: String): ApnsClient[SimpleApnsPushNotification] = {
+  private def createAPNSClient(appName: String): ApnsClient = {
     ConnektLogger(LogFile.PROCESSORS).info(s"APNSDispatcher starting $appName apns-client")
     val credential = KeyChainManager.getAppleCredentials(appName).get
     //TODO: shutdown this eventloop when client is closed.
     val eventLoop = new NioEventLoopGroup(4, new ThreadFactoryBuilder().setNameFormat(s"apns-nio-$appName-${StringUtils.generateRandomStr(4)}-%s").build())
-    val client = new ApnsClient[SimpleApnsPushNotification](credential.getCertificateFile, credential.passkey,eventLoop)
-    client.connect(apnsHost,apnsPort).await(120, TimeUnit.SECONDS)
+    val client =  new ApnsClientBuilder()
+      .setClientCredentials(credential.getCertificateFile,credential.passkey)
+      .setEventLoopGroup(eventLoop)
+      .setIdlePingInterval(25, TimeUnit.SECONDS)
+      .build()
+    client.connect(apnsHost).await(60, TimeUnit.SECONDS)
     if (!client.isConnected)
       ConnektLogger(LogFile.PROCESSORS).error(s"APNSDispatcher Unable to connect [$appName] apns-client in 2minutes")
     client
   }
 
-  private [busybees]  def cachedGateway(appName: String): Future[ApnsClient[SimpleApnsPushNotification]] = {
-    val gatewayPromise = Promise[ApnsClient[SimpleApnsPushNotification]]()
+  private [busybees]  def cachedGateway(appName: String): Future[ApnsClient] = {
+    val gatewayPromise = Promise[ApnsClient]()
     clientGatewayCache.putIfAbsent(appName, gatewayPromise.future) match {
       case null ⇒ // only one thread can get here at a time
         val gateway =
