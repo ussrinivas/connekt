@@ -30,9 +30,9 @@ class StencilService(stencilDao: TStencilDao) extends TStencilService with Instr
 
   SyncManager.get().addObserver(this, List(SyncType.STENCIL_CHANGE, SyncType.STENCIL_COMPONENTS_UPDATE, SyncType.STENCIL_FABRIC_CHANGE))
 
-  private def stencilCacheKey(id: String, version: Option[String] = None):String = id + version.getOrElse("")
+  private def stencilCacheKey(id: String, version: Option[String] = None) = id + version.getOrElse("")
 
-  def fabricCacheKey(id: String, component: String, version: String):String  = id + component + version
+  def fabricCacheKey(id: String, component: String, version: String) = id + component + version
 
   def checkStencil(stencil: Stencil): Try[Boolean] = {
     try {
@@ -42,11 +42,9 @@ class StencilService(stencilDao: TStencilDao) extends TStencilService with Instr
         case StencilEngine.VELOCITY =>
           FabricMaker.createVtlFabric(stencil.engineFabric)
       }
-      require(getStencilsEnsembleByName(stencil.`type`).get.components.split(',').contains(stencil.component), "Invalid Stencil Component")
       Success(true)
     } catch {
       case e: Exception =>
-        ConnektLogger(LogFile.SERVICE).error(s"StencilService validation failed for id ${stencil.id} ", e)
         Failure(e)
     }
   }
@@ -66,17 +64,13 @@ class StencilService(stencilDao: TStencilDao) extends TStencilService with Instr
   }
 
   @Timed("add")
-  def add(id: String, stencils: List[Stencil]): Try[Unit] = Try_ {
+  def add(id: String, stencils: List[Stencil]): Try[Unit] = {
     stencils.foreach(stencilDao.writeStencil)
-  }
-
-  @Timed("delete")
-  def delete(id: String): Try[Unit] = Try {
-    stencilDao.deleteStencil(id)
+    Success(Unit)
   }
 
   @Timed("update")
-  def update(id: String, stencils: List[Stencil]): Try[Unit] = Try_ {
+  def update(id: String, stencils: List[Stencil]): Try[Unit] = {
     stencils.foreach(stencilDao.writeStencil)
     LocalCacheManager.getCache(LocalCacheType.Stencils).remove(stencilCacheKey(id))
     SyncManager.get().publish(SyncMessage(SyncType.STENCIL_CHANGE, List(id)))
@@ -84,14 +78,17 @@ class StencilService(stencilDao: TStencilDao) extends TStencilService with Instr
       LocalCacheManager.getCache(LocalCacheType.Stencils).remove(stencilCacheKey(stn.name))
       SyncManager.get().publish(SyncMessage(SyncType.STENCIL_CHANGE, List(stn.name)))
     }
+    Success(Unit)
   }
 
   @Timed("update")
-  def updateWithIdentity(id: String, prevName: String, stencils: List[Stencil]): Try[Unit] = Try_ {
-    update(id, stencils)
-    stencilDao.deleteStencilByName(prevName, id)
+  def updateWithIdentity(id: String, prevName: String, stencils: List[Stencil]): Try[Unit] = {
+    stencils.foreach(stencilDao.updateStencilWithIdentity(prevName, _))
+    SyncManager.get().publish(SyncMessage(SyncType.STENCIL_CHANGE, List(id)))
     SyncManager.get().publish(SyncMessage(SyncType.STENCIL_CHANGE, List(prevName)))
+    LocalCacheManager.getCache(LocalCacheType.Stencils).remove(stencilCacheKey(id))
     LocalCacheManager.getCache(LocalCacheType.Stencils).remove(stencilCacheKey(prevName))
+    Success(Unit)
   }
 
   @Timed("get")
@@ -124,7 +121,7 @@ class StencilService(stencilDao: TStencilDao) extends TStencilService with Instr
   @Timed("addBucket")
   def addBucket(bucket: Bucket): Try[Unit] = {
     getBucket(bucket.name) match {
-      case Some(_) =>
+      case Some(bck) =>
         Failure(new Exception(s"Bucket already exists for name: ${bucket.name}"))
       case _ =>
         LocalCacheManager.getCache(LocalCacheType.StencilsBucket).put[Bucket](bucket.name, bucket)
@@ -152,10 +149,11 @@ class StencilService(stencilDao: TStencilDao) extends TStencilService with Instr
 
 
   @Timed("addStencilsEnsemble")
-  def addStencilComponents(stencilComponents: StencilsEnsemble): Try[Unit] = Try_ {
+  def addStencilComponents(stencilComponents: StencilsEnsemble): Try[Unit] = {
     stencilDao.writeStencilsEnsemble(stencilComponents)
     LocalCacheManager.getCache(LocalCacheType.StencilsEnsemble).put[StencilsEnsemble](stencilComponents.id, stencilComponents)
     SyncManager.get().publish(SyncMessage(SyncType.STENCIL_COMPONENTS_UPDATE, List(stencilComponents.id)))
+    Success(Unit)
   }
 
   @Timed("getAllEnsemble")

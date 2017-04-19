@@ -18,7 +18,7 @@ import akka.NotUsed
 import akka.stream._
 import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl._
-import com.flipkart.connekt.busybees.models.{GCMRequestTracker, OpenWebRequestTracker, WNSRequestTracker}
+import com.flipkart.connekt.busybees.models.WNSRequestTracker
 import com.flipkart.connekt.busybees.streams.ConnektTopology
 import com.flipkart.connekt.busybees.streams.flows.dispatchers._
 import com.flipkart.connekt.busybees.streams.flows.eventcreators.{NotificationQueueRecorder, PNBigfootEventCreator}
@@ -32,7 +32,6 @@ import com.flipkart.connekt.commons.entities.{Channel, MobilePlatform}
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.services.ConnektConfig
-import com.flipkart.connekt.commons.streams.FirewallRequestTransformer
 import com.flipkart.connekt.commons.sync.SyncType.SyncType
 import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
 import com.flipkart.connekt.commons.utils.StringUtils._
@@ -74,8 +73,6 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
     }.toMap
   }
 
-  private val firewallStencilId: Option[String] = ConnektConfig.getString("sys.firewall.stencil.id")
-
   lazy val xmppShare: Int = ConnektConfig.getInt("android.protocol.xmpp-share").getOrElse(100)
   lazy val randomGenerator = new Random()
 
@@ -116,8 +113,6 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
       val notificationQueueParallelism = ConnektConfig.getInt("topology.push.queue.parallelism").get
       val notificationQueueRecorder = b.add(new NotificationQueueRecorder(notificationQueueParallelism)(ioDispatcher).flow)
 
-      val firewallTransformer = b.add(new FirewallRequestTransformer[GCMRequestTracker](firewallStencilId).flow)
-
       //xmpp related stages
       val xmppFmtAndroid = b.add(new AndroidXmppChannelFormatter(fmtAndroidParallelism)(ioDispatcher).flow)
       val gcmXmppPrepare = b.add(new GCMXmppDispatcherPrepare().flow)
@@ -134,7 +129,7 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
       val merger = b.add(Merge[PNCallbackEvent](3))
 
       render.out ~> androidFilter ~> notificationQueueRecorder ~> xmppOrHttpPartition.in
-                                      xmppOrHttpPartition.out(0) ~> httpFmtAndroid ~> gcmHttpPrepare ~> firewallTransformer ~> gcmHttpPoolFlow ~> gcmHttpResponseHandle ~> merger.in(0)
+                                      xmppOrHttpPartition.out(0) ~> httpFmtAndroid ~> gcmHttpPrepare ~> gcmHttpPoolFlow ~> gcmHttpResponseHandle ~> merger.in(0)
                                       xmppOrHttpPartition.out(1) ~> xmppFmtAndroid ~> gcmXmppPrepare ~> gcmXmppPoolFlow.in
                                                                                                       gcmXmppPoolFlow.out0 ~> xmppDownstreamHandler ~> merger.in(1)
                                                                                                       gcmXmppPoolFlow.out1 ~> xmppUpstreamHandler ~> merger.in(2)
@@ -142,7 +137,7 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
       FlowShape(render.in, merger.out)
 
   })
-
+  
   def iosTransformFlow = Flow.fromGraph(GraphDSL.create() { implicit b =>
 
     /**
@@ -162,7 +157,6 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
     val apnsPrepare = b.add(new APNSDispatcherPrepare().flow)
     val apnsDispatcher = b.add(new APNSDispatcher(apnsDispatcherParallelism)(ioDispatcher).flow.timedAs("apnsRTT"))
     val apnsResponseHandle = b.add(new APNSResponseHandler().flow)
-
     render.out ~> iosFilter ~> notificationQueueRecorder ~> fmtIOS ~> apnsPrepare ~> apnsDispatcher ~> apnsResponseHandle
 
     FlowShape(render.in, apnsResponseHandle.out)
@@ -182,7 +176,6 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
     val render = b.add(new RenderFlow().flow)
     val windowsFilter = b.add(Flow[ConnektRequest].filter(m => MobilePlatform.WINDOWS.toString.equalsIgnoreCase(m.channelInfo.asInstanceOf[PNRequestInfo].platform.toLowerCase)))
     val wnsHttpPrepare = b.add(new WNSDispatcherPrepare().flow)
-    val firewallTransformer = b.add(new FirewallRequestTransformer[WNSRequestTracker](firewallStencilId).flow)
     val wnsPoolFlow = b.add(HttpDispatcher.wnsPoolClientFlow.timedAs("wnsRTT"))
 
     val wnsPayloadMerge = b.add(MergePreferred[WNSPayloadEnvelope](1))
@@ -202,7 +195,7 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
     }))
 
     render.out ~> windowsFilter ~> notificationQueueRecorder ~>  fmtWindows ~>  wnsPayloadMerge
-    wnsPayloadMerge.out ~> wnsHttpPrepare  ~> firewallTransformer ~> wnsPoolFlow ~> wnsRHandler ~> wnsRetryPartition.in
+    wnsPayloadMerge.out ~> wnsHttpPrepare  ~> wnsPoolFlow ~> wnsRHandler ~> wnsRetryPartition.in
     wnsPayloadMerge.preferred <~ wnsRetryMapper <~ wnsRetryPartition.out(1).map(_.left.get).outlet
 
     FlowShape(render.in, wnsRetryPartition.out(0).map(_.right.get).outlet)
@@ -227,14 +220,15 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
 
     //providers [standard]
     val openWebHttpPrepare = b.add(new OpenWebDispatcherPrepare().flow)
-    val firewallTransformer = b.add(new FirewallRequestTransformer[OpenWebRequestTracker](firewallStencilId).flow)
     val openWebPoolFlow = b.add(HttpDispatcher.openWebPoolClientFlow.timedAs("openWebRTT"))
     val openWebResponseHandle = b.add(new OpenWebResponseHandler()(ioMat, ioDispatcher).flow)
 
-    render.out ~> openWebFilter ~> notificationQueueRecorder ~> fmtOpenWeb ~> openWebHttpPrepare ~> firewallTransformer ~> openWebPoolFlow ~> openWebResponseHandle
+    render.out ~> openWebFilter ~> notificationQueueRecorder ~> fmtOpenWeb ~> openWebHttpPrepare ~> openWebPoolFlow ~> openWebResponseHandle
 
     FlowShape(render.in, openWebResponseHandle.out)
   })
+
+  
 
   override def sink: Sink[PNCallbackEvent, NotUsed] = Sink.fromGraph(GraphDSL.create() { implicit b =>
 

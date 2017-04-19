@@ -179,9 +179,6 @@ class StencilsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                               val components = obj.get("components").asInstanceOf[ArrayNode].elements().asScala
                               val bucket = obj.get("bucket").asText()
                               val stencilType = obj.get("type").asText()
-
-                              require(stencils.head.`type`.equalsIgnoreCase(stencilType), "stencil type cannot be changed")
-
                               val bucketIds = bucket.split(",").flatMap(stencilService.getBucket(_).map(_.name.toUpperCase))
 
                               val stencilsUpdate = components.map(c => {
@@ -234,16 +231,6 @@ class StencilsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                         }
                       }
                     }
-                  } ~ delete {
-                    stencilService.get(id) match {
-                      case stencils if stencils.nonEmpty =>
-                        authorize(user, stencils.head.bucket.split(",").map("STENCIL_MOD_" + _): _*) {
-                          stencilService.delete(id).get
-                          complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Stencil deleted id: $id", null)))
-                        }
-                      case _ =>
-                        complete(GenericResponse(StatusCodes.BadRequest.intValue, null, Response(s"Stencil not found for id: $id", null)))
-                    }
                   }
                 }
             } ~ pathEndOrSingleSlash {
@@ -255,7 +242,7 @@ class StencilsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                     authorize(user, bucketIds.map("STENCIL_MOD_" + _): _*) {
                       val stencilName = obj.get("name").asText()
                       val stencilType = obj.get("type").asText()
-                      val stencilId = "STN" + StringUtils.generateRandomStr(6)
+                      val stencilId = "STNC" + StringUtils.generateRandomStr(4)
                       val components = obj.get("components").asInstanceOf[ArrayNode].elements().asScala
                       val stencils = components.map(c => {
                         val stencil = c.toString.getObj[Stencil]
