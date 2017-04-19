@@ -11,6 +11,7 @@ libraryDependencies ++= Seq(
 
   /** apns using pushy,  **/
   "com.relayrides" % "pushy" % "0.10-SNAPSHOT" changing(),
+  "com.relayrides" % "pushy-dropwizard-metrics-listener" % "0.10-SNAPSHOT",
   "io.netty" % "netty-tcnative-boringssl-static" % "2.0.0.Final",
   "org.eclipse.jetty.alpn" % "alpn-api" % "1.1.3.v20160715",
   "org.bitbucket.b_c" % "jose4j" % "0.5.5",
