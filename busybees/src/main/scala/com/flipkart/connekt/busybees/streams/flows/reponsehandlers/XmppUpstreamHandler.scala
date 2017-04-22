@@ -22,7 +22,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class XmppUpstreamHandler (implicit m: Materializer, ec: ExecutionContext) extends PNProviderResponseHandler[XmppUpstreamResponse](4) with Instrumented {
 
-  override val map: (XmppUpstreamResponse) => Future[List[PNCallbackEvent]] = upstreamResponse => Future({
+  override val map: (XmppUpstreamResponse) => Future[List[PNCallbackEvent]] = upstreamResponse => Future(profile("map"){
     ConnektLogger(LogFile.PROCESSORS).info(s"XmppUpstreamHandler received xmpp upstream message : " + upstreamResponse)
     val events = upstreamResponse.getPnCallbackEvent().toList
     events.persist
