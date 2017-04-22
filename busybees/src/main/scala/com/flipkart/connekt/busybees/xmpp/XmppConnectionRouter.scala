@@ -40,8 +40,11 @@ class XmppConnectionRouter (var connectionPoolSize:Int, googleCredential: Google
 
   private def createRoutee():ActorRefRoutee = {
     ConnektLogger(LogFile.CLIENTS).trace(s"XmppConnectionRouter: Creating XmppConnectionActor for $appId")
-    val aRoutee = context.actorOf(Props(classOf[XmppConnectionActor],  googleCredential, appId, stageLogicRef)
-      .withMailbox("akka.actor.xmpp-connection-priority-mailbox"))
+    val aRoutee = context.actorOf(
+      Props(classOf[XmppConnectionActor], googleCredential, appId, stageLogicRef)
+      .withMailbox("akka.actor.xmpp-connection-priority-mailbox")
+      .withDispatcher("akka.actor.io-dispatcher")
+    )
     context.watch(aRoutee)
     freeXmppActors.add(aRoutee)
     ActorRefRoutee(aRoutee)
