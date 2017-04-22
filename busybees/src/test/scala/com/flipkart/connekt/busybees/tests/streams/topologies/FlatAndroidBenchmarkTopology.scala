@@ -18,15 +18,14 @@ import akka.stream.SourceShape
 import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl._
 import com.flipkart.connekt.busybees.streams.flows.dispatchers.{GCMHttpDispatcherPrepare, HttpDispatcher}
-import com.flipkart.connekt.busybees.streams.flows.eventcreators.PNBigfootEventCreator
-import com.flipkart.connekt.busybees.streams.flows.formaters.{AndroidHttpChannelFormatter, AndroidChannelFormatter}
+import com.flipkart.connekt.busybees.streams.flows.formaters.{AndroidChannelFormatter, AndroidHttpChannelFormatter}
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers.GCMResponseHandler
 import com.flipkart.connekt.busybees.streams.flows.{FlowMetrics, RenderFlow}
 import com.flipkart.connekt.busybees.streams.sources.KafkaSource
 import com.flipkart.connekt.busybees.tests.streams.TopologyUTSpec
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.ServiceFactory
-import com.flipkart.connekt.commons.iomodels.ConnektRequest
+import com.flipkart.connekt.commons.iomodels.{ConnektRequest, PNCallbackEvent}
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.utils.StringUtils._
@@ -86,8 +85,7 @@ class FlatAndroidBenchmarkTopology extends TopologyUTSpec with Instrumented {
     val gcmFmt = Flow.fromGraph(new AndroidHttpChannelFormatter(fmtAndroidParallelism)(ioDispatcher).flow)
     val gcmPrepare = Flow.fromGraph(new GCMHttpDispatcherPrepare().flow)
     val gcmRHandler = Flow.fromGraph(new GCMResponseHandler().flow)
-    val metrics = Flow.fromGraph(new FlowMetrics[fkint.mp.connekt.PNCallbackEvent](Channel.PUSH).flow)
-    val eventCreator = Flow.fromGraph(new PNBigfootEventCreator)
+    val metrics = Flow.fromGraph(new FlowMetrics[PNCallbackEvent](Channel.PUSH).flow)
     val qps = meter("android.send")
 
     val complexSource = Source.fromGraph(GraphDSL.create() { implicit b =>
@@ -99,7 +97,7 @@ class FlatAndroidBenchmarkTopology extends TopologyUTSpec with Instrumented {
       SourceShape(merge.out)
     })
 
-    val gWithRHandler = complexSource.via(render).via(gcmFmt).via(gcmPrepare).via(HttpDispatcher.gcmPoolClientFlow).via(gcmRHandler).via(eventCreator).via(metrics).to(Sink.foreach(e => {
+    val gWithRHandler = complexSource.via(render).via(gcmFmt).via(gcmPrepare).via(HttpDispatcher.gcmPoolClientFlow).via(gcmRHandler).via(metrics).to(Sink.foreach(e => {
       qps.mark()
       if (0 == (counter.incrementAndGet() % 1000)) {
         val currentTime = System.currentTimeMillis()

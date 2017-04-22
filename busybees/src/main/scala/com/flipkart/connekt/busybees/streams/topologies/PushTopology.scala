@@ -21,7 +21,7 @@ import akka.stream.scaladsl._
 import com.flipkart.connekt.busybees.models.WNSRequestTracker
 import com.flipkart.connekt.busybees.streams.ConnektTopology
 import com.flipkart.connekt.busybees.streams.flows.dispatchers._
-import com.flipkart.connekt.busybees.streams.flows.eventcreators.{NotificationQueueRecorder, PNBigfootEventCreator}
+import com.flipkart.connekt.busybees.streams.flows.eventcreators.NotificationQueueRecorder
 import com.flipkart.connekt.busybees.streams.flows.formaters._
 import com.flipkart.connekt.busybees.streams.flows.profilers.TimedFlowOps._
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers._
@@ -235,16 +235,15 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
     /**
      * Sink Topology
      *
-     *                        +---------------------+     +-----------------+          ...-----+
-     *   PNCallbackEvent ---> | BigfootEventCreator | --> | MetricsRecorder | --->  IgnoreSink |
-     *                        +---------------------+     +-----------------+      +-----------+
+     *                       +-----------------+          ...-----+
+     *   PNCallbackEvent --> | MetricsRecorder | --->  IgnoreSink |
+     *                       +-----------------+      +-----------+
      */
 
-    val evtCreator = b.add(new PNBigfootEventCreator)
-    val metrics = b.add(new FlowMetrics[fkint.mp.connekt.PNCallbackEvent](Channel.PUSH).flow)
-    evtCreator.out ~> metrics ~> Sink.ignore
+    val metrics = b.add(new FlowMetrics[PNCallbackEvent](Channel.PUSH).flow)
+    metrics ~> Sink.ignore
 
-    SinkShape(evtCreator.in)
+    SinkShape(metrics.in)
   })
 
   override def shutdown() = {

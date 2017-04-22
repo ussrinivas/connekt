@@ -249,6 +249,7 @@ private[xmpp] class XmppConnectionActor(googleCredential: GoogleCredential, appI
     val stanza = new GcmXmppPacketExtension(xmppPayloadString)
 
     try {
+      ConnektLogger(LogFile.CLIENTS).trace("XmppConnectionActor Send {}", xmppPayloadString )
       connection.sendStanza(stanza)
       Success(Unit)
     } catch {
