@@ -100,7 +100,7 @@ private[xmpp] class XMPPGateway(stageActor: StageActor)(implicit actorSystem: Ac
 
     _type match {
       case SyncType.DISCOVERY_CHANGE =>
-        ConnektLogger(LogFile.SERVICE).error(s"XMPPGateway.onUpdate DISCOVERY_CHANGE : Will Re-balance Router Size Now. New Length ${args.length}, Data : $args")
+        ConnektLogger(LogFile.SERVICE).info(s"XMPPGateway.onUpdate DISCOVERY_CHANGE : Will Re-balance Router Size Now. New Length ${args.length}, Data : $args")
         if (args.nonEmpty) {
           xmppRequestRouters.foreach {
             case (appId, xmppRouter) =>
