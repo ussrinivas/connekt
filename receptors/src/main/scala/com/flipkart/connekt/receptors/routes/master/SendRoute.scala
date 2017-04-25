@@ -207,7 +207,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
                                 if (emailRequestInfo.to != null && emailRequestInfo.to.nonEmpty) {
                                   if (isTestRequest) {
-                                    GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse(s"Email Perf Send Request Received. Skipped sending email for address ${r.destinations.mkString(",")}.", Map("fake_message_id" -> r.destinations), null)).respond
+                                    GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse(s"Email Perf Send Request Received. Skipped sending.", Map("fake_message_id" -> r.destinations), List.empty)).respond
                                   } else {
                                     val success = scala.collection.mutable.Map[String, Set[String]]()
                                     val queueName = ServiceFactory.getMessageService(Channel.EMAIL).getRequestBucket(request, user)
@@ -276,7 +276,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
                                   if (smsRequestInfo.receivers != null && smsRequestInfo.receivers.nonEmpty) {
                                     if (isTestRequest) {
-                                      GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse(s"Sms Perf Send Request Received. Skipped sending Sms for numbers ${r.destinations.mkString(",")}.", Map("fake_message_id" -> r.destinations), null)).respond
+                                      GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse(s"Sms Perf Send Request Received. Skipped sending.", Map("fake_message_id" -> r.destinations), List.empty)).respond
                                     } else {
                                       smsRequestInfo.receivers.foreach(r => {
                                         val validateNum = Try(phoneUtil.parse(r, appDefaultCountryCode.get("localRegion").asText.trim.toUpperCase))
