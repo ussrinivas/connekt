@@ -192,24 +192,24 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                   post {
                     getXHeaders { headers =>
                       entity(as[ConnektRequest]) { r =>
-                        isTestRequest { tR =>
-                          if (!tR) {
-                            complete {
-                              Future {
-                                profile("email") {
-                                  val request = r.copy(clientId = user.userId, channel = "email", meta = {
-                                    Option(r.meta).getOrElse(Map.empty[String, String]) ++ headers
-                                  })
-                                  request.validate
+                        extractTestRequestContext { isTestRequest =>
+                          complete {
+                            Future {
+                              profile("email") {
+                                val request = r.copy(clientId = user.userId, channel = "email", meta = {
+                                  Option(r.meta).getOrElse(Map.empty[String, String]) ++ headers
+                                })
+                                request.validate
 
-                                  ConnektLogger(LogFile.SERVICE).debug(s"Received EMAIL request sent for user : $user with payload: {}", supplier(request))
+                                ConnektLogger(LogFile.SERVICE).debug(s"Received EMAIL request sent for user : $user with payload: {}", supplier(request))
 
-                                  val emailRequestInfo = request.channelInfo.asInstanceOf[EmailRequestInfo].copy(appName = appName.toLowerCase).toStrict
+                                val emailRequestInfo = request.channelInfo.asInstanceOf[EmailRequestInfo].copy(appName = appName.toLowerCase).toStrict
 
-                                  if (emailRequestInfo.to != null && emailRequestInfo.to.nonEmpty) {
-
+                                if (emailRequestInfo.to != null && emailRequestInfo.to.nonEmpty) {
+                                  if (isTestRequest) {
+                                    GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse(s"Email Perf Send Request Received. Skipped sending email for address ${r.destinations.mkString(",")}.", Map("fake_message_id" -> r.destinations), null)).respond
+                                  } else {
                                     val success = scala.collection.mutable.Map[String, Set[String]]()
-
                                     val queueName = ServiceFactory.getMessageService(Channel.EMAIL).getRequestBucket(request, user)
                                     val recipients = (emailRequestInfo.to.map(_.address) ++ emailRequestInfo.cc.map(_.address) ++ emailRequestInfo.bcc.map(_.address)).filter(_.isDefined)
 
@@ -217,7 +217,6 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                     val excludedAddress = recipients.filterNot { address => ExclusionService.lookup(request.channel, appName, address).getOrElse(false) }
                                     val failure = ListBuffer[String](excludedAddress.toSeq: _*)
                                     val validRecipients = recipients.diff(excludedAddress)
-
                                     if (validRecipients.nonEmpty) {
                                       /* enqueue multiple requests into kafka */
                                       ServiceFactory.getMessageService(Channel.EMAIL).saveRequest(request.copy(channelInfo = emailRequestInfo), queueName, isCrucial = true) match {
@@ -228,22 +227,18 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                           failure ++= validRecipients
                                           ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, request.contextId, request.stencilId, Channel.EMAIL, appName, InternalStatus.Rejected, recipients.size)
                                       }
-
                                       val (responseCode, message) = if (success.nonEmpty) Tuple2(StatusCodes.Accepted, "Email Send Request Received") else Tuple2(StatusCodes.InternalServerError, "Email Send Request Failed")
                                       GenericResponse(responseCode.intValue, null, SendResponse(message, success.toMap, failure.toList)).respond
-
                                     } else {
                                       GenericResponse(StatusCodes.BadRequest.intValue, null, SendResponse(s"No valid destinations found", success.toMap, failure.toList)).respond
                                     }
-                                  } else {
-                                    ConnektLogger(LogFile.SERVICE).error(s"Request Validation Failed, $request ")
-                                    GenericResponse(StatusCodes.BadRequest.intValue, null, Response("Request Validation Failed, Please ensure mandatory field values.", null)).respond
                                   }
+                                } else {
+                                  ConnektLogger(LogFile.SERVICE).error(s"Request Validation Failed, $request ")
+                                  GenericResponse(StatusCodes.BadRequest.intValue, null, Response("Request Validation Failed, Please ensure mandatory field values.", null)).respond
                                 }
-                              }(ioDispatcher)
-                            }
-                          } else {
-                            complete(GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse(s"Email Perf Send Request Received. Skipped sending email for address ${r.destinations.mkString(",")}.", Map("fake_message_id" -> r.destinations), null)).respond)
+                              }
+                            }(ioDispatcher)
                           }
                         }
                       }
@@ -260,28 +255,29 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                     post {
                       getXHeaders { headers =>
                         entity(as[ConnektRequest]) { r =>
-                          isTestRequest { tR =>
-                            if (!tR) {
-                              complete {
-                                Future {
-                                  profile("sms") {
-                                    val request = r.copy(clientId = user.userId, channel = Channel.SMS.toString, meta = {
-                                      Option(r.meta).getOrElse(Map.empty[String, String]) ++ headers
-                                    })
-                                    request.validate
+                          extractTestRequestContext { isTestRequest =>
+                            complete {
+                              Future {
+                                profile("sms") {
+                                  val request = r.copy(clientId = user.userId, channel = Channel.SMS.toString, meta = {
+                                    Option(r.meta).getOrElse(Map.empty[String, String]) ++ headers
+                                  })
+                                  request.validate
 
-                                    val appLevelConfigService = ServiceFactory.getUserProjectConfigService
-                                    ConnektLogger(LogFile.SERVICE).debug(s"Received SMS request with payload: ${request.toString}")
-                                    val smsRequestInfo = request.channelInfo.asInstanceOf[SmsRequestInfo].copy(appName = appName.toLowerCase)
+                                  val appLevelConfigService = ServiceFactory.getUserProjectConfigService
+                                  ConnektLogger(LogFile.SERVICE).debug(s"Received SMS request with payload: ${request.toString}")
+                                  val smsRequestInfo = request.channelInfo.asInstanceOf[SmsRequestInfo].copy(appName = appName.toLowerCase)
 
-                                    val appDefaultCountryCode = appLevelConfigService.getProjectConfiguration(appName.toLowerCase, "app-local-country-code").get.get.value.getObj[ObjectNode]
-                                    val phoneUtil: PhoneNumberUtil = PhoneNumberUtil.getInstance()
+                                  val appDefaultCountryCode = appLevelConfigService.getProjectConfiguration(appName.toLowerCase, "app-local-country-code").get.get.value.getObj[ObjectNode]
+                                  val phoneUtil: PhoneNumberUtil = PhoneNumberUtil.getInstance()
 
-                                    val validNumbers = ListBuffer[String]()
-                                    val invalidNumbers = ListBuffer[String]()
+                                  val validNumbers = ListBuffer[String]()
+                                  val invalidNumbers = ListBuffer[String]()
 
-                                    if (smsRequestInfo.receivers != null && smsRequestInfo.receivers.nonEmpty) {
-
+                                  if (smsRequestInfo.receivers != null && smsRequestInfo.receivers.nonEmpty) {
+                                    if (isTestRequest) {
+                                      GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse(s"Sms Perf Send Request Received. Skipped sending Sms for numbers ${r.destinations.mkString(",")}.", Map("fake_message_id" -> r.destinations), null)).respond
+                                    } else {
                                       smsRequestInfo.receivers.foreach(r => {
                                         val validateNum = Try(phoneUtil.parse(r, appDefaultCountryCode.get("localRegion").asText.trim.toUpperCase))
                                         if (validateNum.isSuccess && phoneUtil.isValidNumber(validateNum.get)) {
@@ -317,16 +313,13 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                         GenericResponse(StatusCodes.BadRequest.intValue, null, SendResponse("No valid destinations found", Map.empty, smsRequestInfo.receivers.toList)).respond
                                       }
                                     }
-
-                                    else {
-                                      ConnektLogger(LogFile.SERVICE).error(s"Request Validation Failed, $request ")
-                                      GenericResponse(StatusCodes.BadRequest.intValue, null, Response("Request Validation Failed, Please ensure mandatory field values.", null)).respond
-                                    }
                                   }
-                                }(ioDispatcher)
-                              }
-                            } else {
-                              complete(GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse(s"Sms Perf Send Request Received. Skipped sending Sms for numbers ${r.destinations.mkString(",")}.", Map("fake_message_id" -> r.destinations), null)).respond)
+                                  else {
+                                    ConnektLogger(LogFile.SERVICE).error(s"Request Validation Failed, $request ")
+                                    GenericResponse(StatusCodes.BadRequest.intValue, null, Response("Request Validation Failed, Please ensure mandatory field values.", null)).respond
+                                  }
+                                }
+                              }(ioDispatcher)
                             }
                           }
                         }

@@ -37,7 +37,7 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
           pathPrefix("registration" / "push") {
             path(MPlatformSegment / Segment / Segment) {
               (platform: MobilePlatform, appName: String, deviceId: String) =>
-                isTestRequest { tR =>
+                extractTestRequestContext { isTestRequest =>
                   authorize(user, "REGISTRATION", s"REGISTRATION_$appName") {
                     verifySecureCode(appName.toLowerCase, user.apiKey, deviceId) {
                       put {
@@ -45,7 +45,7 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                           entity(as[DeviceDetails]) { d =>
                             val newDeviceDetails = d.copy(appName = appName, osName = platform.toString, deviceId = deviceId, active = true)
                             newDeviceDetails.validate()
-                            if (!tR) {
+                            if (!isTestRequest) {
                               val result = DeviceDetailsService.get(appName, deviceId).transform[Either[Unit, Unit]]({
                                 case Some(deviceDetail) => DeviceDetailsService.update(deviceId, newDeviceDetails).map(u => Left(Unit))
                                 case None => DeviceDetailsService.add(newDeviceDetails).map(c => Right(Unit))
@@ -75,7 +75,7 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                       } ~ patch {
                         meteredResource(s"patch.$platform.$appName") {
                           entity(as[Map[String, AnyRef]]) { patchedDevice =>
-                            if (!tR) {
+                            if (!isTestRequest) {
                               val result = DeviceDetailsService.get(appName, deviceId).transform[Either[DeviceDetails, Unit]]({
                                 case Some(deviceDetail) =>
                                   val updatedDevice = deviceDetail.patch(patchedDevice)

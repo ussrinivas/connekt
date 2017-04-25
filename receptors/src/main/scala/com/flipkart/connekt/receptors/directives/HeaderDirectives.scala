@@ -30,7 +30,7 @@ trait HeaderDirectives {
 
   def getXHeaders = sniffXHeaders.map(httpHeaders => httpHeaders.map(h => h.lowercaseName() -> h.value()).toMap.filterKeys(!List("x-api-key").contains(_)))
 
-  def isTestRequest: Directive1[Boolean] = {
+  def extractTestRequestContext: Directive1[Boolean] = {
     Directives.optionalHeaderValueByName("x-perf-test").map { header ⇒
       header.exists(h => Try(h.trim.toBoolean).getOrElse(false))
     }
