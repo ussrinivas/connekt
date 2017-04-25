@@ -18,7 +18,7 @@ import akka.stream.SourceShape
 import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl._
 import com.flipkart.connekt.busybees.streams.flows.dispatchers.{GCMHttpDispatcherPrepare, HttpDispatcher}
-import com.flipkart.connekt.busybees.streams.flows.formaters.{AndroidChannelFormatter, AndroidHttpChannelFormatter}
+import com.flipkart.connekt.busybees.streams.flows.formaters.AndroidHttpChannelFormatter
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers.GCMResponseHandler
 import com.flipkart.connekt.busybees.streams.flows.{FlowMetrics, RenderFlow}
 import com.flipkart.connekt.busybees.streams.sources.KafkaSource

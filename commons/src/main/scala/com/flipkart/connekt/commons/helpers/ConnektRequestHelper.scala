@@ -24,7 +24,7 @@ object ConnektRequestHelper {
 
     def destinations: Set[String] = request.channelInfo match {
       case pn: PNRequestInfo => pn.deviceIds
-      case email: EmailRequestInfo => email.to.map(_.address) ++ email.cc.map(_.address) ++ email.bcc.map(_.address)
+      case email: EmailRequestInfo => email.to.map(_.address) ++ Option(email.cc).getOrElse(Set.empty).map(_.address) ++ Option(email.bcc).getOrElse(Set.empty).map(_.address)
       case sms: SmsRequestInfo => sms.receivers
       case _ => null
     }

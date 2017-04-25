@@ -235,9 +235,9 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
     /**
      * Sink Topology
      *
-     *                       +-----------------+          ...-----+
-     *   PNCallbackEvent --> | MetricsRecorder | --->  IgnoreSink |
-     *                       +-----------------+      +-----------+
+     *                        +-----------------+          ...-----+
+     *   PNCallbackEvent ---> | MetricsRecorder | --->  IgnoreSink |
+     *                        +-----------------+      +-----------+
      */
 
     val metrics = b.add(new FlowMetrics[PNCallbackEvent](Channel.PUSH).flow)
