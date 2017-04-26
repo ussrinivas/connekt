@@ -21,7 +21,8 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-slf4j" % akkaVersion withSources(),
   "com.typesafe.akka" %% "akka-http-core" % akkaHttpVersion withSources() withJavadoc(),
   "com.typesafe.akka" %% "akka-http" % akkaHttpVersion withSources() withJavadoc(),
-  "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test withSources() withJavadoc()
+  "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test withSources() withJavadoc(),
+  "com.typesafe.akka" %% "akka-stream-contrib" % "0.6" withSources() withJavadoc()
 )
 
 libraryDependencies ++= Seq(
