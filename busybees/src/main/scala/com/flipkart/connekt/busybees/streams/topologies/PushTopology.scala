@@ -50,10 +50,8 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
     val merge = b.add(Merge[ConnektRequest](topics.size))
 
     for (portNum <- 0 until merge.n) {
-      val p = Promise[String]()
       val consumerGroup = s"${groupId}_$checkpointGroup"
-      new KafkaSource[ConnektRequest](kafkaConsumerConfig, topic = topics(portNum), consumerGroup)(p.future) ~> merge.in(portNum)
-      sourceSwitches += p
+      new KafkaSource[ConnektRequest](kafkaConsumerConfig, topic = topics(portNum), consumerGroup) ~> merge.in(portNum)
     }
 
     SourceShape(merge.out)
@@ -198,11 +196,6 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
 
     SinkShape(metrics.in)
   })
-
-  override def shutdown() = {
-    /* terminate in top-down approach from all Source(s) */
-    sourceSwitches.foreach(_.success("PushTopology signal source shutdown"))
-  }
 
   override def onUpdate(_type: SyncType, args: List[AnyRef]): Any = {
     _type match {
