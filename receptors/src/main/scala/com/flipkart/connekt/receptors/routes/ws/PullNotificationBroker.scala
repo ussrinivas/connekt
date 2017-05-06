@@ -85,13 +85,11 @@ private class PullNotificationPublisher(clientId:String) extends ActorPublisher[
   val MaxBufferSize = 100
   var buf = Vector.empty[ConnektRequest]
 
-
-
   override def receive: Receive = {
     case _: ConnektRequest if buf.size == MaxBufferSize =>
-      //sender() ! Failure(new Throwable("Buffer Size Excedded"))
+      sender() ! Failure(new Throwable("Buffer Size Excedded"))
     case request: ConnektRequest =>
-      //sender() ! Success(Done)
+      sender() ! Success(Done)
       if (buf.isEmpty && totalDemand > 0)
         onNext(request)
       else {
@@ -107,6 +105,7 @@ private class PullNotificationPublisher(clientId:String) extends ActorPublisher[
 
   override def preStart(): Unit = {
     PullNotificationBus.subscribe(clientId, self)
+    println(s"Actor for $clientId Created")
     super.preStart()
   }
 

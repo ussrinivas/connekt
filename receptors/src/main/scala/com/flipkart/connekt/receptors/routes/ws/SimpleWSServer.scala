@@ -36,9 +36,9 @@ object SimpleWSServer extends WebSocketDirectives {
         get {
           complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "<h1>Say hello to akka-http</h1>"))
         }
-      } ~ path("realtime" / Segment) { clientId =>
+      } ~ path("realtime" / Segment / Segment ) {  (userId, deviceId) =>
         get {
-          handleWebSocketMessages(PullNotificationBroker.getWSFlow(clientId))
+          handleWebSocketMessages(PullNotificationBroker.getWSFlow(s"$userId/$deviceId"))
         } ~ post {
           val c = s"""
                      |{ "id" : "123456789",
@@ -59,7 +59,8 @@ object SimpleWSServer extends WebSocketDirectives {
                      |}
                    """.stripMargin.getObj[ConnektRequest]
 
-          PullNotificationBus.publish(c.copy(clientId = clientId))
+          PullNotificationBus.publish(c.copy(clientId = userId))
+          PullNotificationBus.publish(c.copy(clientId = s"$userId/$deviceId"))
           complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "Done"))
 
         }
