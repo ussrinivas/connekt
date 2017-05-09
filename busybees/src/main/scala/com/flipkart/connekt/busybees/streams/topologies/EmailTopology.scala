@@ -61,10 +61,8 @@ class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCa
     val merge = b.add(Merge[ConnektRequest](topics.size))
 
     for (portNum <- 0 until merge.n) {
-      val p = Promise[String]()
       val consumerGroup = s"${groupId}_$checkpointGroup"
-      new KafkaSource[ConnektRequest](kafkaConsumerConfig, topic = topics(portNum), consumerGroup)(p.future) ~> merge.in(portNum)
-      sourceSwitches += p
+      new KafkaSource[ConnektRequest](kafkaConsumerConfig, topic = topics(portNum), consumerGroup) ~> merge.in(portNum)
     }
 
     SourceShape(merge.out)
@@ -88,11 +86,6 @@ class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCa
     SinkShape(metrics.in)
   })
 
-  override def shutdown() = {
-    /* terminate in top-down approach from all Source(s) */
-    sourceSwitches.foreach(_.success("EmailTopology signal source shutdown"))
-  }
-
 
   override def transformers: Map[CheckPointGroup, Flow[ConnektRequest, EmailCallbackEvent, NotUsed]] = {
     Map(Channel.EMAIL.toString -> emailHTTPTransformFlow(ioMat, ec,ioDispatcher,blockingDispatcher))
@@ -108,7 +101,7 @@ object EmailTopology {
     val tracking = b.add(new EmailTrackingFlow(trackEmailParallelism)(blockingDispatcher).flow)
     val fmtEmailParallelism = ConnektConfig.getInt("topology.email.formatter.parallelism").get
     val fmtEmail = b.add(new EmailChannelFormatter(fmtEmailParallelism)(ioDispatcher).flow)
-    val emailPayloadMerge = b.add(MergePreferred[EmailPayloadEnvelope](1))
+    val emailPayloadMerge = b.add(MergePreferred[EmailPayloadEnvelope](1, eagerComplete = true))
     val emailRetryMapper = b.add(Flow[EmailRequestTracker].map(_.request) /*.buffer(10, OverflowStrategy.backpressure)*/)
     val providerPicker = b.add(new ChooseProvider[EmailPayloadEnvelope](Channel.EMAIL).flow)
     val providerHttpPrepareParallelism = ConnektConfig.getInt("topology.email.prepare.parallelism").get
