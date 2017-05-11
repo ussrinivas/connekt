@@ -40,8 +40,6 @@ class MessageService(requestDao: TRequestDao, userConfigurationDao: TUserConfigu
   override def saveRequest(request: ConnektRequest, requestBucket: String, persistPayloadInDataStore: Boolean): Try[String] = {
     try {
       val reqWithId = request.copy(id = generateUUID)
-      messageDao.saveRequest(reqWithId.id, reqWithId, persistPayloadInDataStore)
-
       request.scheduleTs match {
         case Some(scheduleTime) if scheduleTime > System.currentTimeMillis() + 2.minutes.toMillis =>
           schedulerService.client.add(ScheduledRequest(reqWithId, requestBucket), scheduleTime)
@@ -51,6 +49,7 @@ class MessageService(requestDao: TRequestDao, userConfigurationDao: TUserConfigu
           ConnektLogger(LogFile.SERVICE).info(s"Saved request ${reqWithId.id} to $requestBucket")
       }
 
+      messageDao.saveRequest(reqWithId.id, reqWithId, persistPayloadInDataStore)
       Success(reqWithId.id)
     } catch {
       case e: Exception =>
