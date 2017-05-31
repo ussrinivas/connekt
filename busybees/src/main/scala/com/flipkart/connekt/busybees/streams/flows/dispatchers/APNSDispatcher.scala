@@ -23,9 +23,9 @@ import com.flipkart.connekt.commons.services.{ConnektConfig, KeyChainManager}
 import com.flipkart.connekt.commons.utils.FutureUtils._
 import com.flipkart.connekt.commons.utils.StringUtils
 import com.google.common.util.concurrent.ThreadFactoryBuilder
-import com.relayrides.pushy.apns.util.SimpleApnsPushNotification
-import com.relayrides.pushy.apns._
-import com.relayrides.pushy.apns.metrics.dropwizard.DropwizardApnsClientMetricsListener
+import com.turo.pushy.apns.util.SimpleApnsPushNotification
+import com.turo.pushy.apns._
+import com.turo.pushy.apns.metrics.dropwizard.DropwizardApnsClientMetricsListener
 import io.netty.channel.nio.NioEventLoopGroup
 
 import scala.collection.JavaConverters._

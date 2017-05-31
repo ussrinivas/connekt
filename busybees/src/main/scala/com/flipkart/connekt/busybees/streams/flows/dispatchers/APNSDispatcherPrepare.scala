@@ -22,7 +22,7 @@ import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.iomodels.{APSPayloadEnvelope, iOSPNPayload}
 import com.flipkart.connekt.commons.utils.StringUtils._
-import com.relayrides.pushy.apns.util.SimpleApnsPushNotification
+import com.turo.pushy.apns.util.SimpleApnsPushNotification
 
 
 class APNSDispatcherPrepare extends MapFlowStage[APSPayloadEnvelope, (SimpleApnsPushNotification, APNSRequestTracker)] {
