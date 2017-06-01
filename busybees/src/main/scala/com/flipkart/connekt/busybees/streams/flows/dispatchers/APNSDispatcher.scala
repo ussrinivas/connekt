@@ -38,9 +38,10 @@ import scala.util.control.NonFatal
 object APNSDispatcher extends Instrumented {
 
   private val apnsHost: String = ConnektConfig.getOrElse("ios.apns.hostname", ApnsClient.PRODUCTION_APNS_HOST)
+  private val apnsPort: Int = ConnektConfig.getInt("ios.apns.port").getOrElse(ApnsClient.DEFAULT_APNS_PORT)
   private val responseTimeout = ConnektConfig.getInt("ios.apns.response.timeout").getOrElse(60)
 
-  private[busybees] val clientGatewayCache = new ConcurrentHashMap[String, Future[ApnsClient]]
+  private [busybees] val clientGatewayCache = new ConcurrentHashMap[String, Future[ApnsClient]]()
 
   private[busybees] def removeClient(appName: String): Boolean = {
     clientGatewayCache.remove(appName)
@@ -62,7 +63,7 @@ object APNSDispatcher extends Instrumented {
       .setIdlePingInterval(25, TimeUnit.SECONDS)
       .setMetricsListener(metricsListener)
       .build()
-    client.connect(apnsHost).await(60, TimeUnit.SECONDS)
+    client.connect(apnsHost,apnsPort).await(60, TimeUnit.SECONDS)
     if (!client.isConnected)
       ConnektLogger(LogFile.PROCESSORS).error(s"APNSDispatcher Unable to connect [$appName] apns-client in 2minutes")
     client
