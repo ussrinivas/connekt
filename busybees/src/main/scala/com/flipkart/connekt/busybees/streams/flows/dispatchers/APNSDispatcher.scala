@@ -23,9 +23,9 @@ import com.flipkart.connekt.commons.services.{ConnektConfig, KeyChainManager}
 import com.flipkart.connekt.commons.utils.FutureUtils._
 import com.flipkart.connekt.commons.utils.StringUtils
 import com.google.common.util.concurrent.ThreadFactoryBuilder
-import com.relayrides.pushy.apns.util.SimpleApnsPushNotification
-import com.relayrides.pushy.apns._
-import com.relayrides.pushy.apns.metrics.dropwizard.DropwizardApnsClientMetricsListener
+import com.turo.pushy.apns.util.SimpleApnsPushNotification
+import com.turo.pushy.apns._
+import com.turo.pushy.apns.metrics.dropwizard.DropwizardApnsClientMetricsListener
 import io.netty.channel.nio.NioEventLoopGroup
 
 import scala.collection.JavaConverters._
@@ -42,6 +42,11 @@ object APNSDispatcher extends Instrumented {
   private val pingInterval = ConnektConfig.getInt("sys.ping.interval").getOrElse(30)
 
   private [busybees] val clientGatewayCache = new ConcurrentHashMap[String, Future[ApnsClient]]
+
+  private[busybees] def removeClient(appName:String): Boolean = {
+    clientGatewayCache.remove(appName)
+    registry.remove(getMetricName(appName))
+  }
 
   private def createAPNSClient(appName: String): ApnsClient = {
     ConnektLogger(LogFile.PROCESSORS).info(s"APNSDispatcher starting $appName apns-client")
@@ -73,8 +78,7 @@ object APNSDispatcher extends Instrumented {
           try createAPNSClient(appName)
           catch {
             case NonFatal(e) =>
-              clientGatewayCache.remove(appName)
-              registry.remove(getMetricName(appName))
+              removeClient(appName)
               gatewayPromise.failure(e)
               throw e
           }
@@ -113,11 +117,11 @@ class APNSDispatcher(parallelism: Int)(implicit ec: ExecutionContextExecutor) {
           .flatMap(client => client.sendNotification(request).asScala.recoverWith {
             case nce: ClientNotConnectedException =>
               ConnektLogger(LogFile.PROCESSORS).info("APNSDispatcher waiting for apns-client to reconnect")
-              client.getReconnectionFuture.awaitUninterruptibly()
+              Try_(client.getReconnectionFuture.awaitUninterruptibly())
               ConnektLogger(LogFile.PROCESSORS).info(s"APNSDispatcher apns-client reconnected with status [${client.isConnected}]")
               if (!client.isConnected) {
                 ConnektLogger(LogFile.PROCESSORS).warn(s"APNSDispatcher apns-client reconnect error", client.getReconnectionFuture.cause())
-                clientGatewayCache.remove(userContext.appName)
+                APNSDispatcher.removeClient(userContext.appName)
                 ConnektLogger(LogFile.PROCESSORS).info(s"APNSDispatcher apns-client destroyed ${userContext.appName}, since reconnect failed.")
               }
               //client.sendNotification(request).asScala //TODO: Observe number of errors and then enable retry if required.

@@ -113,7 +113,7 @@ trait KafkaConnectionHelper {
     producerProps.setProperty("serializer.class", kafkaProducerConf.getString("serializer.class"))
     producerProps.setProperty("request.required.acks", kafkaProducerConf.getString("request.required.acks"))
     producerProps.setProperty("producer.type", Try(kafkaProducerConf.getString("producer.type")).getOrElse("sync"))
-    producerProps.setProperty("compression.codec", "2")
+    producerProps.setProperty("compression.codec", "1")
 
     new Producer[K, M](new ProducerConfig(producerProps))
   }
