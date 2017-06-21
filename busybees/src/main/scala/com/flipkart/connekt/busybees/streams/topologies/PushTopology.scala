@@ -72,10 +72,11 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
     }.toMap
   }
 
-  lazy val xmppShare: Int = ConnektConfig.getInt("android.protocol.xmpp-share").getOrElse(100)
-  lazy val randomGenerator = new Random()
+  private lazy val xmppShare: Int = ConnektConfig.getInt("android.protocol.xmpp-share").getOrElse(100)
+  private lazy val xmppClients = ConnektConfig.getList[String]("android.protocol.xmpp-clients")
+  private lazy val randomGenerator = new Random()
 
-  def chooseProtocol = if ( randomGenerator.nextInt(100) < xmppShare ) AndroidProtocols.xmpp else AndroidProtocols.http
+  private def chooseProtocol = if ( randomGenerator.nextInt(100) < xmppShare ) AndroidProtocols.xmpp else AndroidProtocols.http
 
   private val firewallStencilId: Option[String] = ConnektConfig.getString("sys.firewall.stencil.id")
 
@@ -102,7 +103,7 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
 
     val xmppOrHttpPartition = b.add(new Partition[ConnektRequest](2, { request =>
       val pnInfo = request.channelInfo.asInstanceOf[PNRequestInfo]
-      val protocol = if (pnInfo.deviceIds.size > 2) AndroidProtocols.http else chooseProtocol
+      val protocol = if (pnInfo.deviceIds.size > 2 || !xmppClients.contains(request.clientId)) AndroidProtocols.http else chooseProtocol
       protocol match {
         case AndroidProtocols.http => 0
         case AndroidProtocols.xmpp => 1
