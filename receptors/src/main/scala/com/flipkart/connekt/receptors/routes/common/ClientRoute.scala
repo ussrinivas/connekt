@@ -83,7 +83,7 @@ class ClientRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                 val clientTopic = mSvc.assignClientChannelTopic(userConfig.channel, userConfig.userId)
                                 userConfig.queueName = clientTopic
                                 UserConfigurationService.add(userConfig).get
-                                mSvc.addClientTopic(clientTopic, mSvc.partitionEstimate(userConfig.maxRate)).get
+                                mSvc.addClientTopic(clientTopic, mSvc.partitionEstimate(userConfig.maxRate), 2).get
                                 ConnektLogger(LogFile.SERVICE).info(s"AppUserConfig added for user ${userConfig.userId}")
                             }
 
