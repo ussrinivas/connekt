@@ -39,6 +39,7 @@ object APNSDispatcher extends Instrumented {
 
   private val apnsHost: String = ConnektConfig.getOrElse("ios.apns.hostname", ApnsClient.PRODUCTION_APNS_HOST)
   private val apnsPort: Int = ConnektConfig.getInt("ios.apns.port").getOrElse(ApnsClient.DEFAULT_APNS_PORT)
+  private val pingInterval = ConnektConfig.getInt("sys.ping.interval").getOrElse(30)
   private val responseTimeout = ConnektConfig.getInt("ios.apns.response.timeout").getOrElse(60)
 
   private [busybees] val clientGatewayCache = new ConcurrentHashMap[String, Future[ApnsClient]]()
@@ -60,7 +61,7 @@ object APNSDispatcher extends Instrumented {
     val client = new ApnsClientBuilder()
       .setClientCredentials(credential.getCertificateFile, credential.passkey)
       .setEventLoopGroup(eventLoop)
-      .setIdlePingInterval(25, TimeUnit.SECONDS)
+      .setIdlePingInterval(pingInterval, TimeUnit.SECONDS)
       .setMetricsListener(metricsListener)
       .build()
     client.connect(apnsHost,apnsPort).await(60, TimeUnit.SECONDS)

@@ -18,7 +18,7 @@ import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.{InternalStatus, SmsResponseStatus}
-import com.flipkart.connekt.commons.iomodels.SmsCallbackEvent
+import com.flipkart.connekt.commons.iomodels.{SmsCallbackEvent, SmsMeta}
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.StringUtils._
 
@@ -27,7 +27,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Either.MergeableEither
 import scala.util.{Failure, Success, Try}
 
-sealed case class SMSCargoContainer(providerMessageId: String, provider: String, cargo: String)
+sealed case class SMSCargoContainer(providerMessageId: String, provider: String, cargo: String, meta:Map[String,Any])
 
 class SmsResponseHandler(parallelism: Int)(implicit m: Materializer, ec: ExecutionContext) extends SmsProviderResponseHandler[(Try[SmsResponse], SmsRequestTracker), SmsRequestTracker](parallelism) with Instrumented {
   override val map: ((Try[SmsResponse], SmsRequestTracker)) => Future[List[Either[SmsRequestTracker, SmsCallbackEvent]]] = responseTrackerPair => Future(profile("map"){
@@ -44,6 +44,7 @@ class SmsResponseHandler(parallelism: Int)(implicit m: Materializer, ec: Executi
   private def handleSmsResponse(tryResponse: Try[SmsResponse], requestTracker: SmsRequestTracker): Either[List[SmsCallbackEvent], List[SmsCallbackEvent]] = {
 
     val receivers = requestTracker.receivers
+    val smsMeta = requestTracker.meta.getObjMap[SmsMeta]
 
     val maybeSmsCallbackEvent = tryResponse match {
       case Success(smsResponse) =>
@@ -54,7 +55,7 @@ class SmsResponseHandler(parallelism: Int)(implicit m: Materializer, ec: Executi
             Right(smsResponse.responsePerReceivers.asScala.map(r => {
               ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.SMS, appName = requestTracker.appName, event = r.receiverStatus)
               SmsCallbackEvent(requestTracker.messageId, r.receiverStatus, r.receiver, requestTracker.clientId, requestTracker.appName, requestTracker.contextId,
-                SMSCargoContainer(r.providerMessageId, requestTracker.provider, r.cargo).getJson)
+                SMSCargoContainer(r.providerMessageId, requestTracker.provider, r.cargo, smsMeta).getJson)
             }).toList)
           case f if 4 == (f / 100) =>
             ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.SMS, appName = requestTracker.appName, event = SmsResponseStatus.AuthError, count = smsResponse.responsePerReceivers.size)

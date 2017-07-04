@@ -10,9 +10,10 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.busybees.clients
+package com.flipkart.connekt.commons.iomodels
 
+import com.flipkart.connekt.commons.entities.GoogleCredential
 
-class CCSClient(xmppHost: String, xmppPort: Int, username: String, password: String) {
-
-}
+case class FCMXmppRequest(
+  pnPayload:GCMXmppPNPayload,
+  credential:GoogleCredential)

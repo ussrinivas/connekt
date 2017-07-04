@@ -24,7 +24,7 @@ import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.services.{ConnektConfig, KeyChainManager}
 import com.flipkart.connekt.commons.utils.StringUtils._
 
-class GCMDispatcherPrepare extends MapFlowStage[GCMPayloadEnvelope, (HttpRequest, GCMRequestTracker)] {
+class GCMHttpDispatcherPrepare extends MapFlowStage[GCMPayloadEnvelope, (HttpRequest, GCMRequestTracker)] {
 
   private val sendUri = Uri(ConnektConfig.getString("fcm.send.uri").getOrElse("https://fcm.googleapis.com/fcm/send"))
 

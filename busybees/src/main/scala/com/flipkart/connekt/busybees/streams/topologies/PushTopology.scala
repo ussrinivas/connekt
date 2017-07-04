@@ -12,6 +12,8 @@
  */
 package com.flipkart.connekt.busybees.streams.topologies
 
+import java.util.Random
+
 import akka.NotUsed
 import akka.stream._
 import akka.stream.scaladsl.GraphDSL.Implicits._
@@ -38,6 +40,9 @@ import com.typesafe.config.Config
 
 import scala.concurrent.Promise
 
+protected object AndroidProtocols extends Enumeration {
+  val http, xmpp = Value
+}
 
 class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallbackEvent] with SyncDelegate {
 
@@ -67,31 +72,74 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
     }.toMap
   }
 
+  private lazy val xmppShare: Int = ConnektConfig.getInt("android.protocol.xmpp-share").getOrElse(100)
+  private lazy val xmppClients = ConnektConfig.getList[String]("android.protocol.xmpp-clients")
+  private lazy val randomGenerator = new Random()
+
+  private def chooseProtocol = if ( randomGenerator.nextInt(100) < xmppShare ) AndroidProtocols.xmpp else AndroidProtocols.http
+
   private val firewallStencilId: Option[String] = ConnektConfig.getString("sys.firewall.stencil.id")
 
   def androidTransformFlow = Flow.fromGraph(GraphDSL.create() { implicit b =>
 
     /**
      * Android Topology
-     *                      +---------------+     +----------------+      +-------------------+      +-----------------+     +--------------------+      +--..
-     *  ConnektRequest ---> | AndroidFilter | --> |AndroidFormatter| ---> | GCMRequestPrepare |  --> |  GCMDispatcher  | --> | GCMResponseHandler | ---> |Merger
-     *                      +---------------+     +----------------+      +-------------------+      +-----------------+     +--------------------+      +-----
+     *                                                        +--------------------+   +---------------------+   +---------------------+   +-----------------+   +----------------------+   +--..
+     *                                                     -->|AndroidHttpFormatter|-->|GCMHttpRequestPrepare|-->|   FirewallPrepare   |-->|GCMHttpDispatcher|-->|GCMHttpResponseHandler|-->|Merger
+     *                                                    |   +--------------------+   +---------------------+   +---------------------+   +-----------------+   +----------------------+   +-----
+     *                   +-------------+   +----------+   |
+     *  ConnektRequest-->|AndroidFilter|-->|xmppORhttp|---|                                                                               +---------------------+   +--
+     *                   +-------------+   +----------+   |                                                                            -->|XmppDownstreamHandler|-->|Merger
+     *                                                    |  +--------------------+   +---------------------+   +-----------------+   |   +---------------------+   +--
+     *                                                    -->|AndroidXmppFormatter|-->|GCMXmppRequestPrepare|-->|GCMXmppDispatcher|-->
+     *                                                       +--------------------+   +---------------------+   +-----------------+   |   +---------------------+   +--
+     *                                                                                                                                 -->|XmppDownstreamHandler|-->|Merger
+     *                                                                                                                                    +---------------------+   +--
+     *
      */
 
     val render = b.add(new RenderFlow().flow)
-    val fmtAndroidParallelism = ConnektConfig.getInt("topology.push.androidFormatter.parallelism").get
     val androidFilter = b.add(Flow[ConnektRequest].filter(m => MobilePlatform.ANDROID.toString.equalsIgnoreCase(m.channelInfo.asInstanceOf[PNRequestInfo].platform.toLowerCase)))
+
+    val xmppOrHttpPartition = b.add(new Partition[ConnektRequest](2, { request =>
+      val pnInfo = request.channelInfo.asInstanceOf[PNRequestInfo]
+      val protocol = if (pnInfo.deviceIds.size > 2 || !xmppClients.contains(request.clientId)) AndroidProtocols.http else chooseProtocol
+      protocol match {
+        case AndroidProtocols.http => 0
+        case AndroidProtocols.xmpp => 1
+      }
+    }))
+
+    val fmtAndroidParallelism = ConnektConfig.getInt("topology.push.androidFormatter.parallelism").get
+
     val notificationQueueParallelism = ConnektConfig.getInt("topology.push.queue.parallelism").get
     val notificationQueueRecorder = b.add(new NotificationQueueRecorder(notificationQueueParallelism)(ioDispatcher).flow)
-    val fmtAndroid = b.add(new AndroidChannelFormatter(fmtAndroidParallelism)(ioDispatcher).flow)
-    val gcmHttpPrepare = b.add(new GCMDispatcherPrepare().flow)
+
+    //xmpp related stages
+    val xmppFmtAndroid = b.add(new AndroidXmppChannelFormatter(fmtAndroidParallelism)(ioDispatcher).flow)
+    val gcmXmppPrepare = b.add(new GCMXmppDispatcherPrepare().flow)
+    val gcmXmppPoolFlow = b.add(new GcmXmppDispatcher)
+    val xmppDownstreamHandler = b.add(new XmppDownstreamHandler()(ioMat, ioDispatcher).flow)
+    val xmppUpstreamHandler = b.add(new XmppUpstreamHandler()(ioMat, ioDispatcher).flow)
+
+    //http related stages
+    val httpFmtAndroid = b.add(new AndroidHttpChannelFormatter(fmtAndroidParallelism)(ioDispatcher).flow)
+    val gcmHttpPrepare = b.add(new GCMHttpDispatcherPrepare().flow)
     val firewallTransformer = b.add(new FirewallRequestTransformer[GCMRequestTracker](firewallStencilId).flow)
-    val gcmPoolFlow = b.add(HttpDispatcher.gcmPoolClientFlow.timedAs("gcmRTT"))
-    val gcmResponseHandle = b.add(new GCMResponseHandler()(ioMat, ioDispatcher).flow)
 
-    render.out ~> androidFilter ~> notificationQueueRecorder ~> fmtAndroid ~> gcmHttpPrepare ~> firewallTransformer ~> gcmPoolFlow ~> gcmResponseHandle
+    val gcmHttpPoolFlow = b.add(HttpDispatcher.gcmPoolClientFlow.timedAs("gcmRTT"))
+    val gcmHttpResponseHandle = b.add(new GCMResponseHandler()(ioMat, ioDispatcher).flow)
 
-    FlowShape(render.in, gcmResponseHandle.out)
+    val merger = b.add(Merge[PNCallbackEvent](3))
+
+    render.out ~> androidFilter ~> notificationQueueRecorder ~> xmppOrHttpPartition.in
+                                    xmppOrHttpPartition.out(0) ~> httpFmtAndroid ~> gcmHttpPrepare ~> firewallTransformer ~> gcmHttpPoolFlow ~> gcmHttpResponseHandle ~> merger.in(0)
+                                    xmppOrHttpPartition.out(1) ~> xmppFmtAndroid ~> gcmXmppPrepare ~> gcmXmppPoolFlow.in
+                                                                                                      gcmXmppPoolFlow.out0 ~> xmppDownstreamHandler ~> merger.in(1)
+                                                                                                      gcmXmppPoolFlow.out1 ~> xmppUpstreamHandler ~> merger.in(2)
+
+      FlowShape(render.in, merger.out)
+
   })
 
   def iosTransformFlow = Flow.fromGraph(GraphDSL.create() { implicit b =>
@@ -113,7 +161,6 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
     val apnsPrepare = b.add(new APNSDispatcherPrepare().flow)
     val apnsDispatcher = b.add(new APNSDispatcher(apnsDispatcherParallelism)(ioDispatcher).flow.timedAs("apnsRTT"))
     val apnsResponseHandle = b.add(new APNSResponseHandler().flow)
-
     render.out ~> iosFilter ~> notificationQueueRecorder ~> fmtIOS ~> apnsPrepare ~> apnsDispatcher ~> apnsResponseHandle
 
     FlowShape(render.in, apnsResponseHandle.out)
@@ -186,6 +233,8 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
 
     FlowShape(render.in, openWebResponseHandle.out)
   })
+
+
 
   override def sink: Sink[PNCallbackEvent, NotUsed] = Sink.fromGraph(GraphDSL.create() { implicit b =>
 

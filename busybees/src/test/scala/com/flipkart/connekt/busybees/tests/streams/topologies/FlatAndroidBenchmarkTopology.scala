@@ -17,8 +17,8 @@ import java.util.concurrent.atomic.AtomicLong
 import akka.stream.SourceShape
 import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl._
-import com.flipkart.connekt.busybees.streams.flows.dispatchers.{GCMDispatcherPrepare, HttpDispatcher}
-import com.flipkart.connekt.busybees.streams.flows.formaters.AndroidChannelFormatter
+import com.flipkart.connekt.busybees.streams.flows.dispatchers.{GCMHttpDispatcherPrepare, HttpDispatcher}
+import com.flipkart.connekt.busybees.streams.flows.formaters.AndroidHttpChannelFormatter
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers.GCMResponseHandler
 import com.flipkart.connekt.busybees.streams.flows.{FlowMetrics, RenderFlow}
 import com.flipkart.connekt.busybees.streams.sources.KafkaSource
@@ -82,8 +82,8 @@ class FlatAndroidBenchmarkTopology extends TopologyUTSpec with Instrumented {
     }
 
     val render = Flow.fromGraph(new RenderFlow().flow)
-    val gcmFmt = Flow.fromGraph(new AndroidChannelFormatter(fmtAndroidParallelism)(ioDispatcher).flow)
-    val gcmPrepare = Flow.fromGraph(new GCMDispatcherPrepare().flow)
+    val gcmFmt = Flow.fromGraph(new AndroidHttpChannelFormatter(fmtAndroidParallelism)(ioDispatcher).flow)
+    val gcmPrepare = Flow.fromGraph(new GCMHttpDispatcherPrepare().flow)
     val gcmRHandler = Flow.fromGraph(new GCMResponseHandler().flow)
     val metrics = Flow.fromGraph(new FlowMetrics[PNCallbackEvent](Channel.PUSH).flow)
     val qps = meter("android.send")

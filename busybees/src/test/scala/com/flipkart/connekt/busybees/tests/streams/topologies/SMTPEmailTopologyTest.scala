@@ -12,13 +12,10 @@
  */
 package com.flipkart.connekt.busybees.tests.streams.topologies
 
-import akka.http.scaladsl.Http
 import akka.stream.scaladsl.{Sink, Source}
-import com.flipkart.connekt.busybees.models.GCMRequestTracker
 import com.flipkart.connekt.busybees.streams.flows.RenderFlow
-import com.flipkart.connekt.busybees.streams.flows.dispatchers.{GCMDispatcherPrepare, SMTPDispatcher, SMTPDispatcherPrepare}
-import com.flipkart.connekt.busybees.streams.flows.formaters.{AndroidChannelFormatter, EmailChannelFormatter}
-import com.flipkart.connekt.busybees.streams.flows.reponsehandlers.GCMResponseHandler
+import com.flipkart.connekt.busybees.streams.flows.dispatchers.{SMTPDispatcher, SMTPDispatcherPrepare}
+import com.flipkart.connekt.busybees.streams.flows.formaters.EmailChannelFormatter
 import com.flipkart.connekt.busybees.tests.streams.TopologyUTSpec
 import com.flipkart.connekt.commons.iomodels.ConnektRequest
 import com.flipkart.connekt.commons.services.KeyChainManager
@@ -62,7 +59,6 @@ class SMTPEmailTopologyTest extends TopologyUTSpec {
       .via(new EmailChannelFormatter(64)(system.dispatchers.lookup("akka.actor.io-dispatcher")).flow)
       .via(new SMTPDispatcherPrepare().flow)
       .via(new SMTPDispatcher("10.33.102.104",credentials,10).flow)
-      //      .via(new GCMResponseHandler().flow)
       .runWith(Sink.foreach(println))
 
     val response = Await.result(result, 80.seconds)

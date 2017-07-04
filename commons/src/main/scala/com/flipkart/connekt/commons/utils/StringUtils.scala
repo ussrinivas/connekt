@@ -15,24 +15,25 @@ package com.flipkart.connekt.commons.utils
 import java.io.InputStream
 import java.lang.reflect.{ParameterizedType, Type => JType}
 import java.math.BigInteger
+import java.nio.charset.Charset
 import java.security.SecureRandom
 import java.util.UUID
 
 import akka.http.scaladsl.model.HttpEntity
 import akka.stream.Materializer
-import akka.util.ByteString
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
+import com.flipkart.connekt.commons.iomodels.SmsMeta
 import com.flipkart.connekt.commons.utils.NullWrapper._
 import org.apache.commons.codec.CharEncoding
 import org.apache.commons.validator.routines.UrlValidator
 
 import scala.collection.JavaConversions._
+import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext}
 import scala.reflect.runtime.universe._
 import scala.reflect.{ClassTag, _}
 
@@ -86,6 +87,24 @@ object StringUtils {
         (field.getName, field.get(obj))
       }
       Map(fieldsAsPairs: _*)
+    }
+
+  }
+
+  implicit class MapHandyFunction(val map:Map[String,Any]){
+    def getObj[T: ClassTag]: T = {
+      val clz = classTag[T].runtimeClass
+      val constructor = clz.getConstructors.head
+      val fields = clz.getDeclaredFields.map(_.getName)
+      val arguments = map.filterKeys(fields.contains)
+      val obj = constructor.newInstance(arguments.values.map(_.asInstanceOf[Object]).toSeq :_ * )
+      obj.asInstanceOf[T]
+    }
+
+    def getObjMap[T: ClassTag] : Map[String,Any]  = {
+      val clz = classTag[T].runtimeClass
+      val fields = clz.getDeclaredFields.map(_.getName)
+      map.filterKeys(fields.contains)
     }
   }
 

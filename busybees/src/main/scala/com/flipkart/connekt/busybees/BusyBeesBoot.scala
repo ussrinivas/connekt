@@ -16,9 +16,12 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings}
+import com.flipkart.connekt.busybees.discovery.DiscoveryManager
 import com.flipkart.connekt.busybees.streams.flows.StageSupervision
 import com.flipkart.connekt.busybees.streams.flows.dispatchers.HttpDispatcher
 import com.flipkart.connekt.busybees.streams.topologies.{EmailTopology, PushTopology, SmsTopology}
+import com.flipkart.connekt.busybees.streams.topologies.PushTopology
+import com.flipkart.connekt.busybees.discovery.{DiscoveryManager, PathCacheZookeeper, ServiceHostsDiscovery}
 import com.flipkart.connekt.commons.connections.ConnectionProvider
 import com.flipkart.connekt.commons.core.BaseApp
 import com.flipkart.connekt.commons.dao.DaoFactory
@@ -107,7 +110,12 @@ object BusyBeesBoot extends BaseApp {
 
       DeviceDetailsService.bootstrap()
 
+      // Starting xmpp zookeeper lookup
+      DiscoveryManager.instance.init(ConnektConfig.getConfig("discovery").get)
+      DiscoveryManager.instance.start()
+
       HttpDispatcher.init(ConnektConfig.getConfig("react").get)
+
       pushTopology = new PushTopology(kafkaConnConf)
       pushTopology.run
 
@@ -125,6 +133,7 @@ object BusyBeesBoot extends BaseApp {
     ConnektLogger(LogFile.SERVICE).info("BusyBees shutting down")
     if (initialized.get()) {
       implicit val ec = system.dispatcher
+      DiscoveryManager.instance.shutdown()
       val shutdownFutures = Option(pushTopology).map( _.shutdown()) :: Option(smsTopology).map( _.shutdown()) :: Option(emailTopology).map( _.shutdown()) :: Nil
       Try_#(message = "Topology Shutdown Didn't Complete")(Await.ready(Future.sequence(shutdownFutures.flatten), 20.seconds))
       DaoFactory.shutdownHTableDaoFactory()

@@ -10,22 +10,18 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.commons.iomodels
+package com.flipkart.connekt.busybees.xmpp
 
-import com.fasterxml.jackson.annotation.JsonProperty
+import org.jivesoftware.smack.packet.{ExtensionElement, Stanza}
 
-case class XmppControl(
-                       @JsonProperty("control_type") controlType: String) extends XmppDownstreamResponse {
-  override def responseType(): String = "control"
+private [xmpp] class GcmXmppPacketExtension (val json:String) extends Stanza with ExtensionElement {
+
+  override def getNamespace:String = Internal.GOOGLE_NAMESPACE
+
+  override def getElementName:String = Internal.GCM_ELEMENT_NAME
+
+  override def toXML: String = {
+    String.format("<message><%s xmlns=\"%s\">%s</%s></message>", getElementName, getNamespace, json,
+      getElementName)
+  }
 }
-
-/** sample from GCM
-  * <message>
-  *   <data:gcm xmlns:data="google:mobile:data">
-  *     {
-  *     "message_type":"control"
-  *     "control_type":"CONNECTION_DRAINING"
-  *     }
-  *     </data:gcm>
-  *     </message>
-  */

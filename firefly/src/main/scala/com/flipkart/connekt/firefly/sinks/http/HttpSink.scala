@@ -30,7 +30,7 @@ import scala.concurrent.ExecutionContext
 
 class HttpSink(subscription: Subscription, retryLimit: Int, killSwitch: KillSwitch)(implicit am: ActorMaterializer, sys: ActorSystem, ec: ExecutionContext) extends Instrumented {
 
-  val httpCachedClient = HttpDispatcher.httpFlow
+  private val httpCachedClient = HttpDispatcher.httpFlow
 
   def getHttpSink: Sink[SubscriptionEvent, NotUsed] = {
 

@@ -16,6 +16,7 @@
 
     <Logger name="com.flipkart" level="TRACE"/>
     <Logger name="io.netty" level="TRACE"/>
+    <Logger name="com.flipkart.kloud.config" level="ERROR"/>
 
     <Root level="ALL">
       <AppenderRef ref="STDOUT"/>

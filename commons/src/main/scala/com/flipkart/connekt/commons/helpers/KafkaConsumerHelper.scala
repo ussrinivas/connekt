@@ -79,7 +79,7 @@ class KafkaConsumerHelper(val consumerFactoryConf: Config, globalContextConf: Co
     lazy val streamsMap = scala.collection.mutable.Map[String, KafkaStream[Array[Byte], Array[Byte]]]()
 
     lazy val consumerStream: Option[KafkaStream[Array[Byte], Array[Byte]]] = streamsMap.get(topic).orElse({
-      val s = kafkaConsumerPool.borrowObject().createMessageStreams(Map[String, Int](topic -> 1)).get(topic).get.headOption
+      val s = kafkaConsumerPool.borrowObject().createMessageStreams(Map[String, Int](topic -> 1))(topic).headOption
       s.foreach(streamsMap += topic -> _)
       s
     })

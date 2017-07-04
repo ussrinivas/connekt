@@ -88,6 +88,12 @@ class KafkaSource[V: ClassTag](kafkaConsumerConf: Config, topic: String, groupId
           ConnektLogger(LogFile.PROCESSORS).info(s"Shutting down kafka consumer connector post iteration error.")
           initKafkaConsumer()
       }
+
+      override def onDownstreamFinish(): Unit = {
+        ConnektLogger(LogFile.PROCESSORS).info(s"KafkaSource/onDownstreamFinish Shutting down kafka consumer connector.")
+        kafkaConsumerConnector.shutdown()
+        super.onDownstreamFinish()
+      }
     })
 
     override def postStop(): Unit = {
@@ -123,6 +129,7 @@ class KafkaSource[V: ClassTag](kafkaConsumerConf: Config, topic: String, groupId
       ConnektLogger(LogFile.PROCESSORS).warn(s"KafkaSource stream could not be created for $topic")
       Iterator.empty
     }
+
   }
 
   private def initKafkaConsumer(): Unit = {
