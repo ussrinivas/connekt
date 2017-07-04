@@ -29,7 +29,7 @@ class StencilServiceTest extends CommonsBaseTest {
   stencil.engineFabric =
     """
       |{
-      |	"data": "Order for $product, $booleanValue, $integerValue"
+      |	"data": "Order for $!{product}, $booleanValue, $integerValue"
       |}
     """.stripMargin
 
@@ -44,7 +44,6 @@ class StencilServiceTest extends CommonsBaseTest {
   val payload =
     """
       |{
-      |	"product": "$product",
       |	"booleanValue": true,
       |	"integerValue": 1678
       |}
@@ -53,7 +52,7 @@ class StencilServiceTest extends CommonsBaseTest {
   val dataResult =
     """
       |{
-      |	"data": "Order for $product, true, 1678"
+      |	"data": "Order for , true, 1678"
       |}
     """.stripMargin
 
@@ -71,7 +70,10 @@ class StencilServiceTest extends CommonsBaseTest {
   }
 
   "Stencil Service" should "render the stencil for given ConnektRequest" in {
-    stencilService.materialize(stencil, payload.getObj[ObjectNode]) shouldEqual dataResult
+    noException should be thrownBy stencilService.materialize(stencil, payload.getObj[ObjectNode])
+    val renderResult = stencilService.materialize(stencil, payload.getObj[ObjectNode])
+    println(renderResult)
+    renderResult shouldEqual dataResult
   }
 
   "Stencil Service" should "add bucket" in {
