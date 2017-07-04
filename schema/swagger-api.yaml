@@ -920,7 +920,7 @@ paths:
           schema:
             $ref: '#/definitions/Error'
 
-  /stencil:
+  /stencils:
     post:
       summary: creating stencil
       description: |
