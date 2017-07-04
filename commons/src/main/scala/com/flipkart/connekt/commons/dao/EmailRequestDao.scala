@@ -35,7 +35,7 @@ class EmailRequestDao(tableName: String, hTableFactory: THTableFactory) extends 
     if(requestInfo.cc != null && requestInfo.cc.nonEmpty)
       m += "cc" -> requestInfo.cc.getJson.getUtf8Bytes
     if(requestInfo.bcc != null && requestInfo.bcc.nonEmpty)
-      m += "bcc" -> requestInfo.to.getJson.getUtf8Bytes
+      m += "bcc" -> requestInfo.bcc.getJson.getUtf8Bytes
     Option(requestInfo.from).foreach(m += "from" -> _.getJson.getUtf8Bytes )
     Option(requestInfo.replyTo).foreach(m += "replyTo" -> _.getJson.getUtf8Bytes )
 
