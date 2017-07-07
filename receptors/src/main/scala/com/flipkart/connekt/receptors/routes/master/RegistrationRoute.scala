@@ -66,10 +66,10 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                                   case _ =>
                                     existingDeviceDetails.flatMap[ToResponseMarshallable] {
                                       case Some(deviceDetail) =>
-                                        DeviceDetailsService.update(deviceId, newDeviceDetails)
+                                        DeviceDetailsService.update(deviceId, newDeviceDetails).get
                                         FastFuture.successful(GenericResponse(StatusCodes.OK.intValue, null, Response(s"DeviceDetails updated for ${newDeviceDetails.deviceId}", newDeviceDetails)).respond)
                                       case None =>
-                                        DeviceDetailsService.add(newDeviceDetails)
+                                        DeviceDetailsService.add(newDeviceDetails).get
                                         FastFuture.successful(GenericResponse(StatusCodes.Created.intValue, null, Response(s"DeviceDetails created for ${newDeviceDetails.deviceId}", newDeviceDetails)).respond)
                                     }
                                 }
