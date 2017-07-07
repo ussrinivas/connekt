@@ -12,7 +12,10 @@
  */
 package com.flipkart.connekt.receptors.routes.master
 
+import akka.connekt.AkkaHelpers.ActorMaterializerFunctions
+import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.util.FastFuture
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Source
 import com.flipkart.connekt.commons.entities.DeviceDetails
@@ -26,9 +29,13 @@ import com.flipkart.connekt.receptors.directives.MPlatformSegment
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
 import com.flipkart.connekt.receptors.wire.ResponseUtils._
 
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
+
+  private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
 
   val route =
     authenticate {
@@ -43,22 +50,33 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                       put {
                         meteredResource(s"register.$platform.$appName") {
                           entity(as[DeviceDetails]) { d =>
-                            val newDeviceDetails = d.copy(appName = appName, osName = platform.toString, deviceId = deviceId, active = true)
-                            newDeviceDetails.validate()
-                            if (!isTestRequest) {
-                              val result = DeviceDetailsService.get(appName, deviceId).transform[Either[Unit, Unit]]({
-                                case Some(deviceDetail) => DeviceDetailsService.update(deviceId, newDeviceDetails).map(u => Left(Unit))
-                                case None => DeviceDetailsService.add(newDeviceDetails).map(c => Right(Unit))
-                              }, Failure(_)).get
+                            complete {
+                              val newDeviceDetails = d.copy(appName = appName, osName = platform.toString, deviceId = deviceId, active = true)
+                              newDeviceDetails.validate()
+                              if (!isTestRequest) {
 
-                              result match {
-                                case Right(x) =>
-                                  complete(GenericResponse(StatusCodes.Created.intValue, null, Response(s"DeviceDetails created for ${newDeviceDetails.deviceId}", newDeviceDetails)))
-                                case Left(x) =>
-                                  complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"DeviceDetails updated for ${newDeviceDetails.deviceId}", newDeviceDetails)))
+                                val existingDeviceDetails = Future(DeviceDetailsService.get(appName, deviceId).get)
+                                val deviceDetailsWithToken = Future(DeviceDetailsService.getByTokenId(newDeviceDetails.appName, newDeviceDetails.token).get)
+
+                                deviceDetailsWithToken.flatMap[ToResponseMarshallable] {
+                                  case Some(device) if device.deviceId != newDeviceDetails.deviceId =>
+                                    meter("invalid.deviceDetails").mark()
+                                    ConnektLogger(LogFile.SERVICE).error(s"DeviceDetails add/update failed for ${newDeviceDetails.deviceId} as token ${newDeviceDetails.token} is already assigned to deviceId ${device.deviceId}")
+                                    FastFuture.successful(GenericResponse(StatusCodes.BadRequest.intValue, null, Response(s"DeviceDetails add/update failed for ${newDeviceDetails.deviceId} as token ${newDeviceDetails.token} is already assigned to deviceId ${device.deviceId}", null)).respond)
+                                  case _ =>
+                                    existingDeviceDetails.flatMap[ToResponseMarshallable] {
+                                      case Some(deviceDetail) =>
+                                        DeviceDetailsService.update(deviceId, newDeviceDetails)
+                                        FastFuture.successful(GenericResponse(StatusCodes.OK.intValue, null, Response(s"DeviceDetails updated for ${newDeviceDetails.deviceId}", newDeviceDetails)).respond)
+                                      case None =>
+                                        DeviceDetailsService.add(newDeviceDetails)
+                                        FastFuture.successful(GenericResponse(StatusCodes.Created.intValue, null, Response(s"DeviceDetails created for ${newDeviceDetails.deviceId}", newDeviceDetails)).respond)
+                                    }
+                                }
                               }
-                            } else {
-                              complete(GenericResponse(StatusCodes.Created.intValue, null, Response(s"DeviceDetails skipped for ${newDeviceDetails.deviceId}", newDeviceDetails)))
+                              else {
+                                FastFuture.successful(GenericResponse(StatusCodes.Created.intValue, null, Response(s"DeviceDetails skipped for ${newDeviceDetails.deviceId}", newDeviceDetails)).respond)
+                              }
                             }
                           }
                         }
