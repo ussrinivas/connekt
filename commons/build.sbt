@@ -37,7 +37,7 @@ libraryDependencies ++= Seq(
   "org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.5", /* For SLF4J Bridge */
   /* End of Logging Libraries dependency */
   "commons-pool" % "commons-pool" % "1.6",
-  "org.apache.kafka" %% "kafka" % "0.8.2.2" excludeAll(
+  "org.apache.kafka" %% "kafka" % "0.10.0.1" excludeAll(
     ExclusionRule(organization = "org.slf4j", name = "slf4j-log4j12"),
     ExclusionRule(organization = "log4j"),
     ExclusionRule("io.netty")
