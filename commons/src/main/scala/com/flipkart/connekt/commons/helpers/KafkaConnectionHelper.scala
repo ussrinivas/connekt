@@ -96,12 +96,12 @@ trait KafkaConnectionHelper extends KafkaZKHelper {
     consumerProps.setProperty("zookeeper.sync.time.ms", kafkaConsumerConf.getString("zookeeper.sync.time.ms"))
     consumerProps.setProperty("auto.commit.interval.ms", kafkaConsumerConf.getString("auto.commit.interval.ms"))
     consumerProps.setProperty("consumer.timeout.ms", kafkaConsumerConf.getString("consumer.timeout.ms"))
-    consumerProps.setProperty("fetch.message.max.bytes", "2097152")
+    consumerProps.setProperty("fetch.message.max.bytes",  kafkaConsumerConf.getString("fetch.message.max.byte"))
     consumerProps.setProperty("num.consumer.fetchers", "4")
     consumerProps.setProperty("rebalance.max.retries", "6")
     consumerProps.setProperty("rebalance.backoff.ms", "5000")
     consumerProps.setProperty("queued.max.message.chunks", "200")
-    consumerProps.setProperty("socket.receive.buffer.bytes", "104857600")
+    consumerProps.setProperty("socket.receive.buffer.bytes",kafkaConsumerConf.getString("socket.receive.buffer.bytes"))
 
     Consumer.create(new ConsumerConfig(consumerProps))
   }
