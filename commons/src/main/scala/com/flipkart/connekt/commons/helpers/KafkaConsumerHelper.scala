@@ -29,7 +29,7 @@ trait KafkaConsumer {
   def offsets(topic: String): Map[Int, (Long, String)]
 }
 
-class KafkaConsumerHelper(val consumerFactoryConf: Config, globalContextConf: Config) extends KafkaConnectionHelper with GenericObjectPoolHelper {
+class KafkaConsumerHelper(val consumerFactoryConf: Config, globalContextConf: Config) extends KafkaConnectionHelper with KafkaZKHelper with GenericObjectPoolHelper {
 
   validatePoolProps("kafka consumer pool", globalContextConf)
 
@@ -91,21 +91,6 @@ class KafkaConsumerHelper(val consumerFactoryConf: Config, globalContextConf: Co
     None
   }
 
-  def offsets(topic: String): Map[Int, (Long, String)] = {
-    val zkClient = new ZkClient(zkPath(), 5000, 5000, ZKStringSerializer)
-    val partitions = ZkUtils.getPartitionsForTopics(zkClient, List(topic))
-
-    partitions.flatMap(topicAndPart => {
-      val topicDirs = new ZKGroupTopicDirs(groupId(), topic)
-      topicAndPart._2.map(partitionId => {
-        val zkPath = s"${topicDirs.consumerOffsetDir}/$partitionId"
-        val ownerPath = s"${topicDirs.consumerOwnerDir}/$partitionId"
-        val owner = ZkUtils.readDataMaybeNull(zkClient, ownerPath)._1.getOrElse("No owner")
-        val checkPoint = ZkUtils.readDataMaybeNull(zkClient, zkPath)._1.map(_.toLong).getOrElse(0L)
-        partitionId -> Tuple2(checkPoint, owner)
-      })
-    }).toMap
-  }
 }
 
 object KafkaConsumerHelper extends KafkaConsumer {
@@ -124,5 +109,5 @@ object KafkaConsumerHelper extends KafkaConsumer {
 
   def readMessage(topic: String): Option[String] = instance.readMessage(topic)
 
-  override def offsets(topic: String): Map[Int, (Long, String)] = instance.offsets(topic)
+  override def offsets(topic: String): Map[Int, (Long, String)] = instance.offsets(topic, instance.groupId(), instance.zkPath())
 }

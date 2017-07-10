@@ -28,7 +28,7 @@ import StringUtils._
 
 import scala.collection.mutable
 
-trait KafkaConnectionHelper {
+trait KafkaConnectionHelper extends KafkaZKHelper {
 
   def createKafkaConsumerPool(factoryConf: Config,
                               maxActive: Option[Int],
@@ -118,23 +118,4 @@ trait KafkaConnectionHelper {
     new Producer[K, M](new ProducerConfig(producerProps))
   }
 
-  private val zkClients : mutable.HashMap[String,ZkClient] = mutable.HashMap[String,ZkClient]()
-
-  def offsets(topic: String, groupId: String, zkPath: String): Map[Int, (Long, String)] = {
-    val zkClient =  zkClients.getOrElseUpdate(zkPath,new ZkClient(zkPath, 5000, 5000, ZKStringSerializer))
-    val partitions = ZkUtils.getPartitionsForTopics(zkClient, List(topic))
-
-    partitions.flatMap(topicAndPart => {
-      val topicDirs = new ZKGroupTopicDirs(groupId, topic)
-      topicAndPart._2.map(partitionId => {
-        val zkPath = s"${topicDirs.consumerOffsetDir}/$partitionId"
-        val ownerPath = s"${topicDirs.consumerOwnerDir}/$partitionId"
-        val owner = ZkUtils.readDataMaybeNull(zkClient, ownerPath)._1.getOrElse("No owner")
-        val checkPoint = ZkUtils.readDataMaybeNull(zkClient, zkPath)._1.map(_.toLong).getOrElse(0L)
-        partitionId -> Tuple2(checkPoint, owner)
-      })
-    }).toMap
-  }
-
-  def zkPath(kafkaConfig: Config) = kafkaConfig.getString("zookeeper.connect")
 }
