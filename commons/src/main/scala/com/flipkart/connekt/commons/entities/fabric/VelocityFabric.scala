@@ -39,10 +39,7 @@ class VelocityFabric(dataVtl: String) extends EngineFabric {
 
     override def invalidSetMethod(context: Context, leftreference: String, rightreference: String, info: Info): Boolean = false
 
-    override def invalidMethod(context: Context, reference: String, `object`: scala.Any, method: String, info: Info): AnyRef = {
-      ConnektLogger(LogFile.PROCESSORS).error(s"VelocityFabric InvalidRefHandler/invalidMethod StencilID ${info.getTemplateName} RefName: $reference")
-      throw new VelocityException(s"Invalid Method: Stencil: ${info.toString}, RefName: $reference")
-    }
+    override def invalidMethod(context: Context, reference: String, `object`: scala.Any, method: String, info: Info): AnyRef = null
   })
 
   /**
