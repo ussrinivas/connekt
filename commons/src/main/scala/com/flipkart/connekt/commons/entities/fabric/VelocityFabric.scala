@@ -39,7 +39,13 @@ class VelocityFabric(dataVtl: String) extends EngineFabric {
 
     override def invalidSetMethod(context: Context, leftreference: String, rightreference: String, info: Info): Boolean = false
 
-    override def invalidMethod(context: Context, reference: String, `object`: scala.Any, method: String, info: Info): AnyRef = null
+    override def invalidMethod(context: Context, reference: String, `object`: scala.Any, method: String, info: Info): AnyRef = {
+      if( reference.startsWith("$!"))
+        ""
+      else
+        null
+    }
+
   })
 
   /**
