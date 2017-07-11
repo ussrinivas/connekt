@@ -28,7 +28,7 @@ import StringUtils._
 
 import scala.collection.mutable
 
-trait KafkaConnectionHelper {
+trait KafkaConnectionHelper extends KafkaZKHelper {
 
   def createKafkaConsumerPool(factoryConf: Config,
                               maxActive: Option[Int],
@@ -96,12 +96,12 @@ trait KafkaConnectionHelper {
     consumerProps.setProperty("zookeeper.sync.time.ms", kafkaConsumerConf.getString("zookeeper.sync.time.ms"))
     consumerProps.setProperty("auto.commit.interval.ms", kafkaConsumerConf.getString("auto.commit.interval.ms"))
     consumerProps.setProperty("consumer.timeout.ms", kafkaConsumerConf.getString("consumer.timeout.ms"))
-    consumerProps.setProperty("fetch.message.max.bytes", "2097152")
+    consumerProps.setProperty("fetch.message.max.bytes",  kafkaConsumerConf.getString("fetch.message.max.byte"))
     consumerProps.setProperty("num.consumer.fetchers", "4")
     consumerProps.setProperty("rebalance.max.retries", "6")
     consumerProps.setProperty("rebalance.backoff.ms", "5000")
     consumerProps.setProperty("queued.max.message.chunks", "200")
-    consumerProps.setProperty("socket.receive.buffer.bytes", "104857600")
+    consumerProps.setProperty("socket.receive.buffer.bytes",kafkaConsumerConf.getString("socket.receive.buffer.bytes"))
 
     Consumer.create(new ConsumerConfig(consumerProps))
   }
@@ -118,23 +118,4 @@ trait KafkaConnectionHelper {
     new Producer[K, M](new ProducerConfig(producerProps))
   }
 
-  private val zkClients : mutable.HashMap[String,ZkClient] = mutable.HashMap[String,ZkClient]()
-
-  def offsets(topic: String, groupId: String, zkPath: String): Map[Int, (Long, String)] = {
-    val zkClient =  zkClients.getOrElseUpdate(zkPath,new ZkClient(zkPath, 5000, 5000, ZKStringSerializer))
-    val partitions = ZkUtils.getPartitionsForTopics(zkClient, List(topic))
-
-    partitions.flatMap(topicAndPart => {
-      val topicDirs = new ZKGroupTopicDirs(groupId, topic)
-      topicAndPart._2.map(partitionId => {
-        val zkPath = s"${topicDirs.consumerOffsetDir}/$partitionId"
-        val ownerPath = s"${topicDirs.consumerOwnerDir}/$partitionId"
-        val owner = ZkUtils.readDataMaybeNull(zkClient, ownerPath)._1.getOrElse("No owner")
-        val checkPoint = ZkUtils.readDataMaybeNull(zkClient, zkPath)._1.map(_.toLong).getOrElse(0L)
-        partitionId -> Tuple2(checkPoint, owner)
-      })
-    }).toMap
-  }
-
-  def zkPath(kafkaConfig: Config) = kafkaConfig.getString("zookeeper.connect")
 }

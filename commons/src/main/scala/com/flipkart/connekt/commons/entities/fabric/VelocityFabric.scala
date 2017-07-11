@@ -57,8 +57,8 @@ class VelocityFabric(dataVtl: String) extends EngineFabric {
       Success(w.toString)
     } catch {
       case e: Exception =>
-        ConnektLogger(LogFile.PROCESSORS).error(s"Velocity fabricate failed for [$id}], ${e.getMessage}", e)
-        Failure(new Throwable(s"Velocity fabricate failed for [$id}] error: ${e.getMessage}"))
+        ConnektLogger(LogFile.PROCESSORS).error(s"Velocity fabricate failed for [$id], ${e.getMessage}", e)
+        Failure(new Throwable(s"Velocity fabricate failed for [$id] error: ${e.getMessage}"))
     }
   }
 

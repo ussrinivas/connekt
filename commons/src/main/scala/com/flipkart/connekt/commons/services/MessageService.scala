@@ -93,8 +93,7 @@ class MessageService(requestDao: TRequestDao, userConfigurationDao: TUserConfigu
 
   //# ADMIN ACTIONS
   override def addClientTopic(topicName: String, numPartitions: Int, replicationFactor: Int = 1): Try[Unit] = Try_ {
-    val zkClient = new ZkClient(zkPath(kafkaConsumerConf), 5000, 5000, ZKStringSerializer)
-    kafka.admin.AdminUtils.createTopic(zkClient, topicName, numPartitions, replicationFactor, new Properties())
+    kafka.admin.AdminUtils.createTopic(getClient(zkPath(kafkaConsumerConf)), topicName, numPartitions, replicationFactor, new Properties())
     ConnektLogger(LogFile.SERVICE).info(s"Created topic $topicName with $numPartitions, replicationFactor $replicationFactor")
   }
 
@@ -105,7 +104,7 @@ class MessageService(requestDao: TRequestDao, userConfigurationDao: TUserConfigu
   override def assignClientChannelTopic(channel: Channel, clientUserId: String): String = s"${channel}_${clientUserId.md5.hash.hex}"
 
   override def getKafkaTopicNames(channel: Channel): Try[Seq[String]] = Try_ {
-    val allTopics = ZkUtils.getAllTopics(new ZkClient(zkPath(kafkaConsumerConf), 5000, 5000, ZKStringSerializer))
+    val allTopics = getClient(zkPath(kafkaConsumerConf)).getAllTopics()
     allTopics.filter(_.startsWith(channel.toString))
   }
 
