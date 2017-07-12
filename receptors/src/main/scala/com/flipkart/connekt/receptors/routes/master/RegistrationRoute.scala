@@ -60,9 +60,11 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
 
                                 deviceDetailsWithToken.flatMap[ToResponseMarshallable] {
                                   case Some(device) if device.deviceId != newDeviceDetails.deviceId =>
-                                    meter("invalid.deviceDetails").mark()
-                                    ConnektLogger(LogFile.SERVICE).error(s"DeviceDetails add/update failed for ${newDeviceDetails.deviceId} as token ${newDeviceDetails.token} is already assigned to deviceId ${device.deviceId}")
-                                    FastFuture.successful(GenericResponse(StatusCodes.BadRequest.intValue, null, Response(s"DeviceDetails add/update failed for ${newDeviceDetails.deviceId} as token ${newDeviceDetails.token} is already assigned to deviceId ${device.deviceId}", null)).respond)
+                                    meter("token.deviceId.mapping.update").mark()
+                                    DeviceDetailsService.delete(appName, device.deviceId).get
+                                    DeviceDetailsService.add(newDeviceDetails).get
+                                    ConnektLogger(LogFile.SERVICE).warn(s"DeviceDetails replacing with new deviceId ${newDeviceDetails.deviceId} and token as ${newDeviceDetails.token} which was already assigned to deviceId ${device.deviceId}")
+                                    FastFuture.successful(GenericResponse(StatusCodes.OK.intValue, null, Response(s"DeviceDetails replacing with new deviceId ${newDeviceDetails.deviceId} and token as ${newDeviceDetails.token} which was already assigned to deviceId ${device.deviceId}", newDeviceDetails)).respond)
                                   case _ =>
                                     existingDeviceDetails.flatMap[ToResponseMarshallable] {
                                       case Some(deviceDetail) =>
