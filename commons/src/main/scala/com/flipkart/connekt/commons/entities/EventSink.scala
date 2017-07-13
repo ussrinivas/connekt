@@ -28,7 +28,7 @@ import com.flipkart.connekt.commons.dao.JSONField
   new Type(value = classOf[RMQEventSink], name = "RMQ")
 ))
 abstract class EventSink extends JSONField
-case class HTTPEventSink(method:String, url: String) extends EventSink
+case class HTTPEventSink(method:String, url: String, rps : Int = 10000) extends EventSink
 case class KafkaEventSink(topic: String, broker: String) extends EventSink
 case class SpecterEventSink() extends EventSink
 case class RMQEventSink(queue: String, host: String, username: String, password: String) extends EventSink

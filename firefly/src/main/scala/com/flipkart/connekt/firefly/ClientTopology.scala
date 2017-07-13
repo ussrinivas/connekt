@@ -18,7 +18,7 @@ import java.util.UUID
 import akka.Done
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.Source
-import akka.stream.{ActorMaterializer, KillSwitch, KillSwitches}
+import akka.stream.{ThrottleMode, ActorMaterializer, KillSwitch, KillSwitches}
 import com.flipkart.connekt.busybees.streams.sources.KafkaSource
 import com.flipkart.connekt.commons.entities._
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
@@ -33,6 +33,7 @@ import com.typesafe.config._
 
 import scala.collection.JavaConverters._
 import scala.concurrent.Future
+import scala.concurrent.duration._
 
 class ClientTopology(topic: String, retryLimit: Int, kafkaConsumerConnConf: Config, subscription: Subscription)(implicit am: ActorMaterializer, sys: ActorSystem) {
 
@@ -60,7 +61,9 @@ class ClientTopology(topic: String, retryLimit: Int, kafkaConsumerConnConf: Conf
       .watchTermination(){ case (_, completed) => streamCompleted = completed}
 
     subscription.sink match {
-      case _: HTTPEventSink => source.runWith(new HttpSink(subscription, retryLimit, killSwitch).getHttpSink)
+      case hs: HTTPEventSink => source
+        .throttle(hs.rps, 1.second, hs.rps, ThrottleMode.Shaping)
+        .runWith(new HttpSink(subscription, retryLimit, killSwitch).getHttpSink)
       case kafka: KafkaEventSink => source.runWith(new KafkaSink(kafka.topic, kafka.broker).getKafkaSink)
       case _: SpecterEventSink => source.runWith(new SpecterSink().sink)
       case rmq: RMQEventSink => source.runWith(new RMQSink(rmq.queue, new RMQProducer(rmq.host, rmq.username, rmq.password, List(rmq.queue))).sink)
