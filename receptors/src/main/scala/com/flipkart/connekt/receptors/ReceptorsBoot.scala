@@ -69,6 +69,7 @@ object ReceptorsBoot extends BaseApp {
       ServiceFactory.initSchedulerService(DaoFactory.getHTableFactory.getConnection)
       ServiceFactory.initPNMessageService(DaoFactory.getPNRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf, ServiceFactory.getSchedulerService)
       ServiceFactory.initSMSMessageService(DaoFactory.getSmsRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf, null)
+      ServiceFactory.initPULLMessageService(DaoFactory.getPullRequestDao)
 
       ServiceFactory.initEmailMessageService(DaoFactory.getEmailRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf)
 

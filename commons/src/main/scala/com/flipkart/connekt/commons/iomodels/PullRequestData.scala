@@ -12,19 +12,7 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
-import com.fasterxml.jackson.annotation.JsonSubTypes.Type
-import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.databind.node.ObjectNode
 
-@JsonTypeInfo(
-  use = JsonTypeInfo.Id.NAME,
-  include = JsonTypeInfo.As.PROPERTY,
-  property = "type"
-)
-@JsonSubTypes(Array(
-  new Type(value = classOf[PNRequestInfo], name = "PN"),
-  new Type(value = classOf[EmailRequestInfo], name = "EMAIL"),
-  new Type(value = classOf[SmsRequestInfo], name = "SMS"),
-  new Type(value = classOf[PULLRequestInfo], name = "PULL"),
-  new Type(value = classOf[CardsRequestInfo], name = "CARD")
-))
-abstract class ChannelRequestInfo
+case class PullRequestData(data: ObjectNode) extends ChannelRequestData

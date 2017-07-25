@@ -104,6 +104,7 @@ object BusyBeesBoot extends BaseApp {
       ServiceFactory.initPNMessageService(DaoFactory.getPNRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf, null)
       ServiceFactory.initEmailMessageService(DaoFactory.getEmailRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf)
       ServiceFactory.initSMSMessageService(DaoFactory.getSmsRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf, null)
+      ServiceFactory.initPULLMessageService(DaoFactory.getPullRequestDao)
 
       ServiceFactory.initStatsReportingService(DaoFactory.getStatsReportingDao)
       ServiceFactory.initStencilService(DaoFactory.getStencilDao)

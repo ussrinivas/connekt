@@ -16,6 +16,7 @@ import com.flipkart.connekt.commons.dao._
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.helpers.KafkaProducerHelper
+import com.flipkart.connekt.commons.iomodels.PULLRequestInfo
 import com.flipkart.connekt.commons.services.{KeyChainService, _}
 import com.typesafe.config.Config
 import org.apache.hadoop.hbase.client.Connection
@@ -34,6 +35,10 @@ object ServiceFactory {
 
   def initSMSMessageService(requestDao: SmsRequestDao, userConfiguration: TUserConfiguration, queueProducerHelper: KafkaProducerHelper, kafkaConsumerConfig: Config, schedulerService: SchedulerService) = {
     serviceCache += ServiceType.SMS_MESSAGE -> new MessageService(requestDao, userConfiguration, queueProducerHelper, kafkaConsumerConfig, schedulerService)
+  }
+
+  def initPULLMessageService(requestDao: PullRequestDao) = {
+    serviceCache += ServiceType.PULL_MESSAGE -> new PullMessageService(requestDao)
   }
 
   def initCallbackService(eventsDao: EventsDaoContainer, requestDao: RequestDaoContainer, queueProducerHelper: KafkaProducerHelper) = {
@@ -76,6 +81,8 @@ object ServiceFactory {
     }
   }
 
+  def getPullMessageService = serviceCache(ServiceType.PULL_MESSAGE).asInstanceOf[PullMessageService]
+
   def getMessageQueueService = serviceCache(ServiceType.PULL_QUEUE).asInstanceOf[MessageQueueService]
 
   def initStencilService(dao: TStencilDao) = serviceCache += ServiceType.STENCIL -> new StencilService(dao)
@@ -99,5 +106,5 @@ object ServiceFactory {
 }
 
 object ServiceType extends Enumeration {
-  val PN_MESSAGE, TEMPLATE, CALLBACK, USER_INFO, AUTHORISATION, KEY_CHAIN, STATS_REPORTING, SCHEDULER, STENCIL, SMS_MESSAGE, EMAIL_MESSAGE, APP_CONFIG, PULL_QUEUE = Value
+  val PN_MESSAGE, TEMPLATE, CALLBACK, USER_INFO, AUTHORISATION, KEY_CHAIN, STATS_REPORTING, SCHEDULER, STENCIL, SMS_MESSAGE, EMAIL_MESSAGE, APP_CONFIG, PULL_QUEUE, PULL_MESSAGE = Value
 }
