@@ -256,13 +256,13 @@ private[xmpp] class XmppConnectionActor(googleCredential: GoogleCredential, appI
       connection.sendStanza(stanza)
       Success(Unit)
     } catch {
-      case notConnected: NotConnectedException =>
+      case _: NotConnectedException =>
         Try_{
           makeConnection(connection)
           connection.sendStanza(stanza)
         }
       case ex: Throwable =>
-        ConnektLogger(LogFile.CLIENTS).error("CONNECTION ERROR sending message to GCM, will be retried. jsonRequest : " + xmppPayloadString, ex)
+        ConnektLogger(LogFile.CLIENTS).error("Send Exception during send to GCM. jsonRequest : " + xmppPayloadString, ex)
         Failure(ex)
     }
   }
