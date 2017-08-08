@@ -52,7 +52,7 @@ class CallbackServiceTest extends CommonsBaseTest {
       appName = callBackEvent.appName,
       deviceIds = Set[String](callBackEvent.deviceId),
       ackRequired = true,
-      delayWhileIdle = true),
+      priority = Priority.NORMAL),
     channelData = PNRequestData(data = data.getObj[ObjectNode]),
     meta = Map()
   )

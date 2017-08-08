@@ -20,8 +20,9 @@ import com.flipkart.connekt.busybees.streams.flows.MapFlowStage
 import com.flipkart.connekt.commons.entities.MobilePlatform
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
-import com.flipkart.connekt.commons.iomodels.{APSPayloadEnvelope, iOSPNPayload}
+import com.flipkart.connekt.commons.iomodels.{APSPayloadEnvelope, Priority, iOSPNPayload}
 import com.flipkart.connekt.commons.utils.StringUtils._
+import com.turo.pushy.apns.DeliveryPriority
 import com.turo.pushy.apns.util.SimpleApnsPushNotification
 
 
@@ -34,7 +35,12 @@ class APNSDispatcherPrepare extends MapFlowStage[APSPayloadEnvelope, (SimpleApns
       ConnektLogger(LogFile.PROCESSORS).debug("APNSDispatcherPrepare received message: {}", supplier(envelope.messageId))
       ConnektLogger(LogFile.PROCESSORS).trace("APNSDispatcherPrepare received message: {}", supplier(envelope))
 
-      val pushNotification = new SimpleApnsPushNotification(payload.token, payload.topic, payload.data, new Date(payload.expiryInMillis))
+      val priority = payload.priority.getOrElse(Priority.HIGH) match {
+        case Priority.NORMAL => DeliveryPriority.CONSERVE_POWER
+        case Priority.HIGH => DeliveryPriority.IMMEDIATE
+      }
+
+      val pushNotification = new SimpleApnsPushNotification(payload.token, payload.topic, payload.data, new Date(payload.expiryInMillis), priority)
 
       List((pushNotification, APNSRequestTracker(envelope.messageId, envelope.clientId, envelope.deviceId, envelope.appName, envelope.contextId, envelope.meta)))
 
