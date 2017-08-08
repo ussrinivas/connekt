@@ -42,7 +42,7 @@ class PNRequestDao(tableName: String, pullRequestTableName: String, hTableFactor
     deviceIds = reqInfoProps.getS("deviceId").split(",").toSet,
     topic = Option(reqInfoProps.getS("topic")),
     ackRequired = reqInfoProps.getB("ackRequired"),
-    priority = Try(Priority.withName(reqInfoProps.getS("priority"))).getOrElse(null)
+    priority = Try(Priority.valueOf(reqInfoProps.getS("priority"))).getOrElse(null)
   )
 
   override protected def channelRequestDataMap(channelRequestData: ChannelRequestData): Map[String, Array[Byte]] = {

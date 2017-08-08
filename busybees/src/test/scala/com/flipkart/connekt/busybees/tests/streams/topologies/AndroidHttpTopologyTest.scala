@@ -12,8 +12,6 @@
  */
 package com.flipkart.connekt.busybees.tests.streams.topologies
 
-import java.util.UUID
-
 import akka.http.scaladsl.Http
 import akka.stream.scaladsl.{Sink, Source}
 import com.flipkart.connekt.busybees.models.GCMRequestTracker
@@ -22,10 +20,9 @@ import com.flipkart.connekt.busybees.streams.flows.dispatchers.GCMHttpDispatcher
 import com.flipkart.connekt.busybees.streams.flows.formaters.AndroidHttpChannelFormatter
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers.GCMResponseHandler
 import com.flipkart.connekt.busybees.tests.streams.TopologyUTSpec
-import com.flipkart.connekt.commons.iomodels.{ConnektRequest, PNRequestInfo, Priority}
+import com.flipkart.connekt.commons.iomodels.ConnektRequest
 import com.flipkart.connekt.commons.streams.FirewallRequestTransformer
 import com.flipkart.connekt.commons.utils.StringUtils._
-import org.apache.commons.lang.StringUtils
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -82,53 +79,3 @@ class AndroidHttpTopologyTest extends TopologyUTSpec {
 
 }
 
-
-object c extends App {
-  var pnInfo = ConnektRequest(
-    "SAdsadsad",
-    contextId = None,
-    clientId = StringUtils.EMPTY,
-    channel = "push",
-    sla = "H",
-    stencilId = Some(UUID.randomUUID().toString),
-    scheduleTs = Some(System.currentTimeMillis()),
-    expiryTs = Some(System.currentTimeMillis()),
-    channelInfo = PNRequestInfo(platform = "Sadsadasd",
-      appName = "lorem",
-      deviceIds = Set[String]("lorem"),
-      ackRequired = true,
-      priority = Priority.NORMAL),
-    channelData = null,
-    meta = Map()
-  )
-
-  println(pnInfo.getJson)
-
-
-  val cRequest = s"""
-                    |{ "id" : "123456789",
-                    |	"channel": "PN",
-                    |	"sla": "H",
-                    |	"channelData": {
-                    |		"type": "PN",
-                    |		"data": {
-                    |			"message": "Hello Kinshuk. GoodLuck!",
-                    |			"title": "Kinshuk GCM Push Test",
-                    |			"id": "${System.currentTimeMillis()}",
-                    |			"triggerSound": true,
-                    |			"notificationType": "Text"
-                    |		}
-                    |	},
-                    |	"channelInfo" : {
-                    |	    "type" : "PN",
-                    |	    "ackRequired": true,
-                    |    	"priority" : "high",
-                    |     "platform" :  "android",
-                    |     "appName" : "RetailApp",
-                    |     "deviceIds" : ["81adb899c58c9c8275e2b1ffa2d03861"]
-                    |	},
-                    |  "clientId" : "123456",
-                    |	"meta": {}
-                    |}
-                   """.stripMargin.getObj[ConnektRequest]
-}

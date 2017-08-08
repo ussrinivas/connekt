@@ -24,12 +24,9 @@ case class PNRequestInfo(@JsonProperty(required = false) platform: String,
                          @JsonProperty(required = false) deviceIds: Set[String] = Set.empty[String],
                          @JsonProperty(required = false) topic:Option[String] = None,
                          ackRequired: Boolean,
-//                         @JsonSerialize(using = classOf[PriorityStringSerializer])
-//                         @JsonDeserialize(using = classOf[PriorityStringDeserializer])
-                         @JsonScalaEnumeration(classOf[PriorityType])
-                         priority: Priority.Value) extends ChannelRequestInfo {
+                         priority: Priority = Priority.HIGH) extends ChannelRequestInfo {
   def this() {
-    this(null, null, Set.empty[String], None, false, null)
+    this(null, null, Set.empty[String], None, false, Priority.HIGH)
   }
 
 }

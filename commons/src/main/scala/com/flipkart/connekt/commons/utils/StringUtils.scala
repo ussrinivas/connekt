@@ -15,7 +15,6 @@ package com.flipkart.connekt.commons.utils
 import java.io.InputStream
 import java.lang.reflect.{ParameterizedType, Type => JType}
 import java.math.BigInteger
-import java.nio.charset.Charset
 import java.security.SecureRandom
 import java.util.UUID
 
@@ -23,10 +22,9 @@ import akka.http.scaladsl.model.HttpEntity
 import akka.stream.Materializer
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.databind.node.ObjectNode
-import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
+import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper, SerializationFeature}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
-import com.flipkart.connekt.commons.iomodels.SmsMeta
 import com.flipkart.connekt.commons.utils.NullWrapper._
 import org.apache.commons.codec.CharEncoding
 import org.apache.commons.validator.routines.UrlValidator
@@ -111,6 +109,9 @@ object StringUtils {
   val objMapper = new ObjectMapper() with ScalaObjectMapper
   objMapper.registerModules(Seq(DefaultScalaModule): _*)
   objMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+  // enable toString method of enums to return the value to be mapped
+  objMapper.enable(SerializationFeature.WRITE_ENUMS_USING_TO_STRING)
+  objMapper.enable(DeserializationFeature.READ_ENUMS_USING_TO_STRING)
 
   implicit class JSONMarshallFunctions(val o: AnyRef) {
     def getJson = objMapper.writeValueAsString(o)
