@@ -97,7 +97,7 @@ object StageSupervision {
   val decider: Supervision.Decider = {
     case cEx: ConnektPNStageException =>
       ServiceFactory.getReportingService.recordPushStatsDelta(cEx.client, Option(cEx.context), cEx.meta.get("stencilId").map(_.toString), Option(cEx.platform), cEx.appName, InternalStatus.StageError.toString)
-      ConnektLogger(LogFile.PROCESSORS).warn("StageSupervision Handle ConnektPNStageException")
+      ConnektLogger(LogFile.PROCESSORS).warn(s"StageSupervision Handle ConnektPNStageException  ${cEx.messageId}")
       cEx.destinations
         .map(PNCallbackEvent(cEx.messageId, cEx.client, _, cEx.eventType, cEx.platform, cEx.appName, cEx.context, cEx.getMessage, cEx.timeStamp))
         .persist
@@ -108,13 +108,13 @@ object StageSupervision {
       Channel.withName(cEx.channel.toLowerCase) match {
         case Channel.EMAIL =>
           ServiceFactory.getReportingService.recordChannelStatsDelta(cEx.client, Option(cEx.context), cEx.meta.get("stencilId").map(_.toString), Channel.EMAIL, cEx.appName, InternalStatus.StageError.toString)
-          ConnektLogger(LogFile.PROCESSORS).warn("StageSupervision Handle ConnektEmailStageException")
+          ConnektLogger(LogFile.PROCESSORS).warn(s"StageSupervision Handle ConnektEmailStageException MessageId ${cEx.messageId}")
           cEx.destinations
             .map(EmailCallbackEvent(cEx.messageId, cEx.client, _, cEx.eventType, cEx.appName, cEx.context, cEx.getMessage, cEx.timeStamp))
             .persist
         case Channel.SMS =>
           ServiceFactory.getReportingService.recordChannelStatsDelta(cEx.client, Option(cEx.context), cEx.meta.get("stencilId").map(_.toString), Channel.SMS, cEx.appName, InternalStatus.StageError.toString)
-          ConnektLogger(LogFile.PROCESSORS).warn("StageSupervision Handle ConnektSmsStageException")
+          ConnektLogger(LogFile.PROCESSORS).warn(s"StageSupervision Handle ConnektSmsStageException  ${cEx.messageId}")
           cEx.destinations
             .map(SmsCallbackEvent(cEx.messageId, cEx.eventType, _, cEx.client, cEx.appName, cEx.context, cEx.getMessage))
             .persist

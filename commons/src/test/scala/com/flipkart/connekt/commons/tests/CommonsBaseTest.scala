@@ -46,7 +46,7 @@ class CommonsBaseTest extends ConnektUTSpec {
     KafkaProducerHelper.init(kafkaConnConf, kafkaProducerPoolConf)
   })
 
-  private def bootstrapReceptors() = {
+  protected def bootstrapReceptors() = {
 
     ConnektLogger(LogFile.SERVICE).info(s"Test config initializing, configServiceHost: $configServiceHost:$configServicePort")
     val applicationConfigFile = ConfigUtils.getSystemProperty("receptors.appConfigurationFile").getOrElse("receptors-config.yaml")
