@@ -16,10 +16,11 @@ import com.flipkart.connekt.commons.dao._
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.helpers.KafkaProducerHelper
-import com.flipkart.connekt.commons.iomodels.PULLRequestInfo
+import com.flipkart.connekt.commons.iomodels.PullRequestInfo
 import com.flipkart.connekt.commons.services.{KeyChainService, _}
 import com.typesafe.config.Config
 import org.apache.hadoop.hbase.client.Connection
+import scala.concurrent.duration._
 
 object ServiceFactory {
 
@@ -73,6 +74,10 @@ object ServiceFactory {
     serviceCache += ServiceType.PULL_QUEUE -> new MessageQueueService(dao)
   }
 
+  def initInAppMessageQueueService(dao: MessageQueueDao):Unit = {
+    serviceCache += ServiceType.INAPP_QUEUE -> new MessageQueueService(dao, 30.days.toMillis)
+  }
+
   def getMessageService(channel: Channel): TMessageService = {
     channel match {
       case Channel.PUSH => serviceCache(ServiceType.PN_MESSAGE).asInstanceOf[TMessageService]
@@ -84,6 +89,8 @@ object ServiceFactory {
   def getPullMessageService = serviceCache(ServiceType.PULL_MESSAGE).asInstanceOf[PullMessageService]
 
   def getMessageQueueService = serviceCache(ServiceType.PULL_QUEUE).asInstanceOf[MessageQueueService]
+
+  def getInAppMessageQueueService = serviceCache(ServiceType.INAPP_QUEUE).asInstanceOf[MessageQueueService]
 
   def initStencilService(dao: TStencilDao) = serviceCache += ServiceType.STENCIL -> new StencilService(dao)
 
@@ -106,5 +113,5 @@ object ServiceFactory {
 }
 
 object ServiceType extends Enumeration {
-  val PN_MESSAGE, TEMPLATE, CALLBACK, USER_INFO, AUTHORISATION, KEY_CHAIN, STATS_REPORTING, SCHEDULER, STENCIL, SMS_MESSAGE, EMAIL_MESSAGE, APP_CONFIG, PULL_QUEUE, PULL_MESSAGE = Value
+  val PN_MESSAGE, TEMPLATE, CALLBACK, USER_INFO, AUTHORISATION, KEY_CHAIN, STATS_REPORTING, SCHEDULER, STENCIL, SMS_MESSAGE, EMAIL_MESSAGE, APP_CONFIG, PULL_QUEUE, PULL_MESSAGE, INAPP_QUEUE = Value
 }

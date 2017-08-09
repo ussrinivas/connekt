@@ -19,6 +19,7 @@ import com.couchbase.client.java.Bucket
 import com.flipkart.connekt.commons.connections.TConnectionProvider
 import com.flipkart.connekt.commons.factories.{HTableFactory, MySQLFactory, THTableFactory, TMySQLFactory}
 import com.typesafe.config.Config
+import scala.concurrent.duration._
 
 object DaoFactory {
 
@@ -97,9 +98,14 @@ object DaoFactory {
   }
 
 
-  def initAeroSpike(config: Config): Unit ={
+  def initAeroSpike(config: Config): Unit = {
     val aeroSpikeClient = connectionProvider.createAeroSpikeConnection(config.getString("hosts").split(",").toList)
     daoMap += DaoType.PULL_MESSAGE -> new MessageQueueDao("pull", aeroSpikeClient)
+  }
+
+  def initAeroSpikeForInApp(config: Config): Unit = {
+    val aeroSpikeClient = connectionProvider.createAeroSpikeConnection(config.getString("hosts").split(",").toList)
+    daoMap += DaoType.INAPP_MESSAGE -> new MessageQueueDao("inapp", aeroSpikeClient, Some(30.days.toMillis))
   }
 
   def initReportingDao(bucket: Bucket): Unit = {
@@ -107,6 +113,8 @@ object DaoFactory {
   }
 
   def getMessageQueueDao : MessageQueueDao = daoMap(DaoType.PULL_MESSAGE).asInstanceOf[MessageQueueDao]
+
+  def getInAppMessageQueueDao : MessageQueueDao = daoMap(DaoType.INAPP_MESSAGE).asInstanceOf[MessageQueueDao]
 
   def getDeviceDetailsDao: DeviceDetailsDao = daoMap(DaoType.DEVICE_DETAILS).asInstanceOf[DeviceDetailsDao]
 
@@ -162,5 +170,6 @@ object DaoType extends Enumeration {
   SUBSCRIPTION,
   KEY_CHAIN,
   PULL_MESSAGE,
+  INAPP_MESSAGE,
   PULL_REQUEST_INFO = Value
 }

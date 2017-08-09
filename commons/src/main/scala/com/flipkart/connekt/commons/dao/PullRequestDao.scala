@@ -11,7 +11,7 @@ import com.flipkart.connekt.commons.dao.HbaseDao._
   */
 class PullRequestDao (tableName: String, hTableFactory: THTableFactory) extends RequestDao(tableName: String, hTableFactory: THTableFactory) {
   override protected def channelRequestInfoMap(channelRequestInfo: ChannelRequestInfo): Map[String, Array[Byte]] = {
-    val pullRequestInfo = channelRequestInfo.asInstanceOf[PULLRequestInfo]
+    val pullRequestInfo = channelRequestInfo.asInstanceOf[PullRequestInfo]
 
     val m = scala.collection.mutable.Map[String, Array[Byte]]()
 
@@ -23,10 +23,10 @@ class PullRequestDao (tableName: String, hTableFactory: THTableFactory) extends 
     m.toMap
   }
 
-  override protected def getChannelRequestInfo(reqInfoProps: Map[String, Array[Byte]]): ChannelRequestInfo = PULLRequestInfo(
+  override protected def getChannelRequestInfo(reqInfoProps: Map[String, Array[Byte]]): ChannelRequestInfo = PullRequestInfo(
     appName = reqInfoProps.getS("appName"),
     eventType = reqInfoProps.getS("eventType"),
-    userIds = reqInfoProps.getS("userIds").split(",").toSet,
+    userIds = reqInfoProps.getS("userId").split(",").toSet,
     ackRequired = reqInfoProps.getB("ackRequired"),
     delayWhileIdle = reqInfoProps.getB("delayWhileIdle")
   )

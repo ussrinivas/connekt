@@ -58,6 +58,7 @@ object ReceptorsBoot extends BaseApp {
 
       val aeroSpikeCf = ConnektConfig.getConfig("connections.aerospike").getOrElse(ConfigFactory.empty())
       DaoFactory.initAeroSpike(aeroSpikeCf)
+      DaoFactory.initAeroSpikeForInApp(aeroSpikeCf)
 
       DaoFactory.initReportingDao(DaoFactory.getCouchbaseBucket("StatsReporting"))
 
@@ -66,10 +67,12 @@ object ReceptorsBoot extends BaseApp {
       val kafkaProducerHelper = KafkaProducerHelper.init(kafkaConnConf, kafkaProducerPoolConf)
 
       ServiceFactory.initMessageQueueService(DaoFactory.getMessageQueueDao)
+      ServiceFactory.initInAppMessageQueueService(DaoFactory.getInAppMessageQueueDao)
       ServiceFactory.initSchedulerService(DaoFactory.getHTableFactory.getConnection)
       ServiceFactory.initPNMessageService(DaoFactory.getPNRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf, ServiceFactory.getSchedulerService)
       ServiceFactory.initSMSMessageService(DaoFactory.getSmsRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf, null)
       ServiceFactory.initPULLMessageService(DaoFactory.getPullRequestDao)
+      ServiceFactory.initMessageQueueService(DaoFactory.getInAppMessageQueueDao)
 
       ServiceFactory.initEmailMessageService(DaoFactory.getEmailRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf)
 

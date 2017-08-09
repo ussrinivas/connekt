@@ -32,11 +32,10 @@ private object MessageMetaData {
   }
 }
 
-class MessageQueueDao(private val setName: String, private implicit val client: AsyncClient) extends Dao with AeroSpikeDao {
+class MessageQueueDao(private val setName: String, private implicit val client: AsyncClient, private val rowTTL: Option[Long] = Some(15.days.toMillis)) extends Dao with AeroSpikeDao {
 
   private val namespace: String = "connekt"
   private val binName: String = "queue"
-  private val rowTTL = Some(15.days.toMillis)
 
   @Timed("enqueueMessage")
   def enqueueMessage(appName: String, contactIdentifier: String, messageId: String, expiryTs: Long)(implicit ec: ExecutionContext): Future[Int] = {

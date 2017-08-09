@@ -39,7 +39,9 @@ class NotificationQueueRecorder(parallelism: Int)(implicit ec: ExecutionContext)
       if (message.isTestRequest)
         promise.success(List(message))
       else {
-        val enqueueFutures = pnInfo.deviceIds.map(ServiceFactory.getMessageQueueService.enqueueMessage(message.appName, _, message.id))
+        val enqueueFutures = pnInfo.deviceIds.map(
+          ServiceFactory.getMessageQueueService.enqueueMessage(message.appName, _, message.id)
+        )
         if (shouldAwait) //TODO: Remove this when cross-dc calls are taken care of.
           Future.sequence(enqueueFutures).onComplete(_ => promise.success(List(message)))
         else

@@ -344,22 +344,24 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
                                 val request = r.copy(clientId = user.userId, channel = "pull", meta = {
                                   Option(r.meta).getOrElse(Map.empty[String, String]) ++ headers
-                                })
+                                }, channelInfo =
+                                  Option(r.channelInfo).getOrElse(new PullRequestInfo()).asInstanceOf[PullRequestInfo].copy(appName = appName.toLowerCase)
+                                )
 
                                 request.validate
                                 ConnektLogger(LogFile.SERVICE).debug(s"Received PULL request with payload: ${request.toString}")
-                                val pullRequestInfo = request.channelInfo.asInstanceOf[PULLRequestInfo].copy(appName = appName.toLowerCase)
+                                val pullRequestInfo = request.channelInfo.asInstanceOf[PullRequestInfo]
 
                                 if (pullRequestInfo.userIds != null && pullRequestInfo.userIds.nonEmpty) {
                                   val success = scala.collection.mutable.Map[String, Set[String]]()
                                   val failure = ListBuffer[String]()
                                   ServiceFactory.getPullMessageService.saveRequest(request) match {
                                     case Success(id) =>
-                                      val userIds = request.channelInfo.asInstanceOf[PULLRequestInfo].userIds
+                                      val userIds = pullRequestInfo.userIds
                                       success += id -> userIds
 //                                      ServiceFactory.getReportingService.recordPushStatsDelta(user.userId, request.contextId, request.stencilId, Option(p.platform), appName, InternalStatus.Received, deviceIds.size)
                                     case Failure(t) =>
-                                      val userIds = request.channelInfo.asInstanceOf[PULLRequestInfo].userIds
+                                      val userIds = pullRequestInfo.userIds
                                       failure ++= userIds
 //                                      ServiceFactory.getReportingService.recordPushStatsDelta(user.userId, request.contextId, request.stencilId, Option(p.platform), appName, InternalStatus.Rejected, deviceIds.size)
                                   }

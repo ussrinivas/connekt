@@ -36,6 +36,7 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
   private lazy implicit val stencilService = ServiceFactory.getStencilService
   private lazy val messageService = ServiceFactory.getMessageService(Channel.PUSH)
+  private lazy val pullmessageService = ServiceFactory.getPullMessageService
 
   val route =
     authenticate {
@@ -105,6 +106,54 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                   authorize(user, "FETCH_REMOVE", s"FETCH_REMOVE_$appName") {
                     ServiceFactory.getMessageQueueService.removeMessage(appName, instanceId, messageId)
                     complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Removed $messageId from $appName / $instanceId", null)))
+                  }
+                }
+              }
+          } ~ pathPrefix("fetch" / "pull" / Segment / Segment) {
+            (appName: String, instanceId: String) =>
+              pathEndOrSingleSlash {
+                get {
+                  authorize(user, "FETCH", s"FETCH_$appName") {
+                    parameters('startTs.as[Long], 'endTs ? System.currentTimeMillis) { (startTs, endTs) =>
+                      require(startTs < endTs, "startTs must be prior to endTs")
+
+                      val profiler = timer(s"fetch.$appName").time()
+
+                      val safeStartTs = if (startTs < (System.currentTimeMillis - 30.days.toMillis)) System.currentTimeMillis - 7.days.toMillis else startTs
+
+                      val pendingMessageIds = ServiceFactory.getInAppMessageQueueService.getMessages(appName, instanceId, Some(Tuple2(safeStartTs + 1, endTs)))
+
+                      complete {
+                        pendingMessageIds.map(_ids => {
+                          val distinctMessageIds = _ids.distinct
+
+                          val fetchedMessages: Try[List[ConnektRequest]] = pullmessageService.getRequestInfo(distinctMessageIds.toList)
+                          val sortedMessages: Try[Seq[ConnektRequest]] = fetchedMessages.map { _messages =>
+                            val mIdRequestMap = _messages.map(r => r.id -> r).toMap
+                            distinctMessageIds.flatMap(mId => mIdRequestMap.find(_._1 == mId).map(_._2))
+                          }
+
+                          val messages = sortedMessages.map(_.filter(_.expiryTs.forall(_ >= System.currentTimeMillis)).filterNot(_.isTestRequest)).getOrElse(List.empty[ConnektRequest])
+
+                          val pullRequests = messages.map(r => {
+                            r.id -> {
+                              val channelData = Option(r.channelData) match {
+                                case Some(PNRequestData(_, pnData)) if pnData != null => r.channelData
+                                case _ => r.getComputedChannelData
+                              }
+                              val pullRequestData = channelData.asInstanceOf[PullRequestData]
+                              pullRequestData.data.put("contextId", r.contextId.orEmpty).put("messageId", r.id)
+                            }
+                          }).toMap
+
+                          profiler.stop()
+                          GenericResponse(StatusCodes.OK.intValue, null, Response(s"Fetched result for $instanceId", pullRequests))
+                            .respondWithHeaders(scala.collection.immutable.Seq(RawHeader("endTs", endTs.toString), RawHeader("Access-Control-Expose-Headers", "endTs")))
+
+                        })(ioDispatcher)
+
+                      }
+                    }
                   }
                 }
               }
