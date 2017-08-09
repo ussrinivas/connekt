@@ -33,7 +33,13 @@ object VelocityUtils {
   }
 
   private def convertToVelocityContext(array: ArrayNode): Any = {
-    array.map(row => getValue(row)).asJava
+
+    //TODO: This scala version doesn't' work. asJava is still returning seqWrapper
+    //array.map(row => getValue(row)).toList.asJava.asInstanceOf[java.util.ArrayList[Object]]
+
+    val arrayList = new java.util.ArrayList[Any]()
+    for (value <- array) arrayList.add(getValue(value))
+    arrayList
   }
 
 

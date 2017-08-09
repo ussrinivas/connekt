@@ -35,6 +35,7 @@ class StencilServiceTest extends CommonsBaseTest {
       |	"data": "Order for $!{product}, $booleanValue, $integerValue",
       | "mapV" : "$map.get("k1")",
       | "mapI" : "$!map.get("k2")",
+      | "list" : "$list[0]",
       | "invalid" : "$!invalid"
       |
       | #if ( $!invalidInt > 0 )
@@ -58,7 +59,10 @@ class StencilServiceTest extends CommonsBaseTest {
       |	"integerValue": 1678,
       | "map": {
       |    "k1" : "v1"
-      | }
+      | },
+      | "list" : [
+      |   "hello"
+      | ]
       |}
     """.stripMargin
 
@@ -68,6 +72,7 @@ class StencilServiceTest extends CommonsBaseTest {
       |	"data": "Order for , true, 1678",
       | "mapV" : "v1",
       | "mapI" : "",
+      | "list" : "hello",
       | "invalid" : ""
       |}
     """.stripMargin
