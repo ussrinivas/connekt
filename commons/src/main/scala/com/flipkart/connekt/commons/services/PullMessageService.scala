@@ -24,7 +24,7 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
       {
         messageDao.saveRequest(reqWithId.id, reqWithId, true)
         inAppInfo.userIds.map(
-          ServiceFactory.getInAppMessageQueueService.enqueueMessage(reqWithId.appName, _, reqWithId.id, reqWithId.expiryTs)(ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10)))
+          ServiceFactory.getInAppMessageQueueService.enqueueMessage(reqWithId.appName, _, reqWithId.id, reqWithId.expiryTs, Some(0L))(ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10)))
         )
       }
       Success(reqWithId.id)

@@ -121,11 +121,13 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
                       val safeStartTs = if (startTs < (System.currentTimeMillis - 30.days.toMillis)) System.currentTimeMillis - 7.days.toMillis else startTs
 
-                      val pendingMessageIds = ServiceFactory.getInAppMessageQueueService.getMessages(appName, instanceId, Some(Tuple2(safeStartTs + 1, endTs)))
+                      val pendingMessageIds = ServiceFactory.getInAppMessageQueueService.getMessagesWithDetails(appName, instanceId, Some(Tuple2(safeStartTs + 1, endTs)))
 
+                      var unreadCount = 0L
                       complete {
                         pendingMessageIds.map(_ids => {
-                          val distinctMessageIds = _ids.distinct
+                          val messageMap = _ids.toMap
+                          val distinctMessageIds = _ids.map(_._1).distinct
 
                           val fetchedMessages: Try[List[ConnektRequest]] = pullmessageService.getRequestInfo(distinctMessageIds.toList)
                           val sortedMessages: Try[Seq[ConnektRequest]] = fetchedMessages.map { _messages =>
@@ -142,12 +144,25 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                 case _ => r.getComputedChannelData
                               }
                               val pullRequestData = channelData.asInstanceOf[PullRequestData]
-                              pullRequestData.data.put("contextId", r.contextId.orEmpty).put("messageId", r.id)
+                              var read = messageMap(r.id).read match {
+                                case Some(x:Long) => x
+                                case _ => 1L
+                              }
+                              unreadCount += 1L - read
+                              Map(
+                                "channelData" -> pullRequestData.data.put("contextId", r.contextId.orEmpty).put("messageId", r.id).put("read", read == 1L),
+                                 "channelInfo" -> r.channelInfo.asInstanceOf[PullRequestInfo]
+                              )
                             }
                           }).toMap
 
+                          val pullResponse = Map(
+                            "total" -> pullRequests.size,
+                            "unread" -> unreadCount,
+                            "notifications" -> pullRequests.values
+                          )
                           profiler.stop()
-                          GenericResponse(StatusCodes.OK.intValue, null, Response(s"Fetched result for $instanceId", pullRequests))
+                          GenericResponse(StatusCodes.OK.intValue, null, Response(s"Fetched result for $instanceId", pullResponse))
                             .respondWithHeaders(scala.collection.immutable.Seq(RawHeader("endTs", endTs.toString), RawHeader("Access-Control-Expose-Headers", "endTs")))
 
                         })(ioDispatcher)

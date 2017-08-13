@@ -3,6 +3,8 @@ package com.flipkart.connekt.commons.dao
 import com.flipkart.connekt.commons.factories.THTableFactory
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.utils.StringUtils
+import com.flipkart.connekt.commons.utils.StringUtils.JSONMarshallFunctions
+import com.flipkart.connekt.commons.utils.StringUtils.JSONUnMarshallFunctions
 import com.flipkart.connekt.commons.dao.HbaseDao._
 
 
@@ -17,18 +19,17 @@ class PullRequestDao (tableName: String, hTableFactory: THTableFactory) extends 
 
     Option(pullRequestInfo.userIds).foreach(m += "userId" -> _.mkString(",").getUtf8Bytes)
     Option(pullRequestInfo.appName).foreach(m += "appName" -> _.toString.getUtf8Bytes)
-    Option(pullRequestInfo.ackRequired).foreach(m += "ackRequired" -> _.getBytes)
-    Option(pullRequestInfo.delayWhileIdle).foreach(m += "delayWhileIdle" -> _.getBytes)
+    Option(pullRequestInfo.channelSettings).foreach(m += "channelSettings" -> _.getJson.getUtf8Bytes)
+    Option(pullRequestInfo.platformSettings).foreach(m += "platformSettings" -> _.getJson.getUtf8Bytes)
 
     m.toMap
   }
 
   override protected def getChannelRequestInfo(reqInfoProps: Map[String, Array[Byte]]): ChannelRequestInfo = PullRequestInfo(
     appName = reqInfoProps.getS("appName"),
-    eventType = reqInfoProps.getS("eventType"),
+    platformSettings = reqInfoProps.getS("platformSettings").getObj[Map[String,String]],
     userIds = reqInfoProps.getS("userId").split(",").toSet,
-    ackRequired = reqInfoProps.getB("ackRequired"),
-    delayWhileIdle = reqInfoProps.getB("delayWhileIdle")
+    channelSettings = reqInfoProps.getS("channelSettings").getObj[Map[String, Boolean]]
   )
 
   override protected def channelRequestDataMap(channelRequestData: ChannelRequestData): Map[String, Array[Byte]] = {
