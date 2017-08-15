@@ -118,6 +118,15 @@ object StringUtils {
     def getJsonNode = objMapper.convertValue(o, classOf[ObjectNode])
   }
 
+  implicit class convertToMap(val o: AnyRef) {
+    def ccToMap: Map[String,Any] =
+      (Map[String, Any]() /: o.getClass.getDeclaredFields) {
+        (a, f) =>
+          f.setAccessible(true)
+          a + (f.getName -> f.get(o))
+      }
+  }
+
   implicit class ByteArrayHandyFunctions(val b: Array[Byte]) {
     def getString = new String(b, CharEncoding.UTF_8)
 

@@ -19,37 +19,40 @@ class PullRequestDao (tableName: String, hTableFactory: THTableFactory) extends 
 
     Option(pullRequestInfo.userIds).foreach(m += "userId" -> _.mkString(",").getUtf8Bytes)
     Option(pullRequestInfo.appName).foreach(m += "appName" -> _.toString.getUtf8Bytes)
-    Option(pullRequestInfo.channelSettings).foreach(m += "channelSettings" -> _.getJson.getUtf8Bytes)
-    Option(pullRequestInfo.platformSettings).foreach(m += "platformSettings" -> _.getJson.getUtf8Bytes)
-
     m.toMap
   }
 
   override protected def getChannelRequestInfo(reqInfoProps: Map[String, Array[Byte]]): ChannelRequestInfo = PullRequestInfo(
     appName = reqInfoProps.getS("appName"),
-    platformSettings = reqInfoProps.getS("platformSettings").getObj[Map[String,String]],
-    userIds = reqInfoProps.getS("userId").split(",").toSet,
-    channelSettings = reqInfoProps.getS("channelSettings").getObj[Map[String, Boolean]]
+    userIds = reqInfoProps.getS("userId").split(",").toSet
   )
 
   override protected def channelRequestDataMap(channelRequestData: ChannelRequestData): Map[String, Array[Byte]] = {
-    Option(channelRequestData).map(d => {
-      println("d is here: " + d)
-      println(d)
-      val pullRequestData = d.asInstanceOf[PullRequestData]
-      Option(pullRequestData.data).map(m => "data" -> m.toString.getUtf8Bytes).toMap
-//      ++ Option(pullRequestData.pushType).map(m => "pushType" -> m.getUtf8Bytes).toMap
-    }).orNull
+      val m = scala.collection.mutable.Map[String, Array[Byte]]()
+      val pullRequestData = channelRequestData.asInstanceOf[PullRequestData]
+      Option(pullRequestData.id).foreach(m += "id" -> _.toString.getUtf8Bytes)
+      Option(pullRequestData.text).foreach(m += "text" -> _.toString.getUtf8Bytes)
+      Option(pullRequestData.title).foreach(m += "title" -> _.toString.getUtf8Bytes)
+      Option(pullRequestData.eventType).foreach(m += "eventType" -> _.toString.getUtf8Bytes)
+      Option(pullRequestData.link).foreach(m += "link" -> _.toString.getUtf8Bytes)
+      Option(pullRequestData.imageLink).foreach(m += "imageLink" -> _.toString.getUtf8Bytes)
+      Option(pullRequestData.channelSettings).foreach(m += "channelSettings" -> _.getJson.getUtf8Bytes)
+      Option(pullRequestData.platformSettings).foreach(m += "platformSettings" -> _.getJson.getUtf8Bytes)
+      m.toMap
   }
 
   override protected def getChannelRequestData(reqDataProps: Map[String, Array[Byte]]): PullRequestData = {
-    val data = reqDataProps.getKV("data")
-//    val pushType = reqDataProps.getS("pushType")
-
-//    if(StringUtils.isNullOrEmpty(data) && StringUtils.isNullOrEmpty(pushType) )
-//      null
-//    else
-    PullRequestData(data = data)
+    PullRequestData(
+      id = reqDataProps.getS("id"),
+      text = reqDataProps.getS("text"),
+      title = reqDataProps.getS("title"),
+      eventType = reqDataProps.getS("eventType"),
+      link = reqDataProps.getS("link"),
+      imageLink = reqDataProps.getS("imageLink"),
+      otherImageLinks = reqDataProps.getKV("otherImageLinks"),
+      channelSettings = Option(reqDataProps.getS("channelSettings")).map(_.getObj[PullChannelSettings]).orNull,
+      platformSettings = Option(reqDataProps.getS("platformSettings")).map(_.getObj[PullPlatformSettings]).orNull
+    )
   }
 
 

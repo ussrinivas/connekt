@@ -20,7 +20,6 @@ import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.entities.MobilePlatform.MobilePlatform
 import com.flipkart.connekt.commons.factories.ServiceFactory
 import com.flipkart.connekt.commons.iomodels._
-import com.flipkart.connekt.commons.services.MessageQueueService
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.receptors.directives.MPlatformSegment
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
@@ -114,52 +113,49 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
               pathEndOrSingleSlash {
                 get {
                   authorize(user, "FETCH", s"FETCH_$appName") {
-                    parameters('startTs.as[Long], 'endTs ? System.currentTimeMillis) { (startTs, endTs) =>
+                    parameters('startTs.as[Long], 'endTs ? System.currentTimeMillis, 'size ? 10, 'offset ? 0 ) { (startTs, endTs, size, offset) =>
                       require(startTs < endTs, "startTs must be prior to endTs")
 
                       val profiler = timer(s"fetch.$appName").time()
 
                       val safeStartTs = if (startTs < (System.currentTimeMillis - 30.days.toMillis)) System.currentTimeMillis - 7.days.toMillis else startTs
 
-                      val pendingMessageIds = ServiceFactory.getInAppMessageQueueService.getMessagesWithDetails(appName, instanceId, Some(Tuple2(safeStartTs + 1, endTs)))
+                      val pendingMessages = ServiceFactory.getInAppMessageQueueService.getMessagesWithDetails(appName, instanceId, Some(Tuple2(safeStartTs + 1, endTs)))
 
-                      var unreadCount = 0L
+
                       complete {
-                        pendingMessageIds.map(_ids => {
+                        pendingMessages.map(_ids => {
                           val messageMap = _ids.toMap
                           val distinctMessageIds = _ids.map(_._1).distinct
+                          val paginatedMessageIds = distinctMessageIds.slice(offset, offset + size)
+                          var unreadCount = distinctMessageIds.map(1L - messageMap(_).read.get).foldRight(0L)(_ + _)
 
-                          val fetchedMessages: Try[List[ConnektRequest]] = pullmessageService.getRequestInfo(distinctMessageIds.toList)
+                          val fetchedMessages: Try[List[ConnektRequest]] = pullmessageService.getRequestInfo(paginatedMessageIds.toList)
                           val sortedMessages: Try[Seq[ConnektRequest]] = fetchedMessages.map { _messages =>
                             val mIdRequestMap = _messages.map(r => r.id -> r).toMap
-                            distinctMessageIds.flatMap(mId => mIdRequestMap.find(_._1 == mId).map(_._2))
+                            paginatedMessageIds.flatMap(mId => mIdRequestMap.find(_._1 == mId).map(_._2))
                           }
 
                           val messages = sortedMessages.map(_.filter(_.expiryTs.forall(_ >= System.currentTimeMillis)).filterNot(_.isTestRequest)).getOrElse(List.empty[ConnektRequest])
 
                           val pullRequests = messages.map(r => {
-                            r.id -> {
+                            {
                               val channelData = Option(r.channelData) match {
                                 case Some(PNRequestData(_, pnData)) if pnData != null => r.channelData
                                 case _ => r.getComputedChannelData
                               }
                               val pullRequestData = channelData.asInstanceOf[PullRequestData]
-                              var read = messageMap(r.id).read match {
-                                case Some(x:Long) => x
-                                case _ => 1L
-                              }
-                              unreadCount += 1L - read
                               Map(
-                                "channelData" -> pullRequestData.data.put("contextId", r.contextId.orEmpty).put("messageId", r.id).put("read", read == 1L),
-                                 "channelInfo" -> r.channelInfo.asInstanceOf[PullRequestInfo]
-                              )
+                                "read" -> (messageMap(r.id).read.get == 1L),
+                                "messageId" -> r.id
+                              ) ++ pullRequestData.ccToMap
                             }
-                          }).toMap
+                          })
 
                           val pullResponse = Map(
                             "total" -> pullRequests.size,
                             "unread" -> unreadCount,
-                            "notifications" -> pullRequests.values
+                            "notifications" -> pullRequests
                           )
                           profiler.stop()
                           GenericResponse(StatusCodes.OK.intValue, null, Response(s"Fetched result for $instanceId", pullResponse))
@@ -169,6 +165,13 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
                       }
                     }
+                  }
+                }
+              } ~ path(Segment) { messageId: String =>
+                delete {
+                  authorize(user, "FETCH_REMOVE", s"FETCH_REMOVE_$appName") {
+                    ServiceFactory.getInAppMessageQueueService.removeMessage(appName, instanceId, messageId)
+                    complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Removed $messageId from $appName / $instanceId", null)))
                   }
                 }
               }

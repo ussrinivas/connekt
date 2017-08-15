@@ -18,7 +18,7 @@ import com.flipkart.connekt.receptors.directives.AuthenticationDirectives
 import com.flipkart.connekt.receptors.routes.callbacks.{CallbackRoute, SubscriptionsRoute, TrackingRoute}
 import com.flipkart.connekt.receptors.routes.common._
 import com.flipkart.connekt.receptors.routes.exclude.SuppressionsRoute
-import com.flipkart.connekt.receptors.routes.master.{FetchRoute, RegistrationRoute, SendRoute}
+import com.flipkart.connekt.receptors.routes.master._
 import com.flipkart.connekt.receptors.routes.reports.ReportsRoute
 import com.flipkart.connekt.receptors.routes.status.SystemStatus
 import com.flipkart.connekt.receptors.routes.stencils.StencilsRoute
@@ -33,6 +33,7 @@ class RouteRegistry(implicit mat: ActorMaterializer) extends AuthenticationDirec
   private val callback = new CallbackRoute().route
   private val report = new ReportsRoute().route
   private val fetch = new FetchRoute().route
+  private val update = new UpdateRoute().route
   private val stencil = new StencilsRoute().route
   private val client = new ClientRoute().route
   private val keyChain = new KeyChainRoute().route
@@ -43,5 +44,5 @@ class RouteRegistry(implicit mat: ActorMaterializer) extends AuthenticationDirec
   private val exclusionRoute = new SuppressionsRoute().route
 
   val allRoutes =
-    health ~ clientAuth ~ tracking ~ send ~ registration ~ callback ~ report ~ fetch ~ stencil ~ client ~ keyChain ~ projectConfig ~ debugger ~ admin ~ subscription ~ exclusionRoute
+    health ~ clientAuth ~ tracking ~ send ~ registration ~ callback ~ report ~ fetch ~ stencil ~ client ~ keyChain ~ projectConfig ~ debugger ~ admin ~ subscription ~ exclusionRoute ~ update
 }

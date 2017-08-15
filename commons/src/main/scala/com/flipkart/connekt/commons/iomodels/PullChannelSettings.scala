@@ -1,5 +1,3 @@
-package com.flipkart.connekt.commons.iomodels
-
 /*
  *         -╥⌐⌐⌐⌐            -⌐⌐⌐⌐-
  *      ≡╢░░░░⌐\░░░φ     ╓╝░░░░⌐░░░░╪╕
@@ -12,18 +10,17 @@ package com.flipkart.connekt.commons.iomodels
  *
  *      Copyright © 2016 Flipkart.com
  */
-
-import com.fasterxml.jackson.annotation.JsonProperty
+package com.flipkart.connekt.commons.iomodels
 
 /**
-  * Created by saurabh.mimani on 24/07/17.
+  * Created by saurabh.mimani on 15/08/17.
   */
-case class PullRequestInfo(
-              @JsonProperty(required = false) appName: String,
-              @JsonProperty(required = false) userIds: Set[String] = Set.empty[String]
-            ) extends ChannelRequestInfo {
-
+case class PullChannelSettings (
+                                 fkMobileApi: Boolean = true,
+                                 website: Boolean = true,
+                                 fkMobileWebsite: Boolean = true
+                               ){
   def this() {
-    this(null, Set.empty[String])
+    this(true, true, true)
   }
 }
