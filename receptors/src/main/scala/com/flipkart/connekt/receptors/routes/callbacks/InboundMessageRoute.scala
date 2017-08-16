@@ -26,17 +26,23 @@ class InboundMessageRoute(implicit am: ActorMaterializer) extends BaseJsonHandle
               (appName: String, providerName: String) =>
                 authorize(user, "CREATE_INBOUND_EVENTS", s"CREATE_INBOUND_EVENTS_$appName") {
                   post {
-                    entity(as[String](messageUnmarshallerFromEntityUnmarshaller(stringUnmarshaller))) { stringBody =>
-                      val payload: ObjectNode = Map("data" -> stringBody.getObj[BaseJsonNode]).getJsonNode
+                    parameterMap { urlParams =>
+                      entity(as[String](messageUnmarshallerFromEntityUnmarshaller(stringUnmarshaller))) { stringBody =>
 
-                      val stencil = stencilService.getStencilsByName(s"ckt-$channel-$providerName").find(_.component.equalsIgnoreCase("inbound")).get
+                        val payload: ObjectNode = stringBody match {
+                          case x if x.isEmpty => Map("get" -> urlParams).getJsonNode
+                          case y => Map("post" -> y.getObj[BaseJsonNode]).getJsonNode
+                        }
 
-                      val event = stencilService.materialize(stencil, payload).asInstanceOf[InboundMessageCallbackEvent].copy(clientId = user.userId, appName = appName)
-                      event.validate()
-                      event.persist
+                        val stencil = stencilService.getStencilsByName(s"ckt-$channel-$providerName").find(_.component.equalsIgnoreCase("inbound")).get
 
-                      ConnektLogger(LogFile.SERVICE).debug(s"Received inbound event {}", supplier(event.toString))
-                      complete(GenericResponse(StatusCodes.OK.intValue, null, Response("Event saved successfully.", null)))
+                        val event = stencilService.materialize(stencil, payload).asInstanceOf[InboundMessageCallbackEvent].copy(clientId = user.userId, appName = appName)
+                        event.validate()
+                        event.persist
+
+                        ConnektLogger(LogFile.SERVICE).debug(s"Received inbound event {}", supplier(event.toString))
+                        complete(GenericResponse(StatusCodes.OK.intValue, null, Response("Event saved successfully.", null)))
+                      }
                     }
                   }
                 }
