@@ -15,6 +15,12 @@ case class InboundMessageCallbackEvent(clientId: String,
                                        eventId: String = RandomStringUtils.randomAlphabetic(10)
                                       ) extends CallbackEvent {
 
+  //java-constructor
+  def this(sender: String, eventType: String, contextId: String, message: String, cargo: String) {
+    this(clientId = null,sender = sender, eventType = eventType, appName = null, contextId = contextId,
+      message = message, cargo = cargo)
+  }
+
   def validate() = {
     require(contextId == null || contextId.hasOnlyAllowedChars, s"`contextId` field can only contain [A-Za-z0-9_\\.\\-\\:\\|] allowed chars, `contextId`: $contextId")
     require(contextId == null || contextId.length <= 20, s"`contextId` can be max 20 characters `contextId`: $contextId")
