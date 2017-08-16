@@ -808,7 +808,7 @@ paths:
     get:
       summary: get bucket data
       description: |
-        get bucket data
+        get bucket data, returns also all stencilIds in the bucket
       parameters:
         - $ref: '#/parameters/bucketName'
       tags:

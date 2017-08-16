@@ -56,11 +56,22 @@ class StencilDao(tableName: String, historyTableName: String, stencilComponentsT
       version.map(queryForList[Stencil](q1, name, _)).getOrElse(queryForList[Stencil](q2, name))
     } catch {
       case e: Exception =>
-        ConnektLogger(LogFile.DAO).error(s"Error fetching stencil [$name] ${e.getMessage}", e)
+        ConnektLogger(LogFile.DAO).error(s"Error fetching getStencilsByName [$name] ${e.getMessage}", e)
         throw e
     }
   }
 
+  override def getStencilsByBucket(name: String): List[Stencil] = {
+    implicit val j = mysqlHelper.getJDBCInterface
+    try {
+      val q2 = s"SELECT * FROM $tableName WHERE bucket = ?"
+      queryForList[Stencil](q2, name)
+    } catch {
+      case e: Exception =>
+        ConnektLogger(LogFile.DAO).error(s"Error fetching getStencilsByBucket [$name] ${e.getMessage}", e)
+        throw e
+    }
+  }
 
   override def writeStencil(stencil: Stencil): Unit = {
     implicit val j = mysqlHelper.getJDBCInterface
@@ -203,6 +214,7 @@ class StencilDao(tableName: String, historyTableName: String, stencilComponentsT
        """.stripMargin
     queryForList[StencilsEnsemble](q)
   }
+
 }
 
 object StencilDao {

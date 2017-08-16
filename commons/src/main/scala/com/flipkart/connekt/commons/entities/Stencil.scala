@@ -15,6 +15,7 @@ package com.flipkart.connekt.commons.entities
 import java.util.Date
 import javax.persistence.Column
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.core.{JsonGenerator, JsonParser}
 import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize}
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonSerializer, SerializerProvider}
@@ -76,7 +77,10 @@ class Stencil() {
     this.engineFabric = fabric
   }
 
+  def toInfo:StencilInfo = StencilInfo(this.id, this.`type`,this.name, this.createdBy, this.lastUpdatedTS.getTime)
 }
+
+case class StencilInfo(id:String, @JsonProperty("type") `type`:String, name:String, createdBy:String, lastUpdatedTS:Long)
 
 object StencilEngine extends Enumeration {
   type StencilEngine = Value
