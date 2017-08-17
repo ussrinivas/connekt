@@ -1214,6 +1214,9 @@ definitions:
       name:
         type: string
         description: stencil id
+      type:
+        type: string
+        description: stencil type
       bucket:
         type: string
         description: stencil id
