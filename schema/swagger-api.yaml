@@ -932,7 +932,7 @@ paths:
           description: Unexpected error
           schema:
             $ref: '#/definitions/Error'
-    post:
+    put:
       summary: updating stencil
       description: |
         updating stencil
