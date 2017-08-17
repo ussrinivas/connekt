@@ -1225,14 +1225,17 @@ definitions:
   StencilComponent:
     type: object
     properties:
-      id:
+      type:
         type: string
-        description: stencil id
+        description: stencil type
+      component:
+        type: string
+        description: stencil component
       engine:
         type: string
         enum:
-        - GROOVY
         - VELOCITY
+        - GROOVY
         description: engine GROOVY/VELOCITY
       engineFabric:
         type: string
