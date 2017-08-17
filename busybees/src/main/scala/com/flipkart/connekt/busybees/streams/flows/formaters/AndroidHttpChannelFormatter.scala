@@ -29,7 +29,7 @@ class AndroidHttpChannelFormatter (parallelism: Int)(implicit ec: ExecutionConte
     val timeToLive = message.expiryTs.map(expiry => (expiry - System.currentTimeMillis) / 1000).getOrElse(6.hour.toSeconds)
     val tokens = devicesInfo.map(_.token)
     val validDeviceIds = devicesInfo.map(_.deviceId)
-    val payload = GCMHttpPNPayload(registration_ids = tokens, priority = Option(pnInfo.priority.toString), appDataWithId, time_to_live = Some(timeToLive), dry_run = Option(message.isTestRequest))
+    val payload = GCMHttpPNPayload(registration_ids = tokens, priority = Option(pnInfo.priority).map(_.toString), appDataWithId, time_to_live = Some(timeToLive), dry_run = Option(message.isTestRequest))
 
     List(GCMPayloadEnvelope(message.id, message.clientId, validDeviceIds, pnInfo.appName, message.contextId.orEmpty, payload, message.meta))
   }

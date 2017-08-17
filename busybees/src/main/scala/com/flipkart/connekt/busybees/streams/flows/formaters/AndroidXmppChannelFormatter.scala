@@ -33,7 +33,7 @@ class AndroidXmppChannelFormatter(parallelism: Int)(implicit ec: ExecutionContex
 
     devicesInfo.map { device =>
       val messageId = XmppMessageIdHelper.generateMessageId(message, device.deviceId)
-      val payload = GCMXmppPNPayload(device.token, messageId, Option(pnInfo.priority.toString), appDataWithId, Some(timeToLive), deliveryReceiptRequired, Option(message.isTestRequest))
+      val payload = GCMXmppPNPayload(device.token, messageId, Option(pnInfo.priority).map(_.toString), appDataWithId, Some(timeToLive), deliveryReceiptRequired, Option(message.isTestRequest))
       GCMPayloadEnvelope(message.id, message.clientId, Seq(device.deviceId), pnInfo.appName, message.contextId.orEmpty, payload, message.meta)
     }.toList
   }
