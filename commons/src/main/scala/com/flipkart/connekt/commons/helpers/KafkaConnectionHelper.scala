@@ -98,8 +98,8 @@ trait KafkaConnectionHelper extends KafkaZKHelper {
     consumerProps.setProperty("consumer.timeout.ms", kafkaConsumerConf.getString("consumer.timeout.ms"))
     consumerProps.setProperty("fetch.message.max.bytes",  kafkaConsumerConf.getString("fetch.message.max.byte"))
     consumerProps.setProperty("num.consumer.fetchers", "4")
-    consumerProps.setProperty("rebalance.max.retries", "6")
-    consumerProps.setProperty("rebalance.backoff.ms", "5000")
+    consumerProps.setProperty("rebalance.max.retries", kafkaConsumerConf.getString("rebalance.max.retries"))
+    consumerProps.setProperty("rebalance.backoff.ms", kafkaConsumerConf.getString("rebalance.backoff.ms"))
     consumerProps.setProperty("queued.max.message.chunks", "200")
     consumerProps.setProperty("socket.receive.buffer.bytes",kafkaConsumerConf.getString("socket.receive.buffer.bytes"))
 
