@@ -34,12 +34,14 @@ class UpdateRoute (implicit am: ActorMaterializer) extends BaseJsonHandler {
             (appName: String, userId: String) =>
               pathEndOrSingleSlash {
                 post {
-
-                    authorize(user, "markAsRead", s"markAsRead_$appName") {
+                  authorize(user, "markAsRead", s"markAsRead_$appName") {
+                    parameters('client ? "", 'platform ? "", 'appVersion.as[String] ? "0") { (client, platform, appVersion) =>
                       val profiler = timer(s"markAsRead.$appName").time()
-                      ServiceFactory.getPullMessageService.markAsRead(appName, userId, System.currentTimeMillis - 30.days.toMillis, System.currentTimeMillis)
+                      val filterOptions = Map("client" -> client, "platform" -> platform, "appVersion" -> appVersion)
+                      ServiceFactory.getPullMessageService.markAsRead(appName, userId, System.currentTimeMillis - 30.days.toMillis, System.currentTimeMillis, filterOptions)
                       profiler.stop()
                       complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Updated messages for $userId", ("Status" -> "Success"))))
+                    }
                   }
                 }
               }

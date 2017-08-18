@@ -22,6 +22,7 @@ import java.util.concurrent.Executors
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
+import com.flipkart.connekt.commons.utils.StringUtils._
 
 /**
   * Created by saurabh.mimani on 24/07/17.
@@ -54,7 +55,7 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
     }
   }
 
-  def getRequest(appName: String, instanceId: String, startTs: Long, endTs: Long)(implicit ec: ExecutionContext): Future[Seq[ConnektRequest]] = {
+  def getRequest(appName: String, instanceId: String, startTs: Long, endTs: Long, filter: Map[String, Any])(implicit ec: ExecutionContext): Future[Seq[ConnektRequest]] = {
     val pendingMessages = ServiceFactory.getInAppMessageQueueService.getMessages(appName, instanceId, Some(Tuple2(startTs + 1, endTs)))
     pendingMessages.map(_ids => {
       val distinctMessageIds = _ids.distinct
@@ -64,7 +65,14 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
         val mIdRequestMap = _messages.map(r => r.id -> r).toMap
         distinctMessageIds.flatMap(mId => mIdRequestMap.find(_._1 == mId).map(_._2))
       }
-      sortedMessages.map(_.filter(_.expiryTs.forall(_ >= System.currentTimeMillis)).filterNot(_.isTestRequest)).getOrElse(List.empty[ConnektRequest])
+      var validMessages = sortedMessages.map(_.filter(_.expiryTs.forall(_ >= System.currentTimeMillis)).filterNot(_.isTestRequest)).getOrElse(List.empty[ConnektRequest])
+
+      val stencilService = ServiceFactory.getStencilService
+      stencilService.getStencilsByName(s"pull-${appName.toLowerCase}-filter").headOption match {
+        case Some(stencil) =>
+          validMessages.filter(c => stencilService.materialize(stencil, Map("data" -> c.channelData.asInstanceOf[PullRequestData], "filter" -> filter).getJsonNode).asInstanceOf[Boolean])
+        case None => validMessages
+      }
     })
   }
 
@@ -78,8 +86,8 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
     }
   }
 
-  def markAsRead(appName: String, instanceId: String, startTs: Long, endTs: Long)(implicit ec: ExecutionContext) = {
-    val messages = getRequest(appName, instanceId, startTs, endTs)
+  def markAsRead(appName: String, instanceId: String, startTs: Long, endTs: Long, filter: Map[String, Any])(implicit ec: ExecutionContext) = {
+    val messages = getRequest(appName, instanceId, startTs, endTs, filter)
     messages.map(_messages => {
       _messages.map(_m => {
         if(!_m.channelData.asInstanceOf[PullRequestData].read){

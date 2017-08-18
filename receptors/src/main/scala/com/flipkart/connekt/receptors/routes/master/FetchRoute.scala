@@ -113,25 +113,17 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
               pathEndOrSingleSlash {
                 get {
                   authorize(user, "FETCH", s"FETCH_$appName") {
-                    parameters('startTs.as[Long], 'endTs ? System.currentTimeMillis, 'size ? 10, 'offset ? 0, 'client ? "", 'platform ? "", 'appVersion ? 0)
+                    parameters('startTs.as[Long], 'endTs ? System.currentTimeMillis, 'size ? 10, 'offset ? 0, 'client ? "", 'platform ? "", 'appVersion.as[String] ? "0")
                     { (startTs, endTs, size, offset, client, platform, appVersion) =>
                       require(startTs < endTs, "startTs must be prior to endTs")
                       val profiler = timer(s"fetch.$appName").time()
 
                       val safeStartTs = if (startTs < (System.currentTimeMillis - 30.days.toMillis)) System.currentTimeMillis - 7.days.toMillis else startTs
                       val filterOptions = Map("client" -> client, "platform" -> platform, "appVersion" -> appVersion)
-
-                      val sortedMessages = ServiceFactory.getPullMessageService.getRequest(appName, instanceId, safeStartTs + 1, endTs)
+                      println(filterOptions)
+                      val sortedMessages = ServiceFactory.getPullMessageService.getRequest(appName, instanceId, safeStartTs + 1, endTs, filterOptions)
                       complete {
-                        sortedMessages.map(messages => {
-                          val pullRequests = stencilService.getStencilsByName(s"pull-${appName.toLowerCase}-filter").headOption match {
-                            case Some(stencil) =>
-                              messages.filter { r =>
-                                val pullRequestData = r.channelData.asInstanceOf[PullRequestData]
-                                stencilService.materialize(stencil, Map("data" -> pullRequestData, "filter" -> filterOptions).getJsonNode).asInstanceOf[Boolean]
-                              }
-                            case None => messages
-                          }
+                        sortedMessages.map(pullRequests => {
                           val pullRequestDataList = pullRequests.map { pr =>
                             Map("messageId" -> pr.id) ++ pr.channelData.asInstanceOf[PullRequestData].ccToMap
                           }
