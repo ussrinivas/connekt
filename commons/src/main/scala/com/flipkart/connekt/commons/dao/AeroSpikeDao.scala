@@ -61,18 +61,6 @@ trait AeroSpikeDao  extends  Instrumented {
     promise.future
   }
 
-  protected def updateMapRowItems(key: Key, binName: String, values: Map[String, String])(implicit client: AsyncClient): Future[Record] = {
-    val policy = new WritePolicy()
-    policy.timeout = timeout
-    policy.maxRetries = maxRetries
-    policy.expiration = -2
-    val mapPolicy = new MapPolicy(MapOrder.UNORDERED, MapWriteMode.UPDATE_ONLY)
-    val promise = Promise[Record]()
-    val data: Map[Value, Value] = values.map { case (k, v) => (new StringValue(k), new StringValue(v)) }
-    client.operate(policy, new AeroSpikeRecordHandler(promise), key, MapOperation.putItems(mapPolicy, binName, data.asJava))
-    promise.future
-  }
-
   protected def trimMapRowItems(key: Key, binName: String, numToRemove:Int)(implicit client: AsyncClient): Future[Record] = {
     val policy = new WritePolicy()
     policy.timeout = timeout

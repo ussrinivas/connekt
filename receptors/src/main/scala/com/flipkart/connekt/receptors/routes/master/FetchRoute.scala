@@ -121,11 +121,11 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                       val safeStartTs = if (startTs < (System.currentTimeMillis - 30.days.toMillis)) System.currentTimeMillis - 7.days.toMillis else startTs
                       val filterOptions = Map("client" -> client, "platform" -> platform, "appVersion" -> appVersion)
 
-                      val pendingMessages = ServiceFactory.getInAppMessageQueueService.getMessagesWithDetails(appName, instanceId, Some(Tuple2(safeStartTs + 1, endTs)))
+                      val pendingMessages = ServiceFactory.getInAppMessageQueueService.getMessages(appName, instanceId, Some(Tuple2(safeStartTs + 1, endTs)))
 
                       complete {
                         pendingMessages.map(_ids => {
-                          val distinctMessageIds = _ids.map(_._1).distinct
+                          val distinctMessageIds = _ids.distinct
 
                           val fetchedMessages: Try[List[ConnektRequest]] = pullmessageService.getRequestbyIds(distinctMessageIds.toList)
 

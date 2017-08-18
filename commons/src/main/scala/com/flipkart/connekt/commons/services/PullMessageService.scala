@@ -43,9 +43,9 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
   }
 
   def getRequest(appName: String, instanceId: String, startTs: Long, endTs: Long)(implicit ec: ExecutionContext): Future[Seq[ConnektRequest]] = {
-    val pendingMessages = ServiceFactory.getInAppMessageQueueService.getMessagesWithDetails(appName, instanceId, Some(Tuple2(startTs + 1, endTs)))
+    val pendingMessages = ServiceFactory.getInAppMessageQueueService.getMessages(appName, instanceId, Some(Tuple2(startTs + 1, endTs)))
     pendingMessages.map(_ids => {
-      val distinctMessageIds = _ids.map(_._1).distinct
+      val distinctMessageIds = _ids.distinct
       val fetchedMessages: Try[List[ConnektRequest]] = getRequestbyIds(distinctMessageIds.toList)
 
       val sortedMessages: Try[Seq[ConnektRequest]] = fetchedMessages.map { _messages =>

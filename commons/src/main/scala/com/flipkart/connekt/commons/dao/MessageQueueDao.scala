@@ -78,11 +78,8 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
     getRow(key).map { _record =>
       Option(_record).map { record =>
         val (valid, expired) = record.getMap(binName).asScala.toMap.asInstanceOf[Map[String, String]].map {
-          case (messageId, encodedMetaData) =>
-            messageId -> MessageMetaData(encodedMetaData)
-        }.partition { case (_, metadata) =>
-          metadata.expiryTs >= System.currentTimeMillis()
-        }
+          case (messageId, encodedMetaData) => messageId -> MessageMetaData(encodedMetaData)
+        }.partition { case (_, metadata) => metadata.expiryTs >= System.currentTimeMillis() }
         if (expired.nonEmpty)
           deleteMapRowItems(key, binName, expired.keys.toList)
         valid
@@ -96,17 +93,6 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
     */
   @Timed("getMessages")
   def getMessages(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[Seq[String]] = {
-    getMessagesWithDetails(appName, contactIdentifier, timestampRange).map { _messages =>
-      _messages.map(_._1)
-    }
-  }
-
-  /**
-    * getMessagesWithDetails
-    * @return Ordered Messages sorted by Most Recency with timeStamps and read flag
-    */
-  @Timed("getMessagesWithDetails")
-  def getMessagesWithDetails(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[Seq[(String, MessageMetaData)]] = {
     getQueue(appName, contactIdentifier).map { _messages =>
       val messages = timestampRange match {
         case Some((fromTs, endTs)) =>
@@ -115,8 +101,7 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
           }
         case None => _messages
       }
-      messages.toSeq.sortWith(_._2.createTs > _._2.createTs)
+      messages.toSeq.sortWith(_._2.createTs > _._2.createTs).map(_._1)
     }
   }
-
 }

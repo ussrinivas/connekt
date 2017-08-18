@@ -47,7 +47,4 @@ class MessageQueueService(dao: MessageQueueDao, private val defaultTTL: Long = 7
 
   @Timed("getMessages")
   def getMessages(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[Seq[String]] =  dao.getMessages(appName.toLowerCase, contactIdentifier, timestampRange)
-
-  @Timed("getMessagesWithDetails")
-  def getMessagesWithDetails(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[Seq[(String, MessageMetaData)]] =  dao.getMessagesWithDetails(appName.toLowerCase, contactIdentifier, timestampRange)
 }
