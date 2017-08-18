@@ -349,7 +349,6 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                 )
 
                                 request.validate
-                                println(s"Received PULL request with payload: ${request.toString}")
                                 ConnektLogger(LogFile.SERVICE).debug(s"Received PULL request with payload: ${request.toString}")
                                 val pullRequestInfo = request.channelInfo.asInstanceOf[PullRequestInfo]
 

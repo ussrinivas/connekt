@@ -14,10 +14,8 @@ package com.flipkart.connekt.receptors.routes.master
 
 import akka.connekt.AkkaHelpers._
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.model.headers.RawHeader
 import akka.stream.ActorMaterializer
-import com.fasterxml.jackson.databind.node.ObjectNode
-import com.flipkart.connekt.commons.iomodels.{ConnektRequest, GenericResponse, Response}
+import com.flipkart.connekt.commons.iomodels.{GenericResponse, Response}
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
 import com.flipkart.connekt.commons.factories.ServiceFactory
 import scala.concurrent.duration._

@@ -121,20 +121,9 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                       val safeStartTs = if (startTs < (System.currentTimeMillis - 30.days.toMillis)) System.currentTimeMillis - 7.days.toMillis else startTs
                       val filterOptions = Map("client" -> client, "platform" -> platform, "appVersion" -> appVersion)
 
-                      val pendingMessages = ServiceFactory.getInAppMessageQueueService.getMessages(appName, instanceId, Some(Tuple2(safeStartTs + 1, endTs)))
-
+                      val sortedMessages = ServiceFactory.getPullMessageService.getRequest(appName, instanceId, safeStartTs + 1, endTs)
                       complete {
-                        pendingMessages.map(_ids => {
-                          val distinctMessageIds = _ids.distinct
-
-                          val fetchedMessages: Try[List[ConnektRequest]] = pullmessageService.getRequestbyIds(distinctMessageIds.toList)
-
-                          val sortedMessages: Try[Seq[ConnektRequest]] = fetchedMessages.map { _messages =>
-                            val mIdRequestMap = _messages.map(r => r.id -> r).toMap
-                            distinctMessageIds.flatMap(mId => mIdRequestMap.find(_._1 == mId).map(_._2))
-                          }
-                          val messages = sortedMessages.map(_.filter(_.expiryTs.forall(_ >= System.currentTimeMillis)).filterNot(_.isTestRequest)).getOrElse(List.empty[ConnektRequest])
-
+                        sortedMessages.map(messages => {
                           val pullRequests = stencilService.getStencilsByName(s"pull-${appName.toLowerCase}-filter").headOption match {
                             case Some(stencil) =>
                               messages.filter { r =>
@@ -143,10 +132,10 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                               }
                             case None => messages
                           }
-                          val pullRequestDataList = pullRequests.map{ pr =>
+                          val pullRequestDataList = pullRequests.map { pr =>
                             Map("messageId" -> pr.id) ++ pr.channelData.asInstanceOf[PullRequestData].ccToMap
                           }
-                          val unreadCount = pullRequestDataList.count(!_("read").asInstanceOf[Boolean])
+                          val unreadCount = pullRequestDataList.count(!_ ("read").asInstanceOf[Boolean])
 
                           val pullResponse = Map(
                             "total" -> pullRequests.size,
@@ -156,9 +145,7 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                           profiler.stop()
                           GenericResponse(StatusCodes.OK.intValue, null, Response(s"Fetched result for $instanceId", pullResponse))
                             .respondWithHeaders(scala.collection.immutable.Seq(RawHeader("endTs", endTs.toString), RawHeader("Access-Control-Expose-Headers", "endTs")))
-
                         })(ioDispatcher)
-
                       }
                     }
                   }
