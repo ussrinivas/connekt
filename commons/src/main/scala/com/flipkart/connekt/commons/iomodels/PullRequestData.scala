@@ -13,7 +13,6 @@
 package com.flipkart.connekt.commons.iomodels
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.databind.node.ObjectNode
 
 case class PullRequestData(
                             id: String,
@@ -22,7 +21,7 @@ case class PullRequestData(
                             @JsonProperty(required = true) eventType: String,
                             @JsonProperty(required = true) link: String,
                             imageLink: String,
-                            otherImageLinks: ObjectNode,
-                            channelSettings: PullChannelSettings,
-                            platformSettings: PullPlatformSettings
+                            read: Boolean = false,
+                            channelSettings: Map[String, Boolean],
+                            platformSettings: Map[String, String]
                           ) extends ChannelRequestData

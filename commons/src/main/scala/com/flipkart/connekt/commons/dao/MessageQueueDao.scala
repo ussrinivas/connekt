@@ -120,19 +120,4 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
     }
   }
 
-  /**
-    * markQueueMessagesAsRead
-    * @return
-    */
-  @Timed("markQueueMessagesAsRead")
-  def markQueueMessagesAsRead(appName: String, contactIdentifier: String)(implicit ec: ExecutionContext): Future[_] = {
-    val key = new Key(namespace, setName, s"$appName$contactIdentifier")
-    getQueue(appName, contactIdentifier).map { _messages =>
-      val mapToUpdate = _messages
-        .filter(tmp => if (tmp._2.read.nonEmpty) (tmp._2.read.get == 0L) else false)
-        .map(tmp => tmp._1 -> tmp._2.markMessageMetaDataToRead.encoded)
-      updateMapRowItems(key, binName, mapToUpdate)
-    }
-  }
-
 }

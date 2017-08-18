@@ -349,24 +349,19 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                 )
 
                                 request.validate
+                                println(s"Received PULL request with payload: ${request.toString}")
                                 ConnektLogger(LogFile.SERVICE).debug(s"Received PULL request with payload: ${request.toString}")
                                 val pullRequestInfo = request.channelInfo.asInstanceOf[PullRequestInfo]
 
                                 if (pullRequestInfo.userIds != null && pullRequestInfo.userIds.nonEmpty) {
-                                  val success = scala.collection.mutable.Map[String, Set[String]]()
+                                  var success = Map[String, Set[String]]()
                                   val failure = ListBuffer[String]()
                                   ServiceFactory.getPullMessageService.saveRequest(request) match {
-                                    case Success(id) =>
-                                      val userIds = pullRequestInfo.userIds
-                                      success += id -> userIds
-//                                      ServiceFactory.getReportingService.recordPushStatsDelta(user.userId, request.contextId, request.stencilId, Option(p.platform), appName, InternalStatus.Received, deviceIds.size)
-                                    case Failure(t) =>
-                                      val userIds = pullRequestInfo.userIds
-                                      failure ++= userIds
-//                                      ServiceFactory.getReportingService.recordPushStatsDelta(user.userId, request.contextId, request.stencilId, Option(p.platform), appName, InternalStatus.Rejected, deviceIds.size)
+                                    case Success(result) => success = result
+                                    case Failure(t) => failure ++= pullRequestInfo.userIds
                                   }
                                   val (responseCode, message) = if (success.nonEmpty) Tuple2(StatusCodes.Created, s"In App request processed") else Tuple2(StatusCodes.InternalServerError, s"In App request failed")
-                                  GenericResponse(responseCode.intValue, null, SendResponse(message, success.toMap, failure.toList)).respond
+                                  GenericResponse(responseCode.intValue, null, SendResponse(message, success, failure.toList)).respond
                                 } else {
                                   ConnektLogger(LogFile.SERVICE).error(s"Request Validation Failed, $request ")
                                   GenericResponse(StatusCodes.BadRequest.intValue, null, Response("Request Validation Failed, Please ensure mandatory field values.", null)).respond

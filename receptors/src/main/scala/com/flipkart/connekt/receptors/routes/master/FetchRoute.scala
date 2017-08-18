@@ -113,49 +113,45 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
               pathEndOrSingleSlash {
                 get {
                   authorize(user, "FETCH", s"FETCH_$appName") {
-                    parameters('startTs.as[Long], 'endTs ? System.currentTimeMillis, 'size ? 10, 'offset ? 0 ) { (startTs, endTs, size, offset) =>
+                    parameters('startTs.as[Long], 'endTs ? System.currentTimeMillis, 'size ? 10, 'offset ? 0, 'client ? "", 'platform ? "", 'appVersion ? 0)
+                    { (startTs, endTs, size, offset, client, platform, appVersion) =>
                       require(startTs < endTs, "startTs must be prior to endTs")
-
                       val profiler = timer(s"fetch.$appName").time()
 
                       val safeStartTs = if (startTs < (System.currentTimeMillis - 30.days.toMillis)) System.currentTimeMillis - 7.days.toMillis else startTs
+                      val filterOptions = Map("client" -> client, "platform" -> platform, "appVersion" -> appVersion)
 
                       val pendingMessages = ServiceFactory.getInAppMessageQueueService.getMessagesWithDetails(appName, instanceId, Some(Tuple2(safeStartTs + 1, endTs)))
 
-
                       complete {
                         pendingMessages.map(_ids => {
-                          val messageMap = _ids.toMap
                           val distinctMessageIds = _ids.map(_._1).distinct
-                          val paginatedMessageIds = distinctMessageIds.slice(offset, offset + size)
-                          var unreadCount = distinctMessageIds.map(1L - messageMap(_).read.get).foldRight(0L)(_ + _)
 
-                          val fetchedMessages: Try[List[ConnektRequest]] = pullmessageService.getRequestInfo(paginatedMessageIds.toList)
+                          val fetchedMessages: Try[List[ConnektRequest]] = pullmessageService.getRequestbyIds(distinctMessageIds.toList)
+
                           val sortedMessages: Try[Seq[ConnektRequest]] = fetchedMessages.map { _messages =>
                             val mIdRequestMap = _messages.map(r => r.id -> r).toMap
-                            paginatedMessageIds.flatMap(mId => mIdRequestMap.find(_._1 == mId).map(_._2))
+                            distinctMessageIds.flatMap(mId => mIdRequestMap.find(_._1 == mId).map(_._2))
                           }
-
                           val messages = sortedMessages.map(_.filter(_.expiryTs.forall(_ >= System.currentTimeMillis)).filterNot(_.isTestRequest)).getOrElse(List.empty[ConnektRequest])
 
-                          val pullRequests = messages.map(r => {
-                            {
-                              val channelData = Option(r.channelData) match {
-                                case Some(PNRequestData(_, pnData)) if pnData != null => r.channelData
-                                case _ => r.getComputedChannelData
+                          val pullRequests = stencilService.getStencilsByName(s"pull-${appName.toLowerCase}-filter").headOption match {
+                            case Some(stencil) =>
+                              messages.filter { r =>
+                                val pullRequestData = r.channelData.asInstanceOf[PullRequestData]
+                                stencilService.materialize(stencil, Map("data" -> pullRequestData, "filter" -> filterOptions).getJsonNode).asInstanceOf[Boolean]
                               }
-                              val pullRequestData = channelData.asInstanceOf[PullRequestData]
-                              Map(
-                                "read" -> (messageMap(r.id).read.get == 1L),
-                                "messageId" -> r.id
-                              ) ++ pullRequestData.ccToMap
-                            }
-                          })
+                            case None => messages
+                          }
+                          val pullRequestDataList = pullRequests.map{ pr =>
+                            Map("messageId" -> pr.id) ++ pr.channelData.asInstanceOf[PullRequestData].ccToMap
+                          }
+                          val unreadCount = pullRequestDataList.count(!_("read").asInstanceOf[Boolean])
 
                           val pullResponse = Map(
                             "total" -> pullRequests.size,
                             "unread" -> unreadCount,
-                            "notifications" -> pullRequests
+                            "notifications" -> pullRequestDataList.slice(offset, offset + size)
                           )
                           profiler.stop()
                           GenericResponse(StatusCodes.OK.intValue, null, Response(s"Fetched result for $instanceId", pullResponse))

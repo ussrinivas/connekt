@@ -6,6 +6,7 @@ import com.flipkart.connekt.commons.utils.StringUtils
 import com.flipkart.connekt.commons.utils.StringUtils.JSONMarshallFunctions
 import com.flipkart.connekt.commons.utils.StringUtils.JSONUnMarshallFunctions
 import com.flipkart.connekt.commons.dao.HbaseDao._
+import org.apache.commons.codec.CharEncoding
 
 
 /**
@@ -36,6 +37,7 @@ class PullRequestDao (tableName: String, hTableFactory: THTableFactory) extends 
       Option(pullRequestData.eventType).foreach(m += "eventType" -> _.toString.getUtf8Bytes)
       Option(pullRequestData.link).foreach(m += "link" -> _.toString.getUtf8Bytes)
       Option(pullRequestData.imageLink).foreach(m += "imageLink" -> _.toString.getUtf8Bytes)
+      Option(pullRequestData.read).foreach(m += "read" -> _.getBytes)
       Option(pullRequestData.channelSettings).foreach(m += "channelSettings" -> _.getJson.getUtf8Bytes)
       Option(pullRequestData.platformSettings).foreach(m += "platformSettings" -> _.getJson.getUtf8Bytes)
       m.toMap
@@ -49,9 +51,9 @@ class PullRequestDao (tableName: String, hTableFactory: THTableFactory) extends 
       eventType = reqDataProps.getS("eventType"),
       link = reqDataProps.getS("link"),
       imageLink = reqDataProps.getS("imageLink"),
-      otherImageLinks = reqDataProps.getKV("otherImageLinks"),
-      channelSettings = Option(reqDataProps.getS("channelSettings")).map(_.getObj[PullChannelSettings]).orNull,
-      platformSettings = Option(reqDataProps.getS("platformSettings")).map(_.getObj[PullPlatformSettings]).orNull
+      read = reqDataProps.getB("read"),
+      channelSettings = Option(reqDataProps.getS("channelSettings")).map(_.getObj[Map[String,Boolean]]).orNull,
+      platformSettings = Option(reqDataProps.getS("platformSettings")).map(_.getObj[Map[String,String]]).orNull
     )
   }
 
