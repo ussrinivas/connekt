@@ -21,10 +21,8 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-class MessageQueueService(dao: MessageQueueDao, private val defaultTTL: Long = 7.days.toMillis) extends TService with Instrumented {
+class MessageQueueService(dao: MessageQueueDao, private val defaultTTL: Long = 7.days.toMillis, private val maxRecords: Int = 100) extends TService with Instrumented {
 
-
-  private val maxRecords = 100
   private val cleanupFactor = 0.1
 
   @Timed("enqueueMessage")

@@ -100,12 +100,8 @@ object DaoFactory {
 
   def initAeroSpike(config: Config): Unit = {
     val aeroSpikeClient = connectionProvider.createAeroSpikeConnection(config.getString("hosts").split(",").toList)
-    daoMap += DaoType.PULL_MESSAGE -> new MessageQueueDao("pull", aeroSpikeClient)
-  }
-
-  def initAeroSpikeForInApp(config: Config): Unit = {
-    val aeroSpikeClient = connectionProvider.createAeroSpikeConnection(config.getString("hosts").split(",").toList)
-    daoMap += DaoType.INAPP_MESSAGE -> new MessageQueueDao("inapp", aeroSpikeClient, Some(30.days.toMillis))
+    daoMap += DaoType.PULL_MESSAGE -> new MessageQueueDao("pull", aeroSpikeClient, Some(config.getConfig("pull").getInt("ttl").days.toMillis))
+    daoMap += DaoType.INAPP_MESSAGE -> new MessageQueueDao("inapp", aeroSpikeClient, Some(config.getConfig("inapp").getInt("ttl").days.toMillis))
   }
 
   def initReportingDao(bucket: Bucket): Unit = {

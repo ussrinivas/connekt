@@ -74,8 +74,8 @@ object ServiceFactory {
     serviceCache += ServiceType.PULL_QUEUE -> new MessageQueueService(dao)
   }
 
-  def initInAppMessageQueueService(dao: MessageQueueDao):Unit = {
-    serviceCache += ServiceType.INAPP_QUEUE -> new MessageQueueService(dao, 30.days.toMillis)
+  def initInAppMessageQueueService(dao: MessageQueueDao, config: Config):Unit = {
+    serviceCache += ServiceType.INAPP_QUEUE -> new MessageQueueService(dao, config.getConfig("hbase.pull").getInt("ttl").days.toMillis, config.getConfig("hbase.pull").getInt("maxRecords"))
   }
 
   def getMessageService(channel: Channel): TMessageService = {
