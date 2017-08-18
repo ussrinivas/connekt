@@ -30,7 +30,7 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
         inAppInfo.userIds.map{ userId =>
           val reqWithId = request.copy(id = s"${userId.sha256.hash.hex}:${channelData.eventType}:${channelData.id}")
           messageDao.saveRequest(reqWithId.id, reqWithId, true)
-          ServiceFactory.getInAppMessageQueueService.enqueueMessage(reqWithId.appName, userId, reqWithId.id, reqWithId.expiryTs, Some(0L))(ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10)))
+          ServiceFactory.getInAppMessageQueueService.enqueueMessage(reqWithId.appName, userId, reqWithId.id, reqWithId.expiryTs)(ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10)))
           result += (reqWithId.id -> Set(userId))
         }
       }

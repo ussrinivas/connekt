@@ -21,15 +21,14 @@ import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
-sealed case class MessageMetaData(createTs:Option[Long], expiryTs:Option[Long], read: Option[Long] = None) {
-  def encoded:String = List(createTs, expiryTs, read).flatten.mkString("|")
-  def markMessageMetaDataToRead: MessageMetaData = MessageMetaData(createTs, expiryTs, Some(1L))
+sealed case class MessageMetaData(createTs: Long, expiryTs: Long) {
+  def encoded:String = s"$createTs|$expiryTs"
 }
 
 private object MessageMetaData {
   def apply(encoded:String): MessageMetaData = {
     val parts = encoded.split('|').map(_.toLong)
-    MessageMetaData(parts.lift(0), parts.lift(1), parts.lift(2))
+    MessageMetaData(parts.head, parts.last)
   }
 }
 
@@ -39,9 +38,9 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
   private val binName: String = "queue"
 
   @Timed("enqueueMessage")
-  def enqueueMessage(appName: String, contactIdentifier: String, messageId: String, expiryTs: Long, read: Option[Long] = None)(implicit ec: ExecutionContext): Future[Int] = {
+  def enqueueMessage(appName: String, contactIdentifier: String, messageId: String, expiryTs: Long)(implicit ec: ExecutionContext): Future[Int] = {
     val key = new Key(namespace, setName, s"$appName$contactIdentifier")
-    val data = Map(messageId -> MessageMetaData(Some(System.currentTimeMillis()),Some(expiryTs), read).encoded)
+    val data = Map(messageId -> MessageMetaData(System.currentTimeMillis(),expiryTs).encoded)
     addMapRow(key, binName, data, rowTTL).map { _record =>
       _record.getInt(binName)
     }
@@ -82,7 +81,7 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
           case (messageId, encodedMetaData) =>
             messageId -> MessageMetaData(encodedMetaData)
         }.partition { case (_, metadata) =>
-          metadata.expiryTs.get >= System.currentTimeMillis()
+          metadata.expiryTs >= System.currentTimeMillis()
         }
         if (expired.nonEmpty)
           deleteMapRowItems(key, binName, expired.keys.toList)
@@ -112,11 +111,11 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
       val messages = timestampRange match {
         case Some((fromTs, endTs)) =>
           _messages.filter { case (_, metadata) =>
-            metadata.createTs.get >= fromTs && metadata.createTs.get <= endTs
+            metadata.createTs >= fromTs && metadata.createTs <= endTs
           }
         case None => _messages
       }
-      messages.toSeq.sortWith(_._2.createTs.get > _._2.createTs.get)
+      messages.toSeq.sortWith(_._2.createTs > _._2.createTs)
     }
   }
 
