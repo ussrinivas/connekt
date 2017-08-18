@@ -808,7 +808,7 @@ paths:
     get:
       summary: get bucket data
       description: |
-        get bucket data
+        get bucket data, returns also all stencilIds in the bucket
       parameters:
         - $ref: '#/parameters/bucketName'
       tags:
@@ -932,7 +932,7 @@ paths:
           description: Unexpected error
           schema:
             $ref: '#/definitions/Error'
-    post:
+    put:
       summary: updating stencil
       description: |
         updating stencil
@@ -1214,6 +1214,9 @@ definitions:
       name:
         type: string
         description: stencil id
+      type:
+        type: string
+        description: stencil type
       bucket:
         type: string
         description: stencil id
@@ -1225,14 +1228,17 @@ definitions:
   StencilComponent:
     type: object
     properties:
-      id:
+      type:
         type: string
-        description: stencil id
+        description: stencil type
+      component:
+        type: string
+        description: stencil component
       engine:
         type: string
         enum:
-        - GROOVY
         - VELOCITY
+        - GROOVY
         description: engine GROOVY/VELOCITY
       engineFabric:
         type: string

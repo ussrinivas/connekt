@@ -145,19 +145,21 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                 }
             } ~ path(Segment / "snapshot") {
               (appName: String) =>
-                get {
-                  meteredResource(s"getAllRegistrations.$appName") {
-                    authorize(user, "REGISTRATION_DOWNLOAD", s"REGISTRATION_DOWNLOAD_$appName") {
-                      ConnektLogger(LogFile.SERVICE).info(s"REGISTRATION_DOWNLOAD for $appName started by ${user.userId}")
-                      val dataStream = DeviceDetailsService.getAll(appName).get
+                withoutRequestTimeout {
+                  get {
+                    meteredResource(s"getAllRegistrations.$appName") {
+                      authorize(user, "REGISTRATION_DOWNLOAD", s"REGISTRATION_DOWNLOAD_$appName") {
+                        ConnektLogger(LogFile.SERVICE).info(s"REGISTRATION_DOWNLOAD for $appName started by ${user.userId}")
+                        val dataStream = DeviceDetailsService.getAll(appName).get
 
-                      def chunks = Source.fromIterator(() => dataStream)
-                        .grouped(100)
-                        .map(d => d.map(_.getJson).mkString(scala.compat.Platform.EOL))
-                        .map(HttpEntity.ChunkStreamPart.apply)
+                        def chunks = Source.fromIterator(() => dataStream)
+                          .grouped(100)
+                          .map(d => d.map(_.getJson).mkString(scala.compat.Platform.EOL))
+                          .map(HttpEntity.ChunkStreamPart.apply)
 
-                      val response = HttpResponse(entity = HttpEntity.Chunked(MediaTypes.`application/json`, chunks))
-                      complete(response)
+                        val response = HttpResponse(entity = HttpEntity.Chunked(MediaTypes.`application/json`, chunks))
+                        complete(response)
+                      }
                     }
                   }
                 }

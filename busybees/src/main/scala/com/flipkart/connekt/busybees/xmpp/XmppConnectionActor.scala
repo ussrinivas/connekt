@@ -21,6 +21,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, DeadLetterSuppression}
 import akka.event.LoggingReceive
 import com.flipkart.connekt.busybees.xmpp.Internal._
 import com.flipkart.connekt.busybees.xmpp.XmppConnectionActor.{SendXmppOutStreamRequest, Shutdown, StartShuttingDown}
+import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.entities.GoogleCredential
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels._
@@ -28,6 +29,7 @@ import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.google.common.cache._
+import org.jivesoftware.smack.SmackException.NotConnectedException
 import org.jivesoftware.smack.filter.StanzaFilter
 import org.jivesoftware.smack.packet.Stanza
 import org.jivesoftware.smack.provider.{ExtensionElementProvider, ProviderManager}
@@ -177,6 +179,7 @@ private[xmpp] class XmppConnectionActor(googleCredential: GoogleCredential, appI
       ConnektLogger(LogFile.CLIENTS).error(s"XmppConnectionActor received $other in busy state s")
   }
 
+
   def shuttingDown: Actor.Receive = LoggingReceive {
     case xmppRequest: SendXmppOutStreamRequest =>
       xmppRequest.responsePromise.failure(StoppingException())
@@ -253,8 +256,13 @@ private[xmpp] class XmppConnectionActor(googleCredential: GoogleCredential, appI
       connection.sendStanza(stanza)
       Success(Unit)
     } catch {
+      case _: NotConnectedException =>
+        Try_{
+          makeConnection(connection)
+          connection.sendStanza(stanza)
+        }
       case ex: Throwable =>
-        ConnektLogger(LogFile.CLIENTS).error("CONNECTION ERROR sending message to GCM, will be retried. jsonRequest : " + xmppPayloadString, ex)
+        ConnektLogger(LogFile.CLIENTS).error("Send Exception during send to GCM. jsonRequest : " + xmppPayloadString, ex)
         Failure(ex)
     }
   }
@@ -362,11 +370,14 @@ private[xmpp] class XmppConnectionActor(googleCredential: GoogleCredential, appI
     connection.addAsyncStanzaListener(stanzaListener, stanzaFilter)
 
     ReconnectionManager.getInstanceFor(connection).enableAutomaticReconnection()
+    makeConnection(connection)
+    connection
+  }
 
+  private def makeConnection(connection:XMPPTCPConnection): Unit ={
     try {
       connection.connect()
       connection.login(googleCredential.projectId + "@gcm.googleapis.com", googleCredential.apiKey)
-      connection
     }
     catch {
       case ex: Exception =>
@@ -374,7 +385,6 @@ private[xmpp] class XmppConnectionActor(googleCredential: GoogleCredential, appI
         ConnektLogger(LogFile.CLIENTS).error("Unable to connect:", ex)
         throw ex
     }
-
   }
 
 }

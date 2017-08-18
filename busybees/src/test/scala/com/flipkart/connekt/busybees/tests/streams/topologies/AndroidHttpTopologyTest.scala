@@ -17,7 +17,7 @@ import akka.stream.scaladsl.{Sink, Source}
 import com.flipkart.connekt.busybees.models.GCMRequestTracker
 import com.flipkart.connekt.busybees.streams.flows.RenderFlow
 import com.flipkart.connekt.busybees.streams.flows.dispatchers.GCMHttpDispatcherPrepare
-import com.flipkart.connekt.busybees.streams.flows.formaters.{AndroidHttpChannelFormatter, AndroidChannelFormatter}
+import com.flipkart.connekt.busybees.streams.flows.formaters.AndroidHttpChannelFormatter
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers.GCMResponseHandler
 import com.flipkart.connekt.busybees.tests.streams.TopologyUTSpec
 import com.flipkart.connekt.commons.iomodels.ConnektRequest
@@ -50,7 +50,7 @@ class AndroidHttpTopologyTest extends TopologyUTSpec {
                      |	"channelInfo" : {
                      |	    "type" : "PN",
                      |	    "ackRequired": true,
-                     |    	"delayWhileIdle": true,
+                     |    	"priority" : "high",
                      |     "platform" :  "android",
                      |     "appName" : "RetailApp",
                      |     "deviceIds" : ["81adb899c58c9c8275e2b1ffa2d03861"]
@@ -78,3 +78,4 @@ class AndroidHttpTopologyTest extends TopologyUTSpec {
   }
 
 }
+

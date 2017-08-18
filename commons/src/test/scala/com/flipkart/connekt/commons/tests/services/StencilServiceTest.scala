@@ -12,12 +12,15 @@
  */
 package com.flipkart.connekt.commons.tests.services
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.flipkart.connekt.commons.entities.{Bucket, Stencil, StencilEngine}
 import com.flipkart.connekt.commons.factories.ServiceFactory
 import com.flipkart.connekt.commons.tests.CommonsBaseTest
 import com.flipkart.connekt.commons.utils.StringUtils
 import com.flipkart.connekt.commons.utils.StringUtils._
+import org.skyscreamer.jsonassert.{JSONAssert, JSONCompareMode}
+import org.skyscreamer.jsonassert.comparator.DefaultComparator
 
 class StencilServiceTest extends CommonsBaseTest {
 
@@ -29,7 +32,15 @@ class StencilServiceTest extends CommonsBaseTest {
   stencil.engineFabric =
     """
       |{
-      |	"data": "Order for $!{product}, $booleanValue, $integerValue"
+      |	"data": "Order for $!{product}, $booleanValue, $integerValue",
+      | "mapV" : "$map.get("k1")",
+      | "mapI" : "$!map.get("k2")",
+      | "list" : "$list[0]",
+      | "invalid" : "$!invalid"
+      |
+      | #if ( $!invalidInt > 0 )
+      |   , "int2" : $integerValue
+      | #end
       |}
     """.stripMargin
 
@@ -45,14 +56,24 @@ class StencilServiceTest extends CommonsBaseTest {
     """
       |{
       |	"booleanValue": true,
-      |	"integerValue": 1678
+      |	"integerValue": 1678,
+      | "map": {
+      |    "k1" : "v1"
+      | },
+      | "list" : [
+      |   "hello"
+      | ]
       |}
     """.stripMargin
 
   val dataResult =
     """
       |{
-      |	"data": "Order for , true, 1678"
+      |	"data": "Order for , true, 1678",
+      | "mapV" : "v1",
+      | "mapI" : "",
+      | "list" : "hello",
+      | "invalid" : ""
       |}
     """.stripMargin
 
@@ -71,9 +92,9 @@ class StencilServiceTest extends CommonsBaseTest {
 
   "Stencil Service" should "render the stencil for given ConnektRequest" in {
     noException should be thrownBy stencilService.materialize(stencil, payload.getObj[ObjectNode])
-    val renderResult = stencilService.materialize(stencil, payload.getObj[ObjectNode])
+    val renderResult:String = stencilService.materialize(stencil, payload.getObj[ObjectNode]).toString
     println(renderResult)
-    renderResult shouldEqual dataResult
+    JSONAssert.assertEquals( "reder-result" ,dataResult, renderResult, new DefaultComparator(JSONCompareMode.LENIENT))
   }
 
   "Stencil Service" should "add bucket" in {

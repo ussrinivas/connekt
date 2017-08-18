@@ -27,14 +27,17 @@ import scala.util.{Failure, Success, Try}
 
 class VelocityFabric(dataVtl: String) extends EngineFabric {
 
+  Velocity.setProperty("runtime.references.strict", false)
+  Velocity.setProperty("directive.if.tostring.nullcheck", true)
+
   val ec = new EventCartridge()
   ec.addInvalidReferenceEventHandler(new InvalidReferenceEventHandler {
     override def invalidGetMethod(context: Context, reference: String, `object`: scala.Any, property: String, info: Info): AnyRef = {
       if(!reference.startsWith("$!")){
         ConnektLogger(LogFile.PROCESSORS).error(s"VelocityFabric InvalidRefHandler/invalidGetMethod StencilID ${info.getTemplateName} RefName:  $reference")
         throw new VelocityException(s"Invalid Reference: Stencil: ${info.toString}, RefName: $reference")
-      } else
-        ""
+      }
+      null
     }
 
     override def invalidSetMethod(context: Context, leftreference: String, rightreference: String, info: Info): Boolean = false

@@ -12,7 +12,7 @@
  */
 package com.flipkart.connekt.commons.utils
 
-import com.fasterxml.jackson.databind.node.{ArrayNode, NullNode, ObjectNode, ValueNode}
+import com.fasterxml.jackson.databind.node._
 import org.apache.velocity.VelocityContext
 import org.apache.velocity.context.Context
 
@@ -22,9 +22,9 @@ import scala.collection.JavaConverters._
 object VelocityUtils {
 
   /**
-   * Convert to Velocity Context Helpers
-   * --------- START ------------------
-   */
+    * Convert to Velocity Context Helpers
+    * --------- START ------------------
+    */
   def convertToVelocityContext(node: ObjectNode): Context = {
     val fields = node.fieldNames()
     val vContext = new VelocityContext()
@@ -33,21 +33,30 @@ object VelocityUtils {
   }
 
   private def convertToVelocityContext(array: ArrayNode): Any = {
-    array.map(row =>  getValue(row)).asJava
+
+    //TODO: This scala version doesn't' work. asJava is still returning seqWrapper
+    //array.map(row => getValue(row)).toList.asJava.asInstanceOf[java.util.ArrayList[Object]]
+
+    val arrayList = new java.util.ArrayList[Any]()
+    for (value <- array) arrayList.add(getValue(value))
+    arrayList
   }
 
 
-  private  def getValue(obj: Any): Any = {
+  private def getValue(obj: Any): Any = {
     obj match {
+      case _: IntNode => obj.asInstanceOf[IntNode].intValue()
+      case _: DoubleNode => obj.asInstanceOf[DoubleNode].doubleValue()
+      case _: BooleanNode => obj.asInstanceOf[BooleanNode].booleanValue()
       case _: ArrayNode => convertToVelocityContext(obj.asInstanceOf[ArrayNode])
       case _: ObjectNode => convertToVelocityContext(obj.asInstanceOf[ObjectNode])
-      case  _: NullNode | null => null
-      case _:ValueNode => obj.asInstanceOf[ValueNode].asText()
+      case _: NullNode | null => null
+      case _: ValueNode => obj.asInstanceOf[ValueNode].asText()
       case _ => obj.toString
     }
   }
 
   /**
-   * --------- END ------------------
-   */
+    * --------- END ------------------
+    */
 }

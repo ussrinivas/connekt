@@ -69,6 +69,7 @@ libraryDependencies ++= Seq(
   "com.google.guava" % "guava" % "12.0.1",
   "org.scalatest" %% "scalatest" % "2.2.4" % Test,
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.8.7",
+  "org.skyscreamer" % "jsonassert" % "1.5.0" % Test,
   "commons-lang" % "commons-lang" % "2.6",
   "commons-pool" % "commons-pool" % "1.6",
   "org.springframework" % "spring-jdbc" % "4.2.3.RELEASE",

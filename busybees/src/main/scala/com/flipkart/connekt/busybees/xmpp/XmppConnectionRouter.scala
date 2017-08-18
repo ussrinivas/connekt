@@ -96,7 +96,7 @@ class XmppConnectionRouter (var connectionPoolSize:Int, googleCredential: Google
           worker ! xmppRequest
         case _ =>
           //this case should never arise because connection actor pulls only when they are free
-          ConnektLogger(LogFile.CLIENTS).error(s"Router asking for free worker ${requests.size} should never arise")
+          ConnektLogger(LogFile.CLIENTS).warn(s"Router asking for free worker ${requests.size} should never arise")
           requests.enqueue(xmppRequest)
           router.routees.foreach(_.send(XmppRequestAvailable, self))
       }

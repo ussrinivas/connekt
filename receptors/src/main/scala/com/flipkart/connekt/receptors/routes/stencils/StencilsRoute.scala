@@ -29,6 +29,7 @@ import com.flipkart.connekt.receptors.wire.ResponseUtils._
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success}
 
+
 class StencilsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
   private lazy val stencilService = ServiceFactory.getStencilService
@@ -51,10 +52,11 @@ class StencilsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                     }
                   }
                 } ~ get {
-                  authorize(user, "ADMIN_BUCKET") {
+                  authorize(user, "ADMIN_BUCKET", "READ_BUCKET", s"READ_BUCKET_$name", s"STENCIL_GET_$name") {
                     stencilService.getBucket(name) match {
                       case Some(bucket) =>
-                        complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"StencilBucket found for name: ${bucket.name}", Map("bucket" -> bucket))))
+                        val stencils =  stencilService.getStencilsByBucket(name).map(s => s.id -> s.toInfo).toMap.values.toSeq.sortWith(_.lastUpdatedTS > _.lastUpdatedTS)
+                        complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"StencilBucket found for name: ${bucket.name}", Map("bucket" -> bucket, "contents" -> stencils))))
                       case _ =>
                         complete(GenericResponse(StatusCodes.NotFound.intValue, null, Response(s"StencilBucket not found for name: $name}", null)))
                     }

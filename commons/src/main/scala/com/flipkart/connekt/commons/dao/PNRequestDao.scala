@@ -17,6 +17,8 @@ import com.flipkart.connekt.commons.factories.THTableFactory
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.utils.StringUtils
 
+import scala.util.Try
+
 class PNRequestDao(tableName: String, pullRequestTableName: String, hTableFactory: THTableFactory) extends RequestDao(tableName: String, hTableFactory: THTableFactory) {
 
   override protected def channelRequestInfoMap(channelRequestInfo: ChannelRequestInfo): Map[String, Array[Byte]] = {
@@ -29,7 +31,7 @@ class PNRequestDao(tableName: String, pullRequestTableName: String, hTableFactor
     Option(pnRequestInfo.platform).foreach(m += "platform" -> _.toString.getUtf8Bytes)
     Option(pnRequestInfo.appName).foreach(m += "appName" -> _.toString.getUtf8Bytes)
     Option(pnRequestInfo.ackRequired).foreach(m += "ackRequired" -> _.getBytes)
-    Option(pnRequestInfo.delayWhileIdle).foreach(m += "delayWhileIdle" -> _.getBytes)
+    Option(pnRequestInfo.priority).foreach(m += "priority" -> _.toString.getBytes)
 
     m.toMap
   }
@@ -40,7 +42,7 @@ class PNRequestDao(tableName: String, pullRequestTableName: String, hTableFactor
     deviceIds = reqInfoProps.getS("deviceId").split(",").toSet,
     topic = Option(reqInfoProps.getS("topic")),
     ackRequired = reqInfoProps.getB("ackRequired"),
-    delayWhileIdle = reqInfoProps.getB("delayWhileIdle")
+    priority = Try(Priority.valueOf(reqInfoProps.getS("priority"))).getOrElse(null)
   )
 
   override protected def channelRequestDataMap(channelRequestData: ChannelRequestData): Map[String, Array[Byte]] = {
