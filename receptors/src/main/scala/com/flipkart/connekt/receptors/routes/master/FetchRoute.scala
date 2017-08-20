@@ -123,16 +123,15 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                       println(filterOptions)
                       val sortedMessages = ServiceFactory.getPullMessageService.getRequest(appName, instanceId, safeStartTs + 1, endTs, filterOptions)
                       complete {
-                        sortedMessages.map(pullRequests => {
-                          val pullRequestDataList = pullRequests.map { pr =>
-                            Map("messageId" -> pr.id) ++ pr.channelData.asInstanceOf[PullRequestData].ccToMap
+                        sortedMessages.map(_m => {
+                          val pullRequesData = _m._1.map { prd =>
+                            Map("messageId" -> prd.id) ++ prd.channelData.asInstanceOf[PullRequestData].ccToMap
                           }
-                          val unreadCount = pullRequestDataList.count(!_ ("read").asInstanceOf[Boolean])
 
                           val pullResponse = Map(
-                            "total" -> pullRequests.size,
-                            "unread" -> unreadCount,
-                            "notifications" -> pullRequestDataList.slice(offset, offset + size)
+                            "total" -> pullRequesData.size,
+                            "unread" -> _m._2,
+                            "notifications" -> pullRequesData.slice(offset, offset + size)
                           )
                           profiler.stop()
                           GenericResponse(StatusCodes.OK.intValue, null, Response(s"Fetched result for $instanceId", pullResponse))

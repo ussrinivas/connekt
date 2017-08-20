@@ -30,24 +30,21 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 class PullMessageService(requestDao: TRequestDao) extends TService {
   private val messageDao: TRequestDao = requestDao
 
-  def saveRequest(request: ConnektRequest): Try[Map[String,Set[String]]] = {
+  def saveRequest(request: ConnektRequest): Try[String] = {
     try {
+      val reqWithId = request.copy(id = generateUUID)
       val inAppInfo = request.channelInfo.asInstanceOf[PullRequestInfo]
-      val channelData = request.channelData.asInstanceOf[PullRequestData].id match {
-        case _:Any => request.channelData.asInstanceOf[PullRequestData]
-        case _ => request.channelData.asInstanceOf[PullRequestData].copy(id = generateUUID)
-      }
-      var result = Map[String,Set[String]]()
+      val inAppData = request.channelData.asInstanceOf[PullRequestData]
+      println("inAppData " + inAppData)
+      val read = if(inAppData.data.get("read").asBoolean()) 1L else 0L
       if (!request.isTestRequest)
       {
-        inAppInfo.userIds.map{ userId =>
-          val reqWithId = request.copy(id = s"${userId.sha256.hash.hex}:${channelData.eventType}:${channelData.id}")
-          messageDao.saveRequest(reqWithId.id, reqWithId, true)
-          ServiceFactory.getInAppMessageQueueService.enqueueMessage(reqWithId.appName, userId, reqWithId.id, reqWithId.expiryTs)(ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10)))
-          result += (reqWithId.id -> Set(userId))
-        }
+        messageDao.saveRequest(reqWithId.id, reqWithId, true)
+        inAppInfo.userIds.map(
+          ServiceFactory.getInAppMessageQueueService.enqueueMessage(reqWithId.appName, _, reqWithId.id, reqWithId.expiryTs, Some(read))(ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10)))
+        )
       }
-      Success(result)
+      Success(reqWithId.id)
     } catch {
       case e: Exception =>
         ConnektLogger(LogFile.SERVICE).error(s"Failed to save in app request ${e.getMessage}", e)
@@ -55,24 +52,28 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
     }
   }
 
-  def getRequest(appName: String, instanceId: String, startTs: Long, endTs: Long, filter: Map[String, Any])(implicit ec: ExecutionContext): Future[Seq[ConnektRequest]] = {
-    val pendingMessages = ServiceFactory.getInAppMessageQueueService.getMessages(appName, instanceId, Some(Tuple2(startTs + 1, endTs)))
-    pendingMessages.map(_ids => {
-      val distinctMessageIds = _ids.distinct
+  def getRequest(appName: String, instanceId: String, startTs: Long, endTs: Long, filter: Map[String, Any])(implicit ec: ExecutionContext): Future[(Seq[ConnektRequest], Int)] = {
+    val pendingMessages = ServiceFactory.getInAppMessageQueueService.getMessagesWithDetails(appName, instanceId, Some(Tuple2(startTs + 1, endTs)))
+    pendingMessages.map(queueMessages => {
+      val messageMap = queueMessages.toMap
+      val distinctMessageIds = queueMessages.map(_._1).distinct
       val fetchedMessages: Try[List[ConnektRequest]] = getRequestbyIds(distinctMessageIds.toList)
 
       val sortedMessages: Try[Seq[ConnektRequest]] = fetchedMessages.map { _messages =>
         val mIdRequestMap = _messages.map(r => r.id -> r).toMap
         distinctMessageIds.flatMap(mId => mIdRequestMap.find(_._1 == mId).map(_._2))
       }
-      var validMessages = sortedMessages.map(_.filter(_.expiryTs.forall(_ >= System.currentTimeMillis)).filterNot(_.isTestRequest)).getOrElse(List.empty[ConnektRequest])
+      val validMessages = sortedMessages.map(_.filter(_.expiryTs.forall(_ >= System.currentTimeMillis)).filterNot(_.isTestRequest)).getOrElse(List.empty[ConnektRequest])
 
       val stencilService = ServiceFactory.getStencilService
-      stencilService.getStencilsByName(s"pull-${appName.toLowerCase}-filter").headOption match {
+      val filteredMessages = stencilService.getStencilsByName(s"pull-${appName.toLowerCase}-filter").headOption match {
         case Some(stencil) =>
           validMessages.filter(c => stencilService.materialize(stencil, Map("data" -> c.channelData.asInstanceOf[PullRequestData], "filter" -> filter).getJsonNode).asInstanceOf[Boolean])
         case None => validMessages
       }
+
+      val unreadCount = filteredMessages.count(m => messageMap(m.id).read.get == 0L)
+      (filteredMessages, unreadCount)
     })
   }
 

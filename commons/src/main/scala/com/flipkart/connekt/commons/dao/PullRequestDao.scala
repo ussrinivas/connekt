@@ -43,30 +43,13 @@ class PullRequestDao (tableName: String, hTableFactory: THTableFactory) extends 
   override protected def channelRequestDataMap(channelRequestData: ChannelRequestData): Map[String, Array[Byte]] = {
       val m = scala.collection.mutable.Map[String, Array[Byte]]()
       val pullRequestData = channelRequestData.asInstanceOf[PullRequestData]
-      Option(pullRequestData.id).foreach(m += "id" -> _.toString.getUtf8Bytes)
-      Option(pullRequestData.text).foreach(m += "text" -> _.toString.getUtf8Bytes)
-      Option(pullRequestData.title).foreach(m += "title" -> _.toString.getUtf8Bytes)
-      Option(pullRequestData.eventType).foreach(m += "eventType" -> _.toString.getUtf8Bytes)
-      Option(pullRequestData.link).foreach(m += "link" -> _.toString.getUtf8Bytes)
-      Option(pullRequestData.imageLink).foreach(m += "imageLink" -> _.toString.getUtf8Bytes)
-      Option(pullRequestData.read).foreach(m += "read" -> _.getBytes)
-      Option(pullRequestData.channelSettings).foreach(m += "channelSettings" -> _.getJson.getUtf8Bytes)
-      Option(pullRequestData.platformSettings).foreach(m += "platformSettings" -> _.getJson.getUtf8Bytes)
+      Option(pullRequestData.data).foreach(m += "data" -> _.toString.getUtf8Bytes)
       m.toMap
   }
 
   override protected def getChannelRequestData(reqDataProps: Map[String, Array[Byte]]): PullRequestData = {
-    PullRequestData(
-      id = reqDataProps.getS("id"),
-      text = reqDataProps.getS("text"),
-      title = reqDataProps.getS("title"),
-      eventType = reqDataProps.getS("eventType"),
-      link = reqDataProps.getS("link"),
-      imageLink = reqDataProps.getS("imageLink"),
-      read = reqDataProps.getB("read"),
-      channelSettings = Option(reqDataProps.getS("channelSettings")).map(_.getObj[Map[String,Boolean]]).orNull,
-      platformSettings = Option(reqDataProps.getS("platformSettings")).map(_.getObj[Map[String,String]]).orNull
-    )
+    val data = reqDataProps.getKV("data")
+    if(StringUtils.isNullOrEmpty(data)) null else PullRequestData(data = data)
   }
 
 
