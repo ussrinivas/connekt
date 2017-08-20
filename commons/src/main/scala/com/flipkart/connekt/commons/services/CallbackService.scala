@@ -24,19 +24,21 @@ import com.flipkart.metrics.Timed
 
 import scala.util.Try
 
-sealed case class EventsDaoContainer(pnEventsDao: PNCallbackDao, emailEventsDao: EmailCallbackDao, smsEventsDao: SmsCallbackDao) {
+sealed case class EventsDaoContainer(pnEventsDao: PNCallbackDao, emailEventsDao: EmailCallbackDao, smsEventsDao: SmsCallbackDao, pullEventsDao: PullCallbackDao) {
   def apply(channel: Channel.Value): CallbackDao = channel match {
     case Channel.PUSH => pnEventsDao
     case Channel.EMAIL => emailEventsDao
     case Channel.SMS => smsEventsDao
+    case Channel.PULL => pullEventsDao
   }
 }
 
-sealed case class RequestDaoContainer(smsRequestDao: SmsRequestDao, pnRequestDao: PNRequestDao, emailRequestDao: EmailRequestDao) {
+sealed case class RequestDaoContainer(smsRequestDao: SmsRequestDao, pnRequestDao: PNRequestDao, emailRequestDao: EmailRequestDao, pullRequestDao: PullRequestDao) {
   def apply(channel: Channel.Value): RequestDao = channel match {
     case Channel.PUSH => pnRequestDao
     case Channel.EMAIL => emailRequestDao
     case Channel.SMS => smsRequestDao
+    case Channel.PULL => pullRequestDao
   }
 }
 

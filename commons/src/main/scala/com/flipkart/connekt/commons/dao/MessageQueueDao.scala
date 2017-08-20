@@ -22,7 +22,8 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
 sealed case class MessageMetaData(createTs: Long, expiryTs: Long, read: Option[Long] = None) {
-  def encoded:String = s"$createTs|$expiryTs" + (if (read.nonEmpty) s"|${read.get}" else "")
+  def encoded: String = s"$createTs|$expiryTs" + (if (read.nonEmpty) s"|${read.get}" else "")
+  def markAsRead: MessageMetaData = MessageMetaData(createTs, expiryTs, Some(1L))
 }
 
 private object MessageMetaData {
@@ -43,6 +44,22 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
     val data = Map(messageId -> MessageMetaData(System.currentTimeMillis(),expiryTs, read).encoded)
     addMapRow(key, binName, data, rowTTL).map { _record =>
       _record.getInt(binName)
+    }
+  }
+
+  /**
+    * markQueueMessagesAsRead
+    * @return
+    */
+  @Timed("markQueueMessagesAsRead")
+  def markQueueMessagesAsRead(appName: String, contactIdentifier: String, messageIds: Seq[String])(implicit ec: ExecutionContext): Future[Map[String, String]] = {
+    val key = new Key(namespace, setName, s"$appName$contactIdentifier")
+    getQueue(appName, contactIdentifier).map { _messages =>
+      val mapToUpdate = _messages
+        .filter(tmp => messageIds.contains(tmp._1))
+        .map(tmp => tmp._1 -> tmp._2.markAsRead.encoded)
+      updateMapRowItems(key, binName, mapToUpdate)
+      mapToUpdate
     }
   }
 
