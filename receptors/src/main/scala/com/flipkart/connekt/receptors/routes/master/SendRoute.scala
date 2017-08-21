@@ -350,8 +350,13 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
                                 request.validate
                                 ConnektLogger(LogFile.SERVICE).debug(s"Received PULL request with payload: ${request.toString}")
-                                val pullRequestInfo = request.channelInfo.asInstanceOf[PullRequestInfo]
+                                stencilService.getStencilsByName(s"pull-${appName.toLowerCase}-send-validate").headOption match {
+                                  case Some(stencil) =>
+                                    val result = stencilService.materialize(stencil, Map("data" -> request.channelData.asInstanceOf[PullRequestData]).getJsonNode).toString
+                                    require(result == "", result)
+                                }
 
+                                val pullRequestInfo = request.channelInfo.asInstanceOf[PullRequestInfo]
                                 if (pullRequestInfo.userIds != null && pullRequestInfo.userIds.nonEmpty) {
                                   val success = scala.collection.mutable.Map[String, Set[String]]()
                                   val failure = ListBuffer[String]()

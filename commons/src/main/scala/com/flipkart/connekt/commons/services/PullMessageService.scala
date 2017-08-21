@@ -39,7 +39,7 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
       val inAppInfo = request.channelInfo.asInstanceOf[PullRequestInfo]
       val inAppData = request.channelData.asInstanceOf[PullRequestData]
       println("inAppData " + inAppData)
-      val read = if(inAppData.data.get("read").asBoolean()) 1L else 0L
+      val read = if(inAppData.data.get("read") != null && inAppData.data.get("read").asBoolean()) 1L else 0L
       if (!request.isTestRequest)
       {
         messageDao.saveRequest(reqWithId.id, reqWithId, true)
@@ -69,7 +69,7 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
       val validMessages = sortedMessages.map(_.filter(_.expiryTs.forall(_ >= System.currentTimeMillis)).filterNot(_.isTestRequest)).getOrElse(List.empty[ConnektRequest])
 
       val stencilService = ServiceFactory.getStencilService
-      val filteredMessages = stencilService.getStencilsByName(s"pull-${appName.toLowerCase}-filter").headOption match {
+      val filteredMessages = stencilService.getStencilsByName(s"pull-${appName.toLowerCase}-fetch-filter").headOption match {
         case Some(stencil) =>
           validMessages.filter(c => stencilService.materialize(stencil, Map("data" -> c.channelData.asInstanceOf[PullRequestData], "filter" -> filter).getJsonNode).asInstanceOf[Boolean])
         case None => validMessages
