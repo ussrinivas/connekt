@@ -104,7 +104,7 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
         val event = PullCallbackEvent(
           messageId = msgId,
           eventId = RandomStringUtils.randomAlphabetic(10),
-          clientId = filter.get("client").toString,
+          clientId = filter.get("client").getOrElse("").toString,
           contextId = "",
           appName = appName,
           eventType = "markAsRead")
