@@ -21,8 +21,10 @@ import akka.stream.{ActorAttributes, Attributes, KillSwitches, Materializer}
 import com.flipkart.connekt.busybees.BusyBeesBoot
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels.{CallbackEvent, ConnektRequest}
+import com.flipkart.connekt.commons.core.Wrappers._
+import scala.concurrent.duration._
 
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 
 trait ConnektTopology[E <: CallbackEvent] {
 
@@ -67,9 +69,13 @@ trait ConnektTopology[E <: CallbackEvent] {
     Option(shutdownComplete).getOrElse(Future.successful(Done))
   }
 
+  private val rand = new scala.util.Random
+
   def restart(implicit mat: Materializer): Unit = {
-    shutdown()
-    Thread.sleep(30 * 1000)
+    //wait for a random time btwn 0 and 2 minutes.
+    Thread.sleep(rand.nextInt(120) * 1000)
+    val shutdownComplete = shutdown()
+    Try_(Await.ready(shutdownComplete, 30.seconds))
     run(mat)
   }
 }
