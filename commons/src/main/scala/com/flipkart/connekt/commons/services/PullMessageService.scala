@@ -27,9 +27,6 @@ import scala.util.{Failure, Success, Try}
 import com.flipkart.connekt.commons.utils.StringUtils._
 import org.apache.commons.lang.RandomStringUtils
 
-/**
-  * Created by saurabh.mimani on 24/07/17.
-  */
 class PullMessageService(requestDao: TRequestDao) extends TService {
   private val messageDao: TRequestDao = requestDao
 

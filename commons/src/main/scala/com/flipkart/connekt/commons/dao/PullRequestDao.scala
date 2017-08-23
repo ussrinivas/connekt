@@ -21,9 +21,6 @@ import com.flipkart.connekt.commons.dao.HbaseDao._
 import org.apache.commons.codec.CharEncoding
 
 
-/**
-  * Created by saurabh.mimani on 24/07/17.
-  */
 class PullRequestDao (tableName: String, hTableFactory: THTableFactory) extends RequestDao(tableName: String, hTableFactory: THTableFactory) {
   override protected def channelRequestInfoMap(channelRequestInfo: ChannelRequestInfo): Map[String, Array[Byte]] = {
     val pullRequestInfo = channelRequestInfo.asInstanceOf[PullRequestInfo]

@@ -118,7 +118,7 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                       require(startTs < endTs, "startTs must be prior to endTs")
                       val profiler = timer(s"fetch.$appName").time()
 
-                      val safeStartTs = if (startTs < (System.currentTimeMillis - 30.days.toMillis)) System.currentTimeMillis - 7.days.toMillis else startTs
+                      val safeStartTs = if (startTs < (System.currentTimeMillis - 90.days.toMillis)) System.currentTimeMillis - 90.days.toMillis else startTs
                       val filterOptions = Map("client" -> client, "platform" -> platform, "appVersion" -> appVersion)
                       println(filterOptions)
                       val sortedMessages = ServiceFactory.getPullMessageService.getRequest(appName, instanceId, safeStartTs + 1, endTs, filterOptions)

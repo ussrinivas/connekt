@@ -14,9 +14,6 @@ package com.flipkart.connekt.commons.iomodels
 
 import com.fasterxml.jackson.annotation.JsonProperty
 
-/**
-  * Created by saurabh.mimani on 24/07/17.
-  */
 case class PullRequestInfo(
               @JsonProperty(required = false) appName: String,
               @JsonProperty(required = false) userIds: Set[String] = Set.empty[String]
