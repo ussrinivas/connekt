@@ -12,7 +12,6 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
-import com.flipkart.connekt.commons.utils.DateTimeUtils
 import com.flipkart.connekt.commons.utils.StringUtils.{StringHandyFunctions, _}
 import org.apache.commons.lang.RandomStringUtils
 
@@ -40,11 +39,4 @@ case class PullCallbackEvent(messageId: String,
   }
 
   override def contactId: String = s"${appName.toLowerCase}"
-
-  override def toPublishFormat: fkint.mp.connekt.PullCallbackEvent = {
-    fkint.mp.connekt.PullCallbackEvent(messageId = messageId, appName = appName, contextId = contextId, eventType = eventType,
-      timestamp = DateTimeUtils.getStandardFormatted(timestamp))
-  }
-
-  override def namespace: String = "fkint/mp/connekt/PullCallbackEvent"
 }

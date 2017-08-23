@@ -13,7 +13,17 @@
 package com.flipkart.connekt.commons.iomodels
 
 import com.fasterxml.jackson.databind.node.ObjectNode
+import com.flipkart.connekt.commons.utils.StringUtils._
+import com.flipkart.connekt.commons.services.TStencilService
 
 case class PullRequestData(
                             data: ObjectNode
-                          ) extends ChannelRequestData
+                          ) extends ChannelRequestData{
+  def validate(appName: String)(implicit stencilService: TStencilService) = {
+    stencilService.getStencilsByName(s"pull-${appName}-create-validate").headOption match {
+      case Some(stencil) =>
+        val errors = stencilService.materialize(stencil, Map("data" -> data).getJsonNode).toString
+        require(errors == "", errors)
+    }
+  }
+}

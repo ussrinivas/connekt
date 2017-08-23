@@ -12,4 +12,8 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
-case class SmsRequestData(body: String) extends ChannelRequestData
+import com.flipkart.connekt.commons.services.TStencilService
+
+case class SmsRequestData(body: String) extends ChannelRequestData{
+  def validate(appName: String)(implicit stencilService: TStencilService){}
+}

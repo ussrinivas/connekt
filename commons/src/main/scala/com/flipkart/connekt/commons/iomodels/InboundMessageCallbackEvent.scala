@@ -13,6 +13,7 @@
 package com.flipkart.connekt.commons.iomodels
 
 import com.flipkart.concord.publisher.TPublishRequest
+import com.flipkart.connekt.commons.entities.bigfoot.PublishSupport
 import com.flipkart.connekt.commons.utils.StringUtils._
 import org.apache.commons.lang.RandomStringUtils
 
@@ -25,7 +26,7 @@ case class InboundMessageCallbackEvent(clientId: String,
                                        cargo: String = null,
                                        timestamp: Long = System.currentTimeMillis(),
                                        eventId: String = RandomStringUtils.randomAlphabetic(10)
-                                      ) extends CallbackEvent {
+                                      ) extends CallbackEvent with PublishSupport {
 
   //java-constructor
   def this(sender: String, eventType: String, contextId: String, message: String, cargo: String) {

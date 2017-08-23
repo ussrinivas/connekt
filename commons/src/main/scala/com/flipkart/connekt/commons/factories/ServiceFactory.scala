@@ -71,11 +71,11 @@ object ServiceFactory {
   }
 
   def initMessageQueueService(dao: MessageQueueDao):Unit = {
-    serviceCache += ServiceType.PULL_QUEUE -> new MessageQueueService(dao)
+    serviceCache += ServiceType.FETCH_PUSH_QUEUE -> new MessageQueueService(dao)
   }
 
-  def initInAppMessageQueueService(dao: MessageQueueDao, config: Config):Unit = {
-    serviceCache += ServiceType.INAPP_QUEUE -> new MessageQueueService(dao, config.getConfig("hbase.pull").getInt("ttl").days.toMillis, config.getConfig("hbase.pull").getInt("maxRecords"))
+  def initPullMessageQueueService(dao: MessageQueueDao, config: Config):Unit = {
+    serviceCache += ServiceType.PULL_QUEUE -> new MessageQueueService(dao, config.getConfig("hbase.pull").getInt("ttl").days.toMillis, config.getConfig("hbase.pull").getInt("maxRecords"))
   }
 
   def getMessageService(channel: Channel): TMessageService = {
@@ -88,9 +88,9 @@ object ServiceFactory {
 
   def getPullMessageService = serviceCache(ServiceType.PULL_MESSAGE).asInstanceOf[PullMessageService]
 
-  def getMessageQueueService = serviceCache(ServiceType.PULL_QUEUE).asInstanceOf[MessageQueueService]
+  def getMessageQueueService = serviceCache(ServiceType.FETCH_PUSH_QUEUE).asInstanceOf[MessageQueueService]
 
-  def getInAppMessageQueueService = serviceCache(ServiceType.INAPP_QUEUE).asInstanceOf[MessageQueueService]
+  def getPullMessageQueueService = serviceCache(ServiceType.PULL_QUEUE).asInstanceOf[MessageQueueService]
 
   def initStencilService(dao: TStencilDao) = serviceCache += ServiceType.STENCIL -> new StencilService(dao)
 
@@ -113,5 +113,5 @@ object ServiceFactory {
 }
 
 object ServiceType extends Enumeration {
-  val PN_MESSAGE, TEMPLATE, CALLBACK, USER_INFO, AUTHORISATION, KEY_CHAIN, STATS_REPORTING, SCHEDULER, STENCIL, SMS_MESSAGE, EMAIL_MESSAGE, APP_CONFIG, PULL_QUEUE, PULL_MESSAGE, INAPP_QUEUE = Value
+  val PN_MESSAGE, TEMPLATE, CALLBACK, USER_INFO, AUTHORISATION, KEY_CHAIN, STATS_REPORTING, SCHEDULER, STENCIL, SMS_MESSAGE, EMAIL_MESSAGE, APP_CONFIG, FETCH_PUSH_QUEUE, PULL_MESSAGE, PULL_QUEUE = Value
 }

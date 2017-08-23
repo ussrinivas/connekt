@@ -12,4 +12,8 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
-class GCardRequestData(status: String, reason: String) extends ChannelRequestData
+import com.flipkart.connekt.commons.services.TStencilService
+
+class GCardRequestData(status: String, reason: String) extends ChannelRequestData{
+  def validate(appName: String)(implicit stencilService: TStencilService){}
+}

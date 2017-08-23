@@ -34,7 +34,6 @@ class RouteRegistry(implicit mat: ActorMaterializer) extends AuthenticationDirec
   private val inbound = new InboundMessageRoute().route
   private val report = new ReportsRoute().route
   private val fetch = new FetchRoute().route
-  private val update = new UpdateRoute().route
   private val stencil = new StencilsRoute().route
   private val client = new ClientRoute().route
   private val keyChain = new KeyChainRoute().route
@@ -45,5 +44,5 @@ class RouteRegistry(implicit mat: ActorMaterializer) extends AuthenticationDirec
   private val exclusionRoute = new SuppressionsRoute().route
 
   val allRoutes =
-    health ~ clientAuth ~ tracking ~ send ~ registration ~ callback ~ inbound ~ report ~ fetch ~ stencil ~ client ~ keyChain ~ projectConfig ~ debugger ~ admin ~ subscription ~ exclusionRoute ~ update
+    health ~ clientAuth ~ tracking ~ send ~ registration ~ callback ~ inbound ~ report ~ fetch ~ stencil ~ client ~ keyChain ~ projectConfig ~ debugger ~ admin ~ subscription ~ exclusionRoute
 }

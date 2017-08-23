@@ -24,6 +24,7 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.receptors.directives.MPlatformSegment
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
 import com.flipkart.connekt.receptors.wire.ResponseUtils._
+import com.flipkart.connekt.commons.services.ConnektConfig
 
 import scala.concurrent.duration._
 import scala.util.Try
@@ -36,6 +37,7 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
   private lazy implicit val stencilService = ServiceFactory.getStencilService
   private lazy val messageService = ServiceFactory.getMessageService(Channel.PUSH)
   private lazy val pullmessageService = ServiceFactory.getPullMessageService
+  private lazy val pullMessageTTL = ConnektConfig.get("connections.hbase.hbase.pull.ttl").getOrElse(90)
 
   val route =
     authenticate {
@@ -55,7 +57,7 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                       val skipMessageIds: Set[String] = skipIds.toSet
                       val safeStartTs = if (startTs < (System.currentTimeMillis - 7.days.toMillis)) System.currentTimeMillis - 1.days.toMillis else startTs
 
-                      val pendingMessageIds = ServiceFactory.getMessageQueueService.getMessages(appName, instanceId, Some(Tuple2(safeStartTs + 1, endTs)))
+                      val pendingMessageIds = ServiceFactory.getMessageQueueService.getMessageIds(appName, instanceId, Some(Tuple2(safeStartTs + 1, endTs)))
 
                       complete {
                         pendingMessageIds.map(_ids => {
@@ -109,30 +111,31 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                 }
               }
           } ~ pathPrefix("fetch" / "pull" / Segment / Segment) {
-            (appName: String, instanceId: String) =>
+            (appName: String, contactIdentifier: String) =>
               pathEndOrSingleSlash {
                 get {
-                  authorize(user, "FETCH", s"FETCH_$appName") {
-                    parameters('startTs.as[Long], 'endTs ? System.currentTimeMillis, 'size ? 10, 'offset ? 0, 'client ? "", 'platform ? "", 'appVersion.as[String] ? "0")
-                    { (startTs, endTs, size, offset, client, platform, appVersion) =>
-                      require(startTs < endTs, "startTs must be prior to endTs")
-                      val profiler = timer(s"fetch.$appName").time()
+                  parameterMap { urlParams =>
+                    authorize(user, "FETCH", s"FETCH_$appName") {
+                      parameters('startTs.as[Long], 'endTs ? System.currentTimeMillis, 'size ? 10, 'offset ? 0) { (startTs, endTs, size, offset) =>
 
-                      val safeStartTs = if (startTs < (System.currentTimeMillis - 90.days.toMillis)) System.currentTimeMillis - 90.days.toMillis else startTs
-                      val filterOptions = Map("client" -> client, "platform" -> platform, "appVersion" -> appVersion)
-                      println(filterOptions)
-                      val sortedMessages = ServiceFactory.getPullMessageService.getRequest(appName, instanceId, safeStartTs + 1, endTs, filterOptions)
-                      complete {
-                        sortedMessages.map(_m => {
-                          val pullResponse = Map(
-                            "total" -> _m._1.size,
-                            "unread" -> _m._2,
-                            "notifications" -> _m._1.slice(offset, offset + size)
-                          )
-                          profiler.stop()
-                          GenericResponse(StatusCodes.OK.intValue, null, Response(s"Fetched result for $instanceId", pullResponse))
-                            .respondWithHeaders(scala.collection.immutable.Seq(RawHeader("endTs", endTs.toString), RawHeader("Access-Control-Expose-Headers", "endTs")))
-                        })(ioDispatcher)
+                        require(startTs < endTs, "startTs must be prior to endTs")
+                        val profiler = timer(s"fetch.$appName").time()
+
+                        val safeStartTs = if (startTs < (System.currentTimeMillis - pullMessageTTL.days.toMillis)) System.currentTimeMillis - pullMessageTTL.days.toMillis else startTs
+                        val sortedMessages = ServiceFactory.getPullMessageService.getRequest(appName, contactIdentifier, Some(safeStartTs + 1, endTs), urlParams)
+                        complete {
+                          sortedMessages.map{
+                          case (messages, unread) => {
+                            val pullResponse = Map(
+                              "total" -> messages.size,
+                              "unread" -> unread,
+                              "notifications" -> messages.slice(offset, offset + size)
+                            )
+                            profiler.stop()
+                            GenericResponse(StatusCodes.OK.intValue, null, Response(s"Fetched result for $contactIdentifier", pullResponse))
+                              .respondWithHeaders(scala.collection.immutable.Seq(RawHeader("endTs", endTs.toString), RawHeader("Access-Control-Expose-Headers", "endTs")))
+                          }}(ioDispatcher)
+                        }
                       }
                     }
                   }
@@ -140,8 +143,26 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
               } ~ path(Segment) { messageId: String =>
                 delete {
                   authorize(user, "FETCH_REMOVE", s"FETCH_REMOVE_$appName") {
-                    ServiceFactory.getInAppMessageQueueService.removeMessage(appName, instanceId, messageId)
-                    complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Removed $messageId from $appName / $instanceId", null)))
+                    complete {
+                      ServiceFactory.getPullMessageQueueService.removeMessage(appName, contactIdentifier, messageId).map { _ =>
+                        GenericResponse(StatusCodes.OK.intValue, null, Response(s"Removed $messageId from $appName / $contactIdentifier", null))
+                      }
+                    }
+                  }
+                }
+              }
+          } ~ pathPrefix("markAsRead" / "pull" / Segment / Segment) {
+            (appName: String, userId: String) =>
+              pathEndOrSingleSlash {
+                post {
+                  authorize(user, "markAsRead", s"markAsRead_$appName") {
+                    parameters('client ? "", 'platform ? "", 'appVersion.as[String] ? "0") { (client, platform, appVersion) =>
+                      val profiler = timer(s"markAsRead.$appName").time()
+                      val filterOptions = Map("client" -> client, "platform" -> platform, "appVersion" -> appVersion)
+                      ServiceFactory.getPullMessageService.markAsRead(appName, userId, filterOptions)
+                      profiler.stop()
+                      complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Updated messages for $userId", ("Status" -> "Success"))))
+                    }
                   }
                 }
               }

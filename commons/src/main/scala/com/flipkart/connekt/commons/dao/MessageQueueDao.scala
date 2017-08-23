@@ -22,7 +22,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
 sealed case class MessageMetaData(createTs: Long, expiryTs: Long, read: Option[Long] = None) {
-  def encoded: String = s"$createTs|$expiryTs" + (if (read.nonEmpty) s"|${read.get}" else "")
+  def encoded: String = s"$createTs|$expiryTs" + read.map("|"+ _).getOrElse("")
   def markAsRead: MessageMetaData = MessageMetaData(createTs, expiryTs, Some(1L))
 }
 
@@ -56,9 +56,9 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
     val key = new Key(namespace, setName, s"$appName$contactIdentifier")
     getQueue(appName, contactIdentifier).map { _messages =>
       val mapToUpdate = _messages
-        .filter(tmp => messageIds.contains(tmp._1))
-        .map(tmp => tmp._1 -> tmp._2.markAsRead.encoded)
-      updateMapRowItems(key, binName, mapToUpdate)
+        .filter{ case (messageId, _) => messageIds.contains(messageId) }
+        .map{ case (messageId, messageMetaData) => messageId -> messageMetaData.markAsRead.encoded }
+      addMapRow(key, binName, mapToUpdate)
       mapToUpdate
     }
   }
@@ -105,20 +105,20 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
   }
 
   /**
-    * getMessages
+    * getMessageIds
     * @return Ordered MessageIds sorted by Most Recency
     */
-  @Timed("getMessages")
-  def getMessages(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[Seq[String]] = {
-    getMessagesWithDetails(appName, contactIdentifier, timestampRange).map(_.map(_._1))
+  @Timed("getMessageIds")
+  def getMessageIds(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[Seq[String]] = {
+    getMessages(appName, contactIdentifier, timestampRange).map(_.map(_._1))
   }
 
   /**
-    * getMessagesWithDetails
+    * getMessages
     * @return Ordered Messages sorted by Most Recency
     */
-  @Timed("getMessagesWithDetails")
-  def getMessagesWithDetails(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[Seq[(String, MessageMetaData)]] = {
+  @Timed("getMessages")
+  def getMessages(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[Seq[(String, MessageMetaData)]] = {
     getQueue(appName, contactIdentifier).map { _messages =>
       val messages = timestampRange match {
         case Some((fromTs, endTs)) =>

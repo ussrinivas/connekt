@@ -12,6 +12,7 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
+import com.flipkart.connekt.commons.entities.bigfoot.PublishSupport
 import com.flipkart.connekt.commons.utils.DateTimeUtils
 import org.apache.commons.lang.RandomStringUtils
 import com.flipkart.connekt.commons.utils.StringUtils._
@@ -24,7 +25,7 @@ case class EmailCallbackEvent(messageId: String,
                               contextId: String,
                               cargo: String = null,
                               timestamp: Long = System.currentTimeMillis(),
-                              eventId: String = RandomStringUtils.randomAlphabetic(10)) extends CallbackEvent {
+                              eventId: String = RandomStringUtils.randomAlphabetic(10)) extends CallbackEvent with PublishSupport {
 
   //java-constructor
   def this(messageId: String, clientId:String, address:String,eventType: String,contextId: String,cargo: String,timestamp: java.lang.Long){

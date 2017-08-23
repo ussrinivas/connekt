@@ -101,17 +101,17 @@ object DaoFactory {
 
   def initAeroSpike(config: Config): Unit = {
     val aeroSpikeClient = connectionProvider.createAeroSpikeConnection(config.getString("hosts").split(",").toList)
-    daoMap += DaoType.PULL_MESSAGE -> new MessageQueueDao("pull", aeroSpikeClient, Some(config.getConfig("pull").getInt("ttl").days.toMillis))
-    daoMap += DaoType.INAPP_MESSAGE -> new MessageQueueDao("inapp", aeroSpikeClient, Some(config.getConfig("inapp").getInt("ttl").days.toMillis))
+    daoMap += DaoType.FETCH_PUSH_MESSAGE -> new MessageQueueDao("pull", aeroSpikeClient, Some(config.getConfig("pull").getInt("ttl").days.toMillis))
+    daoMap += DaoType.PULL_MESSAGE -> new MessageQueueDao("inapp", aeroSpikeClient, Some(config.getConfig("inapp").getInt("ttl").days.toMillis))
   }
 
   def initReportingDao(bucket: Bucket): Unit = {
     daoMap += DaoType.STATS_REPORTING -> StatsReportingDao(bucket)
   }
 
-  def getMessageQueueDao : MessageQueueDao = daoMap(DaoType.PULL_MESSAGE).asInstanceOf[MessageQueueDao]
+  def getMessageQueueDao : MessageQueueDao = daoMap(DaoType.FETCH_PUSH_MESSAGE).asInstanceOf[MessageQueueDao]
 
-  def getInAppMessageQueueDao : MessageQueueDao = daoMap(DaoType.INAPP_MESSAGE).asInstanceOf[MessageQueueDao]
+  def getPullMessageQueueDao : MessageQueueDao = daoMap(DaoType.PULL_MESSAGE).asInstanceOf[MessageQueueDao]
 
   def getDeviceDetailsDao: DeviceDetailsDao = daoMap(DaoType.DEVICE_DETAILS).asInstanceOf[DeviceDetailsDao]
 
@@ -168,8 +168,8 @@ object DaoType extends Enumeration {
   STATS_REPORTING,
   SUBSCRIPTION,
   KEY_CHAIN,
+  FETCH_PUSH_MESSAGE,
   PULL_MESSAGE,
-  INAPP_MESSAGE,
   PULL_REQUEST_INFO,
   CALLBACK_PULL = Value
 }

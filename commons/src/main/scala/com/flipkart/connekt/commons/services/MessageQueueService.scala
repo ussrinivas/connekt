@@ -43,11 +43,11 @@ class MessageQueueService(dao: MessageQueueDao, private val defaultTTL: Long = 7
   @Timed("removeMessage")
   def removeMessage(appName: String, contactIdentifier: String, messageId: String): Future[_] = dao.removeMessage(appName.toLowerCase, contactIdentifier, messageId)
 
-  @Timed("getMessages")
-  def getMessages(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[Seq[String]] =  dao.getMessages(appName.toLowerCase, contactIdentifier, timestampRange)
+  @Timed("getMessageIds")
+  def getMessageIds(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[Seq[String]] =  dao.getMessageIds(appName.toLowerCase, contactIdentifier, timestampRange)
 
-  @Timed("getMessagesWithDetails")
-  def getMessagesWithDetails(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[Seq[(String, MessageMetaData)]] =  dao.getMessagesWithDetails(appName.toLowerCase, contactIdentifier, timestampRange)
+  @Timed("getMessages")
+  def getMessages(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[Seq[(String, MessageMetaData)]] =  dao.getMessages(appName.toLowerCase, contactIdentifier, timestampRange)
 
   @Timed("markQueueMessagesAsRead")
   def markQueueMessagesAsRead(appName: String, contactIdentifier: String, messageIds: Seq[String])(implicit ec: ExecutionContext): Future[Map[String, String]] =  dao.markQueueMessagesAsRead(appName.toLowerCase, contactIdentifier, messageIds)

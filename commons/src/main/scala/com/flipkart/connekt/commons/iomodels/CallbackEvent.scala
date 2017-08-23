@@ -29,7 +29,7 @@ import com.flipkart.connekt.commons.entities.bigfoot.PublishSupport
   new Type(value = classOf[SmsCallbackEvent], name = "SMS"),
   new Type(value = classOf[InboundMessageCallbackEvent], name = "INB")
 ))
-abstract class CallbackEvent extends PublishSupport {
+abstract class CallbackEvent {
   def contactId: String
 
   def messageId: String
