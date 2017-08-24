@@ -97,13 +97,14 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
   def markAsRead(appName: String, contactIdentifier: String, filter: Map[String, Any])(implicit ec: ExecutionContext) = {
     getRequest(appName, contactIdentifier, None, filter).map(_messages => {
       val unReadMsgIds = _messages match {
-        case (messages, _) => messages.filter(!_.get("read").asInstanceOf[Boolean])
-                                       .map(_.get("messageId").toString)
+        case (messages, _) => messages.filter(!_.get("read").asBoolean())
+                                      .map(_.get("messageId").textValue())
       }
       ServiceFactory.getPullMessageQueueService.markQueueMessagesAsRead(appName, contactIdentifier, unReadMsgIds)
       val events = unReadMsgIds.map(msgId => {
         PullCallbackEvent(
           messageId = msgId,
+          contactId = contactIdentifier,
           eventId = RandomStringUtils.randomAlphabetic(10),
           clientId = filter.get("client").getOrElse("").toString,
           contextId = "",

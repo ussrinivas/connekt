@@ -21,6 +21,7 @@ class PullCallbackDao(tableName: String, hTableFactory: THTableFactory) extends 
     val pullCallbackEvent = channelCallbackEvent.asInstanceOf[PullCallbackEvent]
     Map[String, Array[Byte]](
       "messageId" -> pullCallbackEvent.messageId.getUtf8Bytes,
+      "contactId" -> pullCallbackEvent.contactId.getUtf8Bytes,
       "eventId" -> pullCallbackEvent.eventId.getUtf8Bytes,
       "clientId" -> pullCallbackEvent.clientId.getUtf8Bytes,
       "contextId" -> pullCallbackEvent.contextId.getUtf8Bytes,
@@ -33,6 +34,7 @@ class PullCallbackDao(tableName: String, hTableFactory: THTableFactory) extends 
   override def mapToChannelEvent(channelEventPropsMap: Map[String, Array[Byte]]): CallbackEvent = {
     PullCallbackEvent(
       messageId = channelEventPropsMap.getS("messageId"),
+      contactId = channelEventPropsMap.getS("contactId"),
       eventId = channelEventPropsMap.getS("eventId"),
       clientId = channelEventPropsMap.getS("clientId"),
       contextId = channelEventPropsMap.getS("contextId"),
