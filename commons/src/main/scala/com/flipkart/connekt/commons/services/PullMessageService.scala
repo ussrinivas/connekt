@@ -36,13 +36,14 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
       val reqWithId = request.copy(id = generateUUID)
       val pullInfo = request.channelInfo.asInstanceOf[PullRequestInfo]
       val pullData = request.channelData.asInstanceOf[PullRequestData]
-      // This will be removed after migration Completes
+      // read and createTS will be removed after migration Completes
       val read = if(pullData.data.get("read") != null && pullData.data.get("read").asBoolean()) 1L else 0L
+      val createTS = if(pullData.data.get("generatedOn") != null) pullData.data.get("generatedOn").asLong else System.currentTimeMillis()
       if (!request.isTestRequest)
       {
         messageDao.saveRequest(reqWithId.id, reqWithId, true)
         pullInfo.userIds.map(
-          ServiceFactory.getPullMessageQueueService.enqueueMessage(reqWithId.appName, _, reqWithId.id, reqWithId.expiryTs, Some(read))
+          ServiceFactory.getPullMessageQueueService.enqueueMessage(reqWithId.appName, _, reqWithId.id, reqWithId.expiryTs, Some(read), Some(createTS))
         )
       }
       Success(reqWithId.id)
