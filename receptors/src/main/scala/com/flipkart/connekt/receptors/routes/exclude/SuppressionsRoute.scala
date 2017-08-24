@@ -32,9 +32,9 @@ class SuppressionsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
         pathPrefix("v1") {
           pathPrefix("suppressions" / ChannelSegment / Segment) {
             (channel: Channel, appName: String) =>
-              authorize(user, "SUPPRESSIONS", s"SUPPRESSIONS_$appName") {
-                pathPrefix(ExclusionTypeSegment) {
-                  (exclusionType: ExclusionType) =>
+              pathPrefix(ExclusionTypeSegment) {
+                (exclusionType: ExclusionType) =>
+                  authorize(user, "SUPPRESSIONS", s"SUPPRESSIONS_$appName") {
                     path(Segment) {
                       (destination: String) =>
                         (put | get) {
@@ -47,6 +47,7 @@ class SuppressionsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                               complete(GenericResponse(StatusCodes.Created.intValue, null, Response(s"Suppression request received for destination : $destination", null)))
                             }
                           }
+
                         }
                     } ~ path("all") {
                       get {
@@ -54,17 +55,16 @@ class SuppressionsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                         complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Get Suppression list for channel `$channel`, appname `$appName` and exclusionType `$exclusionType`", results)))
                       }
                     }
-                } ~ path(Segment) {
-                  (destination: String) =>
+                  }
+              } ~ path(Segment) {
+                (destination: String) =>
+                  authorize(user, "SUPPRESSIONS", s"SUPPRESSIONS_$appName", s"SUPPRESSIONS_READ_$appName") {
                     get {
                       val details = ExclusionService.get(channel, appName.toLowerCase, destination.trim).get
                       if (details.nonEmpty)
                         complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Suppression get request received for destination : $destination", details)))
                       else
                         complete(GenericResponse(StatusCodes.NotFound.intValue, null, Response(s"No Suppressions found for destination : $destination", null)))
-                    } ~ delete {
-                      ExclusionService.delete(channel, appName.toLowerCase, destination.trim).get
-                      complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Suppression remove request received for destination : $destination", null)))
                     } ~ method(HttpMethods.TRACE) {
                       val notFiltered = ExclusionService.lookup(channel, appName.toLowerCase, destination.trim).get
                       complete {
@@ -77,7 +77,12 @@ class SuppressionsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                         )
                       }
                     }
-                }
+                  } ~ delete {
+                    authorize(user, "SUPPRESSIONS", s"SUPPRESSIONS_$appName") {
+                      ExclusionService.delete(channel, appName.toLowerCase, destination.trim).get
+                      complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Suppression remove request received for destination : $destination", null)))
+                    }
+                  }
               }
           }
         }
