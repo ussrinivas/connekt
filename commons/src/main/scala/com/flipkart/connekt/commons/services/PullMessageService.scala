@@ -17,11 +17,9 @@ import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFa
 import com.flipkart.connekt.commons.iomodels.{ConnektRequest, PullCallbackEvent, PullRequestData, PullRequestInfo}
 import com.flipkart.connekt.commons.utils.StringUtils.generateUUID
 import com.roundeights.hasher.Implicits._
-
-
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
-import java.util.concurrent.Executors
+import com.fasterxml.jackson.databind.node.ObjectNode
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
@@ -54,7 +52,7 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
     }
   }
 
-  def getRequest(appName: String, contactIdentifier: String, timeStampRange: Option[(Long, Long)], filter: Map[String, Any])(implicit ec: ExecutionContext): Future[(Seq[Map[String, Any]], Int)] = {
+  def getRequest(appName: String, contactIdentifier: String, timeStampRange: Option[(Long, Long)], filter: Map[String, Any])(implicit ec: ExecutionContext): Future[(Seq[ObjectNode], Int)] = {
     val pendingMessages = ServiceFactory.getPullMessageQueueService.getMessages(appName, contactIdentifier, timeStampRange)
     pendingMessages.map(queueMessages => {
       val messageMap = queueMessages.toMap
@@ -73,13 +71,14 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
           validMessages.filter(c => stencilService.materialize(stencil, Map("data" -> c.channelData.asInstanceOf[PullRequestData], "filter" -> filter).getJsonNode).asInstanceOf[Boolean])
         case None => validMessages
       }
-
       val unreadCount = filteredMessages.count(m => messageMap(m.id).read.get == 0L)
       val pullRequesData = filteredMessages.map { prd =>
-        Map("messageId" -> prd.id,
-            "read" -> (messageMap(prd.id).read.get == 1L),
-            "createTs" -> messageMap(prd.id).createTs,
-            "expiryTs" -> messageMap(prd.id).expiryTs) ++ prd.channelData.asInstanceOf[PullRequestData].asMap
+        val data = prd.channelData.asInstanceOf[PullRequestData].data
+        data.put("messageId", prd.id)
+        data.put("read", messageMap(prd.id).read.get == 1L)
+        data.put("createTs", messageMap(prd.id).createTs)
+        data.put("expiryTs", messageMap(prd.id).expiryTs)
+        data
       }
       (pullRequesData, unreadCount)
     })
@@ -98,8 +97,8 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
   def markAsRead(appName: String, contactIdentifier: String, filter: Map[String, Any])(implicit ec: ExecutionContext) = {
     getRequest(appName, contactIdentifier, None, filter).map(_messages => {
       val unReadMsgIds = _messages match {
-        case (messages, _) => messages.filter(!_("read").asInstanceOf[Boolean])
-                                       .map(_("messageId").toString)
+        case (messages, _) => messages.filter(!_.get("read").asInstanceOf[Boolean])
+                                       .map(_.get("messageId").toString)
       }
       ServiceFactory.getPullMessageQueueService.markQueueMessagesAsRead(appName, contactIdentifier, unReadMsgIds)
       val events = unReadMsgIds.map(msgId => {
