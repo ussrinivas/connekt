@@ -75,7 +75,10 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
 
       val unreadCount = filteredMessages.count(m => messageMap(m.id).read.get == 0L)
       val pullRequesData = filteredMessages.map { prd =>
-        Map("messageId" -> prd.id, "read" -> (messageMap(prd.id).read.get == 1L)) ++ prd.channelData.asInstanceOf[PullRequestData].asMap
+        Map("messageId" -> prd.id,
+            "read" -> (messageMap(prd.id).read.get == 1L),
+            "createTs" -> messageMap(prd.id).createTs,
+            "expiryTs" -> messageMap(prd.id).expiryTs) ++ prd.channelData.asInstanceOf[PullRequestData].asMap
       }
       (pullRequesData, unreadCount)
     })
