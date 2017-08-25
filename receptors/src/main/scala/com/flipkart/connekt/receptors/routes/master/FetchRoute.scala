@@ -151,9 +151,12 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
               } ~ path(Segment) { messageId: String =>
                 delete {
                   authorize(user, "pull_REMOVE", s"pull_REMOVE_$appName") {
-                    complete {
-                      ServiceFactory.getPullMessageQueueService.removeMessage(appName, contactIdentifier, messageId).map { _ =>
-                        GenericResponse(StatusCodes.OK.intValue, null, Response(s"Removed $messageId from $appName / $contactIdentifier", null))
+                    parameterMap { urlParams =>
+                      complete {
+                        ServiceFactory.getPullMessageQueueService.removeMessage(appName, contactIdentifier, messageId).map { _ =>
+                          ServiceFactory.getPullMessageService.writeCallbackEvent(appName, contactIdentifier, List(messageId), urlParams)
+                          GenericResponse(StatusCodes.OK.intValue, null, Response(s"Removed $messageId from $appName / $contactIdentifier", null))
+                        }
                       }
                     }
                   }

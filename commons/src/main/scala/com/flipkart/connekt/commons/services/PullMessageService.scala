@@ -81,24 +81,34 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
 
   def markAsRead(appName: String, contactIdentifier: String, filter: Map[String, Any])(implicit ec: ExecutionContext) = {
     getRequest(appName, contactIdentifier, None, filter).map(_request => {
-      val unReadMsgIds = _request match {
+      val unReadMsgs = _request match {
         case (requests, messageMetaDataMap) => requests.filter(request => messageMetaDataMap(request.id).read.get == 0L)
-                                                       .map(_.id)
       }
-      if (unReadMsgIds.nonEmpty) {
-        ServiceFactory.getPullMessageQueueService.markAsRead(appName, contactIdentifier, unReadMsgIds)
-        unReadMsgIds.map(msgId => {
-          PullCallbackEvent(
-            messageId = msgId,
-            contactId = contactIdentifier,
-            eventId = RandomStringUtils.randomAlphabetic(10),
-            clientId = filter.get("client").toString,
-            contextId = s"${filter.get("client")}|${filter.get("platform")}",
-            appName = appName,
-            eventType = "READ")
-        }).persist
+      if (unReadMsgs.nonEmpty) {
+        ServiceFactory.getPullMessageQueueService.markAsRead(appName, contactIdentifier, unReadMsgs.map(_.id))
+        saveCallbackEvent(appName, unReadMsgs.toList, contactIdentifier, filter, "READ")
       }
-      unReadMsgIds
+      unReadMsgs.map(_.id)
     })
+  }
+
+  def writeCallbackEvent(appName: String, contactIdentifier: String, messageIds: List[String], filter: Map[String, Any]) = {
+    val fetchedMessages: Try[List[ConnektRequest]] = getRequestbyIds(messageIds)
+    fetchedMessages.map { _messages =>
+      saveCallbackEvent(appName, _messages, contactIdentifier, filter, "DELETE")
+    }
+  }
+
+  def saveCallbackEvent(appName: String, messages: List[ConnektRequest], contactIdentifier: String, filter: Map[String, Any], eventType: String) = {
+    messages.map(msg => {
+        PullCallbackEvent(
+          messageId = msg.id,
+          contactId = contactIdentifier,
+          eventId = RandomStringUtils.randomAlphabetic(10),
+          clientId = filter.get("client").toString,
+          contextId = msg.contextId.getOrElse(""),
+          appName = appName,
+          eventType = eventType)
+      }).persist
   }
 }
