@@ -45,14 +45,17 @@ class PullCallbackDao(tableName: String, hTableFactory: THTableFactory) extends 
   }
 
   override def fetchEventMapFromList(event: List[CallbackEvent]): Map[String, List[CallbackEvent]] = {
-    val smsCallbackEvents = event.map(_.asInstanceOf[PullCallbackEvent])
-    smsCallbackEvents.groupBy(p => p.messageId)
+    val pullCallbackEvents = event.map(_.asInstanceOf[PullCallbackEvent])
+    pullCallbackEvents.groupBy(p => p.messageId)
   }
 
   override def fetchCallbackEvents(requestId: String, event: ChannelRequestInfo, fetchRange: Option[(Long, Long)]): Map[String, List[CallbackEvent]] = {
-    val pullRequestInfo = event.asInstanceOf[SmsRequestInfo]
-    pullRequestInfo.receivers.toList.map(pullRequestInfo.appName + _).flatMap(fetchCallbackEvents(requestId, _, fetchRange))
-      .asInstanceOf[List[(SmsCallbackEvent, Long)]].map(_._1).groupBy(r => r.receiver)
+    val pullRequestInfo = event.asInstanceOf[PullRequestInfo]
+    pullRequestInfo.userIds.toList.map(pullRequestInfo.appName + _)
+                                  .flatMap(fetchCallbackEvents(requestId, _, fetchRange))
+                                  .asInstanceOf[List[(PullCallbackEvent, Long)]]
+                                  .map(_._1)
+                                  .groupBy(_.contactId)
   }
 
 }

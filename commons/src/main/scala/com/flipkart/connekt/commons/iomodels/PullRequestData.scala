@@ -19,11 +19,13 @@ import com.flipkart.connekt.commons.services.TStencilService
 case class PullRequestData(
                             data: ObjectNode
                           ) extends ChannelRequestData{
+
   def validate(appName: String)(implicit stencilService: TStencilService) = {
     stencilService.getStencilsByName(s"pull-${appName}-create-validate").headOption match {
       case Some(stencil) =>
         val errors = stencilService.materialize(stencil, Map("data" -> data).getJsonNode).toString
-        require(errors == "", errors)
+        require(errors.isEmpty, errors)
+      case _ => None
     }
   }
 }

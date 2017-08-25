@@ -16,7 +16,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 
 case class PullRequestInfo(
               @JsonProperty(required = false) appName: String,
-              @JsonProperty(required = false) userIds: Set[String] = Set.empty[String]
+              @JsonProperty(required = true) userIds: Set[String]
             ) extends ChannelRequestInfo {
 
   def this() {

@@ -117,24 +117,32 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                   parameterMap { urlParams =>
                     authorize(user, "FETCH", s"FETCH_$appName") {
                       parameters('startTs.as[Long], 'endTs ? System.currentTimeMillis, 'size ? 10, 'offset ? 0) { (startTs, endTs, size, offset) =>
+                        meteredResource(s"fetch.$appName") {
+                          require(startTs < endTs, "startTs must be prior to endTs")
 
-                        require(startTs < endTs, "startTs must be prior to endTs")
-                        val profiler = timer(s"fetch.$appName").time()
-
-                        val safeStartTs = if (startTs < (System.currentTimeMillis - pullMessageTTL.days.toMillis)) System.currentTimeMillis - pullMessageTTL.days.toMillis else startTs
-                        val sortedMessages = ServiceFactory.getPullMessageService.getRequest(appName, contactIdentifier, Some(safeStartTs + 1, endTs), urlParams)
-                        complete {
-                          sortedMessages.map{
-                          case (messages, unread) => {
-                            val pullResponse = Map(
-                              "total" -> messages.size,
-                              "unread" -> unread,
-                              "notifications" -> messages.slice(offset, offset + size)
-                            )
-                            profiler.stop()
-                            GenericResponse(StatusCodes.OK.intValue, null, Response(s"Fetched result for $contactIdentifier", pullResponse))
-                              .respondWithHeaders(scala.collection.immutable.Seq(RawHeader("endTs", endTs.toString), RawHeader("Access-Control-Expose-Headers", "endTs")))
-                          }}(ioDispatcher)
+                          val sortedMessages = ServiceFactory.getPullMessageService.getRequest(appName, contactIdentifier, Some(startTs, endTs), urlParams)
+                          complete {
+                            sortedMessages.map {
+                              case (messages, messageMetaDataMap) => {
+                                val unreadCount = messages.count(m => messageMetaDataMap(m.id).read.get == 0L)
+                                val pullRequesData = messages.map { prd =>
+                                  val data = prd.channelData.asInstanceOf[PullRequestData].data
+                                  data.put("messageId", prd.id)
+                                  data.put("read", messageMetaDataMap(prd.id).read.get == 1L)
+                                  data.put("createTs", messageMetaDataMap(prd.id).createTs)
+                                  data.put("expiryTs", messageMetaDataMap(prd.id).expiryTs)
+                                  data
+                                }
+                                val pullResponse = Map(
+                                  "total" -> pullRequesData.size,
+                                  "unread" -> unreadCount,
+                                  "notifications" -> pullRequesData.slice(offset, offset + size)
+                                )
+                                GenericResponse(StatusCodes.OK.intValue, null, Response(s"Fetched result for $contactIdentifier", pullResponse))
+                                  .respondWithHeaders(scala.collection.immutable.Seq(RawHeader("endTs", endTs.toString), RawHeader("Access-Control-Expose-Headers", "endTs")))
+                              }
+                            }(ioDispatcher)
+                          }
                         }
                       }
                     }
@@ -155,13 +163,18 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
             (appName: String, userId: String) =>
               pathEndOrSingleSlash {
                 post {
-                  authorize(user, "pull_markAsRead", s",pull_markAsRead_$appName") {
-                    parameters('client ? "", 'platform ? "", 'appVersion.as[String] ? "0") { (client, platform, appVersion) =>
-                      val profiler = timer(s"markAsRead.$appName").time()
-                      val filterOptions = Map("client" -> client, "platform" -> platform, "appVersion" -> appVersion)
-                      ServiceFactory.getPullMessageService.markAsRead(appName, userId, filterOptions)
-                      profiler.stop()
-                      complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Updated messages for $userId", ("Status" -> "Success"))))
+                  meteredResource(s"markAsRead.$appName") {
+                    parameterMap { urlParams =>
+                      authorize(user, "pull_markAsRead", s",pull_markAsRead_$appName") {
+                        parameters('client ? "", 'platform ? "", 'appVersion.as[String] ? "0") { (client, platform, appVersion) =>
+                          complete {
+                            val messageIds = ServiceFactory.getPullMessageService.markAsRead(appName, userId, urlParams)
+                            messageIds.map{ messages =>
+                              GenericResponse(StatusCodes.OK.intValue, null, Response(s"Updated messages for $userId", messages))
+                            }
+                          }
+                        }
+                      }
                     }
                   }
                 }

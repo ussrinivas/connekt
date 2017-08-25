@@ -18,6 +18,7 @@ import com.flipkart.connekt.commons.utils.StringUtils
 import com.flipkart.connekt.commons.utils.StringUtils.JSONMarshallFunctions
 import com.flipkart.connekt.commons.utils.StringUtils.JSONUnMarshallFunctions
 import com.flipkart.connekt.commons.dao.HbaseDao._
+import jdk.nashorn.internal.ir.ObjectNode
 import org.apache.commons.codec.CharEncoding
 
 
@@ -45,10 +46,8 @@ class PullRequestDao (tableName: String, hTableFactory: THTableFactory) extends 
   }
 
   override protected def getChannelRequestData(reqDataProps: Map[String, Array[Byte]]): PullRequestData = {
-    val data = reqDataProps.getKV("data")
-    if(StringUtils.isNullOrEmpty(data)) null else PullRequestData(data = data)
+      Option(reqDataProps.getKV("data")).map(PullRequestData.apply).orNull
   }
-
 
 }
 

@@ -12,11 +12,12 @@
  */
 package com.flipkart.connekt.commons.services
 
-import com.flipkart.connekt.commons.dao.TRequestDao
+import com.flipkart.connekt.commons.dao.{MessageMetaData, TRequestDao}
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels.{ConnektRequest, PullCallbackEvent, PullRequestData, PullRequestInfo}
 import com.flipkart.connekt.commons.utils.StringUtils.generateUUID
 import com.roundeights.hasher.Implicits._
+import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -30,13 +31,14 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
   private val messageDao: TRequestDao = requestDao
 
   def saveRequest(request: ConnektRequest)(implicit ec: ExecutionContext): Try[String] = {
-    try {
+    Try_#(message = "PullMessageService.saveRequest: Failed to save pull request ") {
       val reqWithId = request.copy(id = generateUUID)
       val pullInfo = request.channelInfo.asInstanceOf[PullRequestInfo]
       val pullData = request.channelData.asInstanceOf[PullRequestData]
+
       // read and createTS will be removed after migration Completes
       val read = if(pullData.data.get("read") != null && pullData.data.get("read").asBoolean()) 1L else 0L
-      val createTS = if(pullData.data.get("generationTime") != null) pullData.data.get("generationTime").asLong else System.currentTimeMillis()
+      val createTS = Option(pullData.data.get("generationTime")).map(_.asLong).getOrElse(System.currentTimeMillis())
       if (!request.isTestRequest)
       {
         messageDao.saveRequest(reqWithId.id, reqWithId, true)
@@ -44,15 +46,11 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
           ServiceFactory.getPullMessageQueueService.enqueueMessage(reqWithId.appName, _, reqWithId.id, reqWithId.expiryTs, Some(read), Some(createTS))
         )
       }
-      Success(reqWithId.id)
-    } catch {
-      case e: Exception =>
-        ConnektLogger(LogFile.SERVICE).error(s"Failed to save in app request ${e.getMessage}", e)
-        Failure(e)
+      reqWithId.id
     }
   }
 
-  def getRequest(appName: String, contactIdentifier: String, timeStampRange: Option[(Long, Long)], filter: Map[String, Any])(implicit ec: ExecutionContext): Future[(Seq[ObjectNode], Int)] = {
+  def getRequest(appName: String, contactIdentifier: String, timeStampRange: Option[(Long, Long)], filter: Map[String, Any])(implicit ec: ExecutionContext): Future[(Seq[ConnektRequest], Map[String, MessageMetaData])] = {
     val pendingMessages = ServiceFactory.getPullMessageQueueService.getMessages(appName, contactIdentifier, timeStampRange)
     pendingMessages.map(queueMessages => {
       val messageMap = queueMessages.toMap
@@ -71,49 +69,36 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
           validMessages.filter(c => stencilService.materialize(stencil, Map("data" -> c.channelData.asInstanceOf[PullRequestData], "filter" -> filter).getJsonNode).asInstanceOf[Boolean])
         case None => validMessages
       }
-      val unreadCount = filteredMessages.count(m => messageMap(m.id).read.get == 0L)
-      val pullRequesData = filteredMessages.map { prd =>
-        val data = prd.channelData.asInstanceOf[PullRequestData].data
-        data.put("messageId", prd.id)
-        data.put("read", messageMap(prd.id).read.get == 1L)
-        data.put("createTs", messageMap(prd.id).createTs)
-        data.put("expiryTs", messageMap(prd.id).expiryTs)
-        data
-      }
-      (pullRequesData, unreadCount)
+      (filteredMessages, messageMap)
     })
   }
 
   def getRequestbyIds(ids: List[String]): Try[List[ConnektRequest]] = {
-    try {
-      Success(requestDao.fetchRequest(ids))
-    } catch {
-      case e: Exception =>
-        ConnektLogger(LogFile.SERVICE).error(s"Get request info failed ${e.getMessage}", e)
-        Failure(e)
+    Try_#(message = "PullMessageService.getRequestbyIds: Failed to get pull requests") {
+      requestDao.fetchRequest(ids)
     }
   }
 
   def markAsRead(appName: String, contactIdentifier: String, filter: Map[String, Any])(implicit ec: ExecutionContext) = {
-    getRequest(appName, contactIdentifier, None, filter).map(_messages => {
-      val unReadMsgIds = _messages match {
-        case (messages, _) => messages.filter(!_.get("read").asBoolean())
-                                      .map(_.get("messageId").textValue())
+    getRequest(appName, contactIdentifier, None, filter).map(_request => {
+      val unReadMsgIds = _request match {
+        case (requests, messageMetaDataMap) => requests.filter(request => messageMetaDataMap(request.id).read.get == 0L)
+                                                       .map(_.id)
       }
-      ServiceFactory.getPullMessageQueueService.markQueueMessagesAsRead(appName, contactIdentifier, unReadMsgIds)
-      val events = unReadMsgIds.map(msgId => {
-        PullCallbackEvent(
-          messageId = msgId,
-          contactId = contactIdentifier,
-          eventId = RandomStringUtils.randomAlphabetic(10),
-          clientId = filter.get("client").getOrElse("").toString,
-          contextId = "",
-          appName = appName,
-          eventType = "markAsRead")
-      })
-      events.persist
+      if (unReadMsgIds.nonEmpty) {
+        ServiceFactory.getPullMessageQueueService.markAsRead(appName, contactIdentifier, unReadMsgIds)
+        unReadMsgIds.map(msgId => {
+          PullCallbackEvent(
+            messageId = msgId,
+            contactId = contactIdentifier,
+            eventId = RandomStringUtils.randomAlphabetic(10),
+            clientId = filter.get("client").toString,
+            contextId = s"${filter.get("client")}|${filter.get("platform")}",
+            appName = appName,
+            eventType = "READ")
+        }).persist
+      }
+      unReadMsgIds
     })
-
-
   }
 }
