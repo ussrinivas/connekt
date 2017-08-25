@@ -86,18 +86,29 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
       }
       if (unReadMsgs.nonEmpty) {
         ServiceFactory.getPullMessageQueueService.markAsRead(appName, contactIdentifier, unReadMsgs.map(_.id))
-        unReadMsgs.map(msg => {
-          PullCallbackEvent(
-            messageId = msg.id,
-            contactId = contactIdentifier,
-            eventId = RandomStringUtils.randomAlphabetic(10),
-            clientId = filter.get("client").toString,
-            contextId = msg.contextId.get,
-            appName = appName,
-            eventType = "READ")
-        }).persist
+        saveCallbackEvent(appName, unReadMsgs.toList, contactIdentifier, filter, "READ")
       }
       unReadMsgs.map(_.id)
     })
+  }
+
+  def writeCallbackEvent(appName: String, contactIdentifier: String, messageIds: List[String], filter: Map[String, Any]) = {
+    val fetchedMessages: Try[List[ConnektRequest]] = getRequestbyIds(messageIds)
+    fetchedMessages.map { _messages =>
+      saveCallbackEvent(appName, _messages, contactIdentifier, filter, "DELETE")
+    }
+  }
+
+  def saveCallbackEvent(appName: String, messages: List[ConnektRequest], contactIdentifier: String, filter: Map[String, Any], eventType: String) = {
+    messages.map(msg => {
+        PullCallbackEvent(
+          messageId = msg.id,
+          contactId = contactIdentifier,
+          eventId = RandomStringUtils.randomAlphabetic(10),
+          clientId = filter.get("client").toString,
+          contextId = msg.contextId.getOrElse(""),
+          appName = appName,
+          eventType = eventType)
+      }).persist
   }
 }
