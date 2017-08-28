@@ -12,6 +12,6 @@ assemblyMergeStrategy in assembly := AppBuild.mergeStrategy
 
 libraryDependencies ++= Seq(
   "org.jboss.aerogear" % "aerogear-otp-java" % "1.0.0" withSources(),
-  "com.google.api-client" % "google-api-client" % "1.19.1"
-
+  "com.google.api-client" % "google-api-client" % "1.19.1",
+  "org.apache.maven" % "maven-artifact" % "3.0.3"
 )
