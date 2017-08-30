@@ -348,7 +348,6 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                   r.channelInfo.asInstanceOf[PullRequestInfo].copy(appName = appName.toLowerCase)
                                 )
                                 request.validate
-                                request.channelData.validate(request.channelInfo.appName.toLowerCase)
 
                                 ConnektLogger(LogFile.SERVICE).debug(s"Received PULL request with payload: ${request.toString}")
 
