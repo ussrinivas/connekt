@@ -28,5 +28,5 @@ import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
   new Type(value = classOf[CardsRequestInfo], name = "CARD")
 ))
 abstract class ChannelRequestInfo{
-  val appName: String
+  def appName: String
 }

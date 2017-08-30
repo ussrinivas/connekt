@@ -28,8 +28,8 @@ class PullRequestDao (tableName: String, hTableFactory: THTableFactory) extends 
 
     val m = scala.collection.mutable.Map[String, Array[Byte]]()
 
-    Option(pullRequestInfo.userIds).foreach(m += "userId" -> _.mkString(",").getUtf8Bytes)
-    Option(pullRequestInfo.appName).foreach(m += "appName" -> _.toString.getUtf8Bytes)
+    pullRequestInfo.userIds.foreach(m += "userId" -> _.mkString(",").getUtf8Bytes)
+    pullRequestInfo.appName.foreach(m += "appName" -> _.toString.getUtf8Bytes)
     m.toMap
   }
 
