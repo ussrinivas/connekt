@@ -124,11 +124,11 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                           complete {
                             sortedMessages.map {
                               case (messages, messageMetaDataMap) => {
-                                val unreadCount = messages.count(m => messageMetaDataMap(m.id).read.get == 0L)
+                                val unreadCount = messages.count(m => !messageMetaDataMap(m.id).read.get)
                                 val pullRequesData = messages.map { prd =>
                                   val data = prd.channelData.asInstanceOf[PullRequestData].data
                                   data.put("messageId", prd.id)
-                                  data.put("read", messageMetaDataMap(prd.id).read.get == 1L)
+                                  data.put("read", messageMetaDataMap(prd.id).read.get)
                                   data.put("createTs", messageMetaDataMap(prd.id).createTs)
                                   data.put("expiryTs", messageMetaDataMap(prd.id).expiryTs)
                                   data

@@ -37,7 +37,7 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
       val pullData = request.channelData.asInstanceOf[PullRequestData]
 
       // read and createTS will be removed after migration Completes
-      val read = if(pullData.data.get("read") != null && pullData.data.get("read").asBoolean()) 1L else 0L
+      val read = pullData.data.get("read") != null && pullData.data.get("read").asBoolean()
       val createTS = Option(pullData.data.get("generationTime")).map(_.asLong).getOrElse(System.currentTimeMillis())
       if (!request.isTestRequest)
       {
@@ -82,7 +82,9 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
   def markAsRead(appName: String, contactIdentifier: String, filter: Map[String, Any])(implicit ec: ExecutionContext) = {
     getRequest(appName, contactIdentifier, None, filter).map(_request => {
       val unReadMsgs = _request match {
-        case (requests, messageMetaDataMap) => requests.filter(request => messageMetaDataMap(request.id).read.get == 0L)
+        case (requests, messageMetaDataMap) => requests.filter(request => {
+          !messageMetaDataMap(request.id).read.get
+        })
       }
       if (unReadMsgs.nonEmpty) {
         ServiceFactory.getPullMessageQueueService.markAsRead(appName, contactIdentifier, unReadMsgs.map(_.id))

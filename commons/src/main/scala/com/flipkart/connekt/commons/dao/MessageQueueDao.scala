@@ -21,14 +21,16 @@ import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
-sealed case class MessageMetaData(createTs: Long, expiryTs: Long, read: Option[Long] = None) {
-  def encoded: String = s"$createTs|$expiryTs" + read.map("|"+ _).getOrElse("")
+sealed case class MessageMetaData(createTs: Long, expiryTs: Long, read: Option[Boolean] = None) {
+  def encoded: String = {
+    s"$createTs|$expiryTs" + read.map(r=> if(r) "|1" else "|0").getOrElse("")
+  }
 }
 
 private object MessageMetaData {
   def apply(encoded:String): MessageMetaData = {
     val parts = encoded.split('|').map(_.toLong)
-    MessageMetaData(parts(0), parts(1), parts.lift(2))
+    MessageMetaData(parts(0), parts(1), parts.lift(2).map(_ == 1L))
   }
 }
 
@@ -38,7 +40,7 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
   private val binName: String = "queue"
 
   @Timed("enqueueMessage")
-  def enqueueMessage(appName: String, contactIdentifier: String, messageId: String, expiryTs: Long, read: Option[Long] = None, createTS: Option[Long] = None)(implicit ec: ExecutionContext): Future[Int] = {
+  def enqueueMessage(appName: String, contactIdentifier: String, messageId: String, expiryTs: Long, read: Option[Boolean] = None, createTS: Option[Long] = None)(implicit ec: ExecutionContext): Future[Int] = {
     val key = new Key(namespace, setName, s"$appName$contactIdentifier")
     val data = Map(messageId -> MessageMetaData(createTS.getOrElse(System.currentTimeMillis()), expiryTs, read).encoded)
     addMapRow(key, binName, data, rowTTL).map { _record =>
@@ -56,7 +58,7 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
     getQueue(appName, contactIdentifier).map {
       _messages => {
         val mapToUpdate = _messages.filter { case (messageId, _) => messageIds.contains(messageId) }
-                                   .map { case (messageId, messageMetaData) => messageId -> messageMetaData.copy(read = Some(1L)).encoded }
+                                   .map { case (messageId, messageMetaData) => messageId -> messageMetaData.copy(read = Some(true)).encoded }
         addMapRow(key, binName, mapToUpdate)
         mapToUpdate.keys.toList
       }

@@ -26,7 +26,7 @@ class MessageQueueService(dao: MessageQueueDao, private val defaultTTL: Long = 7
   private val cleanupFactor = 0.1
 
   @Timed("enqueueMessage")
-  def enqueueMessage(appName: String, contactIdentifier: String, messageId: String, expiryTs: Option[Long] = None, read: Option[Long] = None, createTS: Option[Long] = None)(implicit ec: ExecutionContext): Future[Int] = {
+  def enqueueMessage(appName: String, contactIdentifier: String, messageId: String, expiryTs: Option[Long] = None, read: Option[Boolean] = None, createTS: Option[Long] = None)(implicit ec: ExecutionContext): Future[Int] = {
     dao.enqueueMessage(appName.toLowerCase, contactIdentifier, messageId, expiryTs.getOrElse(System.currentTimeMillis() + defaultTTL), read, createTS).andThen {
       case Success(count) if count >= maxRecords =>
         ConnektLogger(LogFile.SERVICE).info(s"MessageQueueService.trimMessages triggered for $appName / $contactIdentifier, currentSize : $count")
