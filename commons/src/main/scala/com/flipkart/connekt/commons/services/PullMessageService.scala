@@ -64,7 +64,7 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
       val validMessages = sortedMessages.map(_.filter(_.expiryTs.forall(_ >= System.currentTimeMillis)).filterNot(_.isTestRequest)).getOrElse(List.empty[ConnektRequest])
 
       val stencilService = ServiceFactory.getStencilService
-      val filteredMessages = stencilService.getStencilsByName(s"pull-${appName.toLowerCase}-fetch-filter").headOption match {
+      val filteredMessages = stencilService.getStencilsByName(s"ckt-${appName.toLowerCase}-pull").find(_.component.equalsIgnoreCase("filter")).headOption match {
         case Some(stencil) =>
           validMessages.filter(c => stencilService.materialize(stencil, Map("data" -> c.channelData.asInstanceOf[PullRequestData], "filter" -> filter).getJsonNode).asInstanceOf[Boolean])
         case None => validMessages

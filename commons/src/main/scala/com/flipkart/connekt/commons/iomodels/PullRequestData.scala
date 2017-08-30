@@ -21,7 +21,7 @@ case class PullRequestData(
                           ) extends ChannelRequestData{
 
   def validate(appName: String)(implicit stencilService: TStencilService) = {
-    stencilService.getStencilsByName(s"pull-${appName}-create-validate").headOption match {
+    stencilService.getStencilsByName(s"ckt-${appName}-pull").find(_.component.equalsIgnoreCase("validate")).headOption match {
       case Some(stencil) =>
         val errors = stencilService.materialize(stencil, Map("data" -> data).getJsonNode).toString
         require(errors.isEmpty, errors)
