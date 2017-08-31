@@ -150,7 +150,7 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                 }
               } ~ path(Segment) { messageId: String =>
                 delete {
-                  authorize(user, "pull_REMOVE", s"pull_REMOVE_$appName") {
+                  authorize(user, "PULL_REMOVE", s"PULL_REMOVE_$appName") {
                     parameterMap { urlParams =>
                       complete {
                         ServiceFactory.getPullMessageQueueService.removeMessage(appName, contactIdentifier, messageId).map { _ =>
@@ -168,7 +168,7 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                 post {
                   meteredResource(s"markAsRead.$appName") {
                     parameterMap { urlParams =>
-                      authorize(user, "pull_markAsRead", s",pull_markAsRead_$appName") {
+                      authorize(user, "PULL_MARKASREAD", s",PULL_MARKASREAD_$appName") {
                         parameters('client ? "", 'platform ? "", 'appVersion.as[String] ? "0") { (client, platform, appVersion) =>
                           complete {
                             val messageIds = ServiceFactory.getPullMessageService.markAsRead(appName, userId, urlParams)
