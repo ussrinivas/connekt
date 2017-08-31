@@ -12,24 +12,17 @@
  */
 package com.flipkart.connekt.commons.dao
 
+import com.flipkart.connekt.commons.dao.HbaseDao._
 import com.flipkart.connekt.commons.factories.THTableFactory
 import com.flipkart.connekt.commons.iomodels._
-import com.flipkart.connekt.commons.utils.StringUtils
-import com.flipkart.connekt.commons.utils.StringUtils.JSONMarshallFunctions
-import com.flipkart.connekt.commons.utils.StringUtils.JSONUnMarshallFunctions
-import com.flipkart.connekt.commons.dao.HbaseDao._
-import jdk.nashorn.internal.ir.ObjectNode
-import org.apache.commons.codec.CharEncoding
 
 
-class PullRequestDao (tableName: String, hTableFactory: THTableFactory) extends RequestDao(tableName: String, hTableFactory: THTableFactory) {
+class PullRequestDao(tableName: String, hTableFactory: THTableFactory) extends RequestDao(tableName: String, hTableFactory: THTableFactory) {
   override protected def channelRequestInfoMap(channelRequestInfo: ChannelRequestInfo): Map[String, Array[Byte]] = {
     val pullRequestInfo = channelRequestInfo.asInstanceOf[PullRequestInfo]
-
     val m = scala.collection.mutable.Map[String, Array[Byte]]()
-
-    pullRequestInfo.userIds.foreach(m += "userId" -> _.mkString(",").getUtf8Bytes)
-    pullRequestInfo.appName.foreach(m += "appName" -> _.toString.getUtf8Bytes)
+    m += "userId" -> pullRequestInfo.userIds.mkString(",").getUtf8Bytes
+    m += "appName" -> pullRequestInfo.appName.getUtf8Bytes
     m.toMap
   }
 
@@ -39,14 +32,14 @@ class PullRequestDao (tableName: String, hTableFactory: THTableFactory) extends 
   )
 
   override protected def channelRequestDataMap(channelRequestData: ChannelRequestData): Map[String, Array[Byte]] = {
-      val m = scala.collection.mutable.Map[String, Array[Byte]]()
-      val pullRequestData = channelRequestData.asInstanceOf[PullRequestData]
-      Option(pullRequestData.data).foreach(m += "data" -> _.toString.getUtf8Bytes)
-      m.toMap
+    val m = scala.collection.mutable.Map[String, Array[Byte]]()
+    val pullRequestData = channelRequestData.asInstanceOf[PullRequestData]
+    Option(pullRequestData.data).foreach(m += "data" -> _.toString.getUtf8Bytes)
+    m.toMap
   }
 
   override protected def getChannelRequestData(reqDataProps: Map[String, Array[Byte]]): PullRequestData = {
-      Option(reqDataProps.getKV("data")).map(PullRequestData.apply).orNull
+    Option(reqDataProps.getKV("data")).map(PullRequestData.apply).orNull
   }
 
 }
