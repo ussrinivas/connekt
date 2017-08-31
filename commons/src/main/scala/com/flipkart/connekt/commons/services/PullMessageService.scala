@@ -12,20 +12,17 @@
  */
 package com.flipkart.connekt.commons.services
 
-import com.flipkart.connekt.commons.dao.{MessageMetaData, TRequestDao}
-import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
-import com.flipkart.connekt.commons.iomodels.{ConnektRequest, PullCallbackEvent, PullRequestData, PullRequestInfo}
-import com.flipkart.connekt.commons.utils.StringUtils.generateUUID
-import com.roundeights.hasher.Implicits._
 import com.flipkart.connekt.commons.core.Wrappers._
+import com.flipkart.connekt.commons.dao.{MessageMetaData, TRequestDao}
+import com.flipkart.connekt.commons.factories.ServiceFactory
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
-import com.fasterxml.jackson.databind.node.ObjectNode
+import com.flipkart.connekt.commons.iomodels.{ConnektRequest, PullCallbackEvent, PullRequestData, PullRequestInfo}
+import com.flipkart.connekt.commons.utils.StringUtils.{generateUUID, _}
+import org.apache.commons.lang.RandomStringUtils
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
-import com.flipkart.connekt.commons.utils.StringUtils._
-import org.apache.commons.lang.RandomStringUtils
+import scala.util.Try
 
 class PullMessageService(requestDao: TRequestDao) extends TService {
   private val messageDao: TRequestDao = requestDao
