@@ -15,7 +15,7 @@ package com.flipkart.connekt.commons.iomodels
 import com.fasterxml.jackson.annotation.JsonProperty
 
 case class PullRequestInfo(
-              @JsonProperty(required = true) appName: String,
+              @JsonProperty(required = false) appName: String,
               @JsonProperty(required = true) userIds: Set[String]
             ) extends ChannelRequestInfo {
 
