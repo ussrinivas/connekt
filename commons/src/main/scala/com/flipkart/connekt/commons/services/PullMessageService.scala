@@ -104,7 +104,7 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
           messageId = msg.id,
           contactId = contactIdentifier,
           eventId = RandomStringUtils.randomAlphabetic(10),
-          clientId = filter.get("client").toString,
+          clientId = filter.getOrElse("client", "").toString,
           contextId = msg.contextId.getOrElse(""),
           appName = appName,
           eventType = eventType)
