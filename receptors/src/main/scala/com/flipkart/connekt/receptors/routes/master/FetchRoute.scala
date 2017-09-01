@@ -46,9 +46,9 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
           pathPrefix("fetch" / "push" / MPlatformSegment / Segment / Segment) {
             (platform: MobilePlatform, appName: String, instanceId: String) =>
               pathEndOrSingleSlash {
-                  get {
-                    authorize(user, "FETCH", s"FETCH_$appName") {
-                      parameters('startTs.as[Long], 'endTs ? System.currentTimeMillis, 'skipIds.*) { (startTs, endTs, skipIds) =>
+                get {
+                  authorize(user, "FETCH", s"FETCH_$appName") {
+                    parameters('startTs.as[Long], 'endTs ? System.currentTimeMillis, 'skipIds.*) { (startTs, endTs, skipIds) =>
 
                       require(startTs < endTs, "startTs must be prior to endTs")
 
@@ -64,7 +64,7 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                           val filteredMessageIds = _ids.distinct.filterNot(skipMessageIds.contains)
 
                           val fetchedMessages: Try[List[ConnektRequest]] = messageService.getRequestInfo(filteredMessageIds.toList)
-                          val sortedMessages:Try[Seq[ConnektRequest]] = fetchedMessages.map{ _messages =>
+                          val sortedMessages: Try[Seq[ConnektRequest]] = fetchedMessages.map { _messages =>
                             val mIdRequestMap = _messages.map(r => r.id -> r).toMap
                             filteredMessageIds.flatMap(mId => mIdRequestMap.find(_._1 == mId).map(_._2))
                           }
@@ -97,11 +97,11 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                     }
                   }
                 } ~ delete {
-                    authorize(user, "FETCH_REMOVE", s"FETCH_REMOVE_$appName") {
-                      ServiceFactory.getMessageQueueService.empty(appName, instanceId)
-                      complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Emptied $appName / $instanceId", null)))
-                    }
+                  authorize(user, "FETCH_REMOVE", s"FETCH_REMOVE_$appName") {
+                    ServiceFactory.getMessageQueueService.empty(appName, instanceId)
+                    complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Emptied $appName / $instanceId", null)))
                   }
+                }
               } ~ path(Segment) { messageId: String =>
                 delete {
                   authorize(user, "FETCH_REMOVE", s"FETCH_REMOVE_$appName") {
@@ -150,12 +150,14 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                 }
               } ~ path(Segment) { messageId: String =>
                 delete {
-                  authorize(user, "PULL_REMOVE", s"PULL_REMOVE_$appName") {
-                    parameterMap { urlParams =>
-                      complete {
-                        ServiceFactory.getPullMessageQueueService.removeMessage(appName, contactIdentifier, messageId).map { _ =>
-                          ServiceFactory.getPullMessageService.writeCallbackEvent(appName, contactIdentifier, List(messageId), urlParams)
-                          GenericResponse(StatusCodes.OK.intValue, null, Response(s"Removed $messageId from $appName / $contactIdentifier", null))
+                  meteredResource(s"delete.$appName") {
+                    authorize(user, "PULL_REMOVE", s"PULL_REMOVE_$appName") {
+                      parameterMap { urlParams =>
+                        complete {
+                          ServiceFactory.getPullMessageQueueService.removeMessage(appName, contactIdentifier, messageId).map { _ =>
+                            ServiceFactory.getPullMessageService.writeCallbackEvent(appName, contactIdentifier, List(messageId), urlParams)
+                            GenericResponse(StatusCodes.OK.intValue, null, Response(s"Removed $messageId from $appName / $contactIdentifier", null))
+                          }
                         }
                       }
                     }
@@ -172,7 +174,7 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                         parameters('client ? "", 'platform ? "", 'appVersion.as[String] ? "0") { (client, platform, appVersion) =>
                           complete {
                             val messageIds = ServiceFactory.getPullMessageService.markAsRead(appName, userId, urlParams)
-                            messageIds.map{ messages =>
+                            messageIds.map { messages =>
                               GenericResponse(StatusCodes.OK.intValue, null, Response(s"Updated messages for $userId", messages))
                             }
                           }
