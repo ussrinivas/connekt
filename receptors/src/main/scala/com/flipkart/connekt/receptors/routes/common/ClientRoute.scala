@@ -119,9 +119,9 @@ class ClientRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                               }
                             case _ =>
                               val resourceList = resourcePriv.resources.split(",").map(_.trim).map(_.toUpperCase).toList
-                              ServiceFactory.getAuthorisationService.addAuthorization(id, userType, resourceList)
-                              SyncManager.get().publish(new SyncMessage(SyncType.AUTH_CHANGE, List(id, userType.toString)))
-                              complete(GenericResponse(StatusCodes.Created.intValue, null, Response(s"Permission granted for $id", Map("id" -> id, "permissions" -> resourceList))))
+                              ServiceFactory.getAuthorisationService.addAuthorization(id.toLowerCase, userType, resourceList)
+                              SyncManager.get().publish(new SyncMessage(SyncType.AUTH_CHANGE, List(id.toLowerCase, userType.toString)))
+                              complete(GenericResponse(StatusCodes.Created.intValue, null, Response(s"Permission granted for $id", Map("id" -> id.toLowerCase, "permissions" -> resourceList))))
                           }
                         }
                       }
