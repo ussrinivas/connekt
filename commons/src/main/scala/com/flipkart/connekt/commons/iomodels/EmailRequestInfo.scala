@@ -22,15 +22,22 @@ case class EmailRequestInfo(@JsonProperty(required = false) appName: String,
                             @JsonProperty(required = false) bcc: Set[EmailAddress] = Set.empty[EmailAddress],
                             @JsonProperty(required = false) from: EmailAddress,
                             @JsonProperty(required = false) replyTo: EmailAddress
-
                            ) extends ChannelRequestInfo {
-  def toStrict:EmailRequestInfo = {
-    this.copy(appName = appName.toLowerCase, cc = Option(cc).getOrElse(Set.empty), bcc = Option(bcc).getOrElse(Set.empty) )
+  def toStrict: EmailRequestInfo = {
+    this.copy(
+      appName = appName.toLowerCase,
+      to = Option(to).map(_.map(_.toStrict)).orNull,
+      cc = Option(cc).map(_.map(_.toStrict)).getOrElse(Set.empty),
+      bcc = Option(bcc).map(_.map(_.toStrict)).getOrElse(Set.empty)
+    )
   }
 }
 
-case class EmailAddress(name: String, address: String){
-  def toInternetAddress:InternetAddress = {
-    new InternetAddress(address,name)
+case class EmailAddress(name: String, address: String) {
+
+  def toStrict = EmailAddress(name, address.toLowerCase)
+
+  def toInternetAddress: InternetAddress = {
+    new InternetAddress(address, name)
   }
 }
