@@ -18,7 +18,9 @@ import com.flipkart.connekt.commons.factories.ServiceFactory
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.iomodels.{ConnektRequest, PullCallbackEvent, PullRequestData, PullRequestInfo}
+import com.flipkart.connekt.commons.utils.StringUtils
 import com.flipkart.connekt.commons.utils.StringUtils.{generateUUID, _}
+import com.roundeights.hasher.Implicits.stringToHasher
 import org.apache.commons.lang.RandomStringUtils
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -30,15 +32,17 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
 
   def saveRequest(request: ConnektRequest)(implicit ec: ExecutionContext): Try[String] = {
     Try_#(message = "PullMessageService.saveRequest: Failed to save pull request ") {
-      val reqWithId = request.copy(id = generateUUID)
+
+      // TODO : To remove after hedwig migration. It is required to restrict duplicate entry of messages.
+      val uid = request.channelData.asInstanceOf[PullRequestData].data.getObj[Map[String, String]].getOrElse("uid", null)
+      val reqWithId = request.copy(id = if (StringUtils.isNullOrEmpty(uid)) generateUUID else uid.sha256)
       val pullInfo = request.channelInfo.asInstanceOf[PullRequestInfo]
       val pullData = request.channelData.asInstanceOf[PullRequestData]
 
       // read and createTS will be removed after migration Completes
       val read = pullData.data.get("read") != null && pullData.data.get("read").asBoolean()
       val createTS = Option(pullData.data.get("generationTime")).map(_.asLong).getOrElse(System.currentTimeMillis())
-      if (!request.isTestRequest)
-      {
+      if (!request.isTestRequest) {
         messageDao.saveRequest(reqWithId.id, reqWithId, true)
         pullInfo.userIds.map(
           ServiceFactory.getPullMessageQueueService.enqueueMessage(reqWithId.appName, _, reqWithId.id, reqWithId.expiryTs, Some(read), Some(createTS))
@@ -100,14 +104,14 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
 
   def saveCallbackEvent(appName: String, messages: List[ConnektRequest], contactIdentifier: String, filter: Map[String, Any], eventType: String) = {
     messages.map(msg => {
-        PullCallbackEvent(
-          messageId = msg.id,
-          contactId = contactIdentifier,
-          eventId = RandomStringUtils.randomAlphabetic(10),
-          clientId = filter.getOrElse("client", "").toString,
-          contextId = msg.contextId.getOrElse(""),
-          appName = appName,
-          eventType = eventType)
-      }).persist
+      PullCallbackEvent(
+        messageId = msg.id,
+        contactId = contactIdentifier,
+        eventId = RandomStringUtils.randomAlphabetic(10),
+        clientId = filter.getOrElse("client", "").toString,
+        contextId = msg.contextId.getOrElse(""),
+        appName = appName,
+        eventType = eventType)
+    }).persist
   }
 }
