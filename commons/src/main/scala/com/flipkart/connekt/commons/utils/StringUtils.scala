@@ -116,8 +116,6 @@ object StringUtils {
   implicit class JSONMarshallFunctions(val o: AnyRef) {
     def getJson = objMapper.writeValueAsString(o)
 
-    def getObj[T: ClassTag] = objMapper.convertValue(o, classTag[T].runtimeClass).asInstanceOf[T]
-
     def getJsonNode = objMapper.convertValue(o, classOf[ObjectNode])
   }
 

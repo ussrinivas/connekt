@@ -33,11 +33,10 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
   def saveRequest(request: ConnektRequest)(implicit ec: ExecutionContext): Try[String] = {
     Try_#(message = "PullMessageService.saveRequest: Failed to save pull request ") {
 
-      // TODO : To remove after hedwig migration. It is required to restrict duplicate entry of messages.
-      val uid = request.channelData.asInstanceOf[PullRequestData].data.getObj[Map[String, String]].getOrElse("uid", null)
-      val reqWithId = request.copy(id = if (StringUtils.isNullOrEmpty(uid)) generateUUID else uid.sha256)
-      val pullInfo = request.channelInfo.asInstanceOf[PullRequestInfo]
       val pullData = request.channelData.asInstanceOf[PullRequestData]
+      // TODO : To remove after hedwig migration. It is required to restrict duplicate entry of messages.
+      val reqWithId = request.copy(id = Option(pullData.data.get("uid")).map(_.asText).getOrElse(generateUUID))
+      val pullInfo = request.channelInfo.asInstanceOf[PullRequestInfo]
 
       // read and createTS will be removed after migration Completes
       val read = pullData.data.get("read") != null && pullData.data.get("read").asBoolean()
