@@ -18,9 +18,7 @@ import com.flipkart.connekt.commons.factories.ServiceFactory
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.iomodels.{ConnektRequest, PullCallbackEvent, PullRequestData, PullRequestInfo}
-import com.flipkart.connekt.commons.utils.StringUtils
 import com.flipkart.connekt.commons.utils.StringUtils.{generateUUID, _}
-import com.roundeights.hasher.Implicits.stringToHasher
 import org.apache.commons.lang.RandomStringUtils
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -35,7 +33,7 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
 
       val pullData = request.channelData.asInstanceOf[PullRequestData]
       // TODO : To remove after hedwig migration. It is required to restrict duplicate entry of messages.
-      val reqWithId = request.copy(id = Option(pullData.data.get("uid")).map(_.asText).getOrElse(generateUUID))
+      val reqWithId = request.copy(id = Option(pullData.data.get("uid")).map(_.asText.trim).map { case "" | null => generateUUID case uid => uid }.getOrElse(generateUUID))
       val pullInfo = request.channelInfo.asInstanceOf[PullRequestInfo]
 
       // read and createTS will be removed after migration Completes
