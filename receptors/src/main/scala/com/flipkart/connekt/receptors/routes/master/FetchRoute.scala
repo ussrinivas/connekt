@@ -118,7 +118,8 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                     authorize(user, "FETCH", s"FETCH_$appName") {
                       parameters('startTs.as[Long], 'endTs ? System.currentTimeMillis, 'size ? 10, 'offset ? 0) { (startTs, endTs, size, offset) =>
                         meteredResource(s"pull.fetch.$appName") {
-                          require(startTs < endTs, "startTs must be prior to endTs")
+                          //TODO: iOs sending invalid endTs
+//                          require(startTs < endTs, "startTs must be prior to endTs")
 
                           val sortedMessages = ServiceFactory.getPullMessageService.getRequest(appName, contactIdentifier, Some(startTs, endTs), urlParams)
                           complete {
