@@ -117,7 +117,7 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                   parameterMap { urlParams =>
                     authorize(user, "FETCH", s"FETCH_$appName") {
                       parameters('startTs.as[Long], 'endTs ? System.currentTimeMillis, 'size ? 10, 'offset ? 0) { (startTs, endTs, size, offset) =>
-                        meteredResource(s"fetch.$appName") {
+                        meteredResource(s"pull.fetch.$appName") {
                           require(startTs < endTs, "startTs must be prior to endTs")
 
                           val sortedMessages = ServiceFactory.getPullMessageService.getRequest(appName, contactIdentifier, Some(startTs, endTs), urlParams)
@@ -150,7 +150,7 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                 }
               } ~ path(Segment) { messageId: String =>
                 delete {
-                  meteredResource(s"delete.$appName") {
+                  meteredResource(s"pull.delete.$appName") {
                     authorize(user, "PULL_REMOVE", s"PULL_REMOVE_$appName") {
                       parameterMap { urlParams =>
                         complete {
@@ -168,7 +168,7 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
             (appName: String, userId: String) =>
               pathEndOrSingleSlash {
                 post {
-                  meteredResource(s"markAsRead.$appName") {
+                  meteredResource(s"pull.markAsRead.$appName") {
                     parameterMap { urlParams =>
                       authorize(user, "PULL_MARKASREAD", s",PULL_MARKASREAD_$appName") {
                         parameters('client ? "", 'platform ? "", 'appVersion.as[String] ? "0") { (client, platform, appVersion) =>

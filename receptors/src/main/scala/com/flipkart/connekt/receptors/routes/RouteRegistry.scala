@@ -42,7 +42,8 @@ class RouteRegistry(implicit mat: ActorMaterializer) extends AuthenticationDirec
   private val subscription = new SubscriptionsRoute().route
   private val projectConfig = new ProjectConfigRoute().route
   private val exclusionRoute = new SuppressionsRoute().route
+  private val temporaryRoute = new TemporaryRoute().route
 
   val allRoutes =
-    health ~ clientAuth ~ tracking ~ send ~ registration ~ callback ~ inbound ~ report ~ fetch ~ stencil ~ client ~ keyChain ~ projectConfig ~ debugger ~ admin ~ subscription ~ exclusionRoute
+    health ~ clientAuth ~ tracking ~ send ~ registration ~ callback ~ inbound ~ report ~ fetch ~ stencil ~ client ~ keyChain ~ projectConfig ~ debugger ~ admin ~ subscription ~ exclusionRoute ~ temporaryRoute
 }
