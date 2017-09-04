@@ -43,7 +43,7 @@ class TemporaryRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                         entity(as[Array[ConnektRequest]]) { arrCR =>
                           complete {
                             Future {
-                              profile(s"sendDevicePulls.$appName") {
+                              profile(s"pulls.send.$appName") {
 
                                 val success = scala.collection.mutable.Map[String, Set[String]]()
                                 val failure = ListBuffer[String]()
