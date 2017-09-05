@@ -59,7 +59,7 @@ object ReceptorsBoot extends BaseApp {
       val aeroSpikeCf = ConnektConfig.getConfig("connections.aerospike").getOrElse(ConfigFactory.empty())
       DaoFactory.initAeroSpike(aeroSpikeCf)
 
-      DaoFactory.initReportingDao(DaoFactory.getCouchbaseBucket("StatsReporting"))
+      DaoFactory.initReportingDao(DaoFactory.getCouchbaseBucket(ConnektConfig.getOrElse("couchbase.reporting.bucketname", "StatsReporting")))
 
       val kafkaConnConf = ConnektConfig.getConfig("connections.kafka.producerConnProps").getOrElse(ConfigFactory.empty())
       val kafkaProducerPoolConf = ConnektConfig.getConfig("connections.kafka.producerPool").getOrElse(ConfigFactory.empty())
