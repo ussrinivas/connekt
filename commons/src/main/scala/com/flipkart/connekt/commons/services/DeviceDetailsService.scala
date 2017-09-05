@@ -33,7 +33,7 @@ import scala.util.{Failure, Success, Try}
 object DeviceDetailsService extends Instrumented {
 
   private lazy val dao = DaoFactory.getDeviceDetailsDao
-  private lazy val CALLBACK_QUEUE_NAME = ConnektConfig.get("firefly.kafka.topic").getOrElse("ckt_callback_events")
+  private lazy val CALLBACK_QUEUE_NAME = ConnektConfig.get("firefly.kafka.topic").getOrElse("ckt_callback_events_%s").format(classOf[DeviceDetails].getSimpleName.toLowerCase)
 
   def bootstrap() = dao.get("ConnectSampleApp", StringUtils.generateRandomStr(15))
 
