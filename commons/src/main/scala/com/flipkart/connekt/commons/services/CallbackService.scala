@@ -43,20 +43,20 @@ sealed case class RequestDaoContainer(smsRequestDao: SmsRequestDao, pnRequestDao
 class CallbackService(eventsDao: EventsDaoContainer, requestDao: RequestDaoContainer, queueProducerHelper: KafkaProducerHelper) extends TCallbackService with Instrumented {
 
   private lazy val MAX_FETCH_EVENTS = ConnektConfig.get("receptors.callback.events.max-results").orElse(Some(100))
-  private lazy val CALLBACK_QUEUE_NAME = ConnektConfig.get("firefly.kafka.topic").getOrElse("ckt_callback_events")
+  private lazy val CALLBACK_QUEUE_NAME = ConnektConfig.get("firefly.kafka.topic").getOrElse("ckt_callback_events_%s")
 
   @Timed("persistCallbackEvent")
   override def persistCallbackEvents(channel: Channel.Value, events: List[CallbackEvent]): Try[List[String]] = {
     Try {
       val rowKeys = eventsDao(channel).asyncSaveCallbackEvents(events)
-      enqueueCallbackEvents(events, CALLBACK_QUEUE_NAME).get
+      enqueueCallbackEvents(events, CALLBACK_QUEUE_NAME.format(channel.toString.toLowerCase)).get
       ConnektLogger(LogFile.SERVICE).debug(s"Event saved with rowKeys $rowKeys")
       rowKeys
     }
   }
 
   @Timed("enqueueCallbackEvent")
-  override def enqueueCallbackEvents(events: List[CallbackEvent], queueName:String): Try[Unit] = Try_ {
+  override def enqueueCallbackEvents(events: List[CallbackEvent], queueName: String): Try[Unit] = Try_ {
     queueProducerHelper.writeMessages(queueName, events.map(_.getJson): _*)
   }
 
@@ -83,7 +83,7 @@ class CallbackService(eventsDao: EventsDaoContainer, requestDao: RequestDaoConta
   @Timed("fetchCallbackEventByMId")
   def fetchCallbackEventByMId(messageId: String, channel: Channel.Value): Try[Map[String, List[CallbackEvent]]] = {
     Try {
-      requestDao(channel).fetchRequestInfo(messageId)  match {
+      requestDao(channel).fetchRequestInfo(messageId) match {
         case Some(events) =>
           eventsDao(channel).fetchCallbackEvents(messageId, events, None)
         case None =>
