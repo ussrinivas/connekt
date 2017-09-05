@@ -30,6 +30,8 @@ import scala.util.Try
 
 class ReportingService(reportManagerDao: StatsReportingDao) extends TService with Instrumented {
 
+  private val contextReportingWhitelistClients = ConnektConfig.getList[String]("client.contextid.reporting.whitelist")
+
   def init() = {
 
     val executor = new ScheduledThreadPoolExecutor(1)
@@ -62,20 +64,24 @@ class ReportingService(reportManagerDao: StatsReportingDao) extends TService wit
     val resultMap = reportManagerDao.get(allKeys)
     resultMap.map {
       case (keyName, count) =>
-        keyName.split('.').drop(2).mkString(".") -> count
+        keyName.split('.').drop(2).filterNot(_.isEmpty).mkString(".") -> count
     }
   }
 
   @Timed("pushStatsUpdate")
   def recordPushStatsDelta(clientId: String, contextId: Option[String], stencilId: Option[String], platform: Option[String], appName: String, event: String, count: Int = 1): Unit = {
+    //TODO: Temporary fix to avoid random contextId.
+    val reportingContextId = if(contextReportingWhitelistClients.contains(clientId)) contextId else None
     val datePrefix = DateTimeUtils.calenderDate.print(Calendar.getInstance().getTimeInMillis) + "."
-    updateTagCounters(clientId, count.toLong, datePrefix, contextId.orNull, Channel.PUSH, stencilId.orNull)(platform.orNull, appName.toLowerCase, event)
+    updateTagCounters(clientId, count.toLong, datePrefix, reportingContextId.orNull, Channel.PUSH, stencilId.orNull)(platform.orNull, appName.toLowerCase, event)
   }
 
   @Timed("channelStatsUpdate")
   def recordChannelStatsDelta(clientId: String, contextId: Option[String], stencilId: Option[String], channel: Channel, appName: String, event: String, count: Int = 1): Unit = {
+    //TODO: Temporary fix to avoid random contextId.
+    val reportingContextId = if(contextReportingWhitelistClients.contains(clientId)) contextId else None
     val datePrefix = DateTimeUtils.calenderDate.print(Calendar.getInstance().getTimeInMillis) + "."
-    updateTagCounters(clientId, count.toLong, datePrefix, contextId.orNull, channel, stencilId.orNull)(appName.toLowerCase, event)
+    updateTagCounters(clientId, count.toLong, datePrefix, reportingContextId.orNull, channel, stencilId.orNull)(appName.toLowerCase, event)
   }
 
   private val mapCounter = new ConcurrentHashMap[String, AtomicLong]().asScala
