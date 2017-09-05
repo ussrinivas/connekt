@@ -59,13 +59,12 @@ class ClientTopology(topic: String, retryLimit: Int, kafkaConsumerConnConf: Conf
       .map(transform)
       .filter(null != _.payload)
       .watchTermination(){ case (_, completed) => streamCompleted = completed}
+      .throttle(subscription.rps, 1.second, subscription.rps, ThrottleMode.Shaping)
 
     subscription.sink match {
-      case hs: HTTPEventSink => source
-        .throttle(hs.rps, 1.second, hs.rps, ThrottleMode.Shaping)
-        .runWith(new HttpSink(subscription, retryLimit, killSwitch).getHttpSink)
+      case hs: HTTPEventSink => source.runWith(new HttpSink(subscription, retryLimit, killSwitch).getHttpSink)
       case kafka: KafkaEventSink => source.runWith(new KafkaSink(kafka.topic, kafka.broker).getKafkaSink)
-      case _: SpecterEventSink => source.runWith(new SpecterSink().sink)
+      case ss: SpecterEventSink => source.runWith(new SpecterSink().sink)
       case rmq: RMQEventSink => source.runWith(new RMQSink(rmq.queue, new RMQProducer(rmq.host, rmq.username, rmq.password, List(rmq.queue))).sink)
     }
 
