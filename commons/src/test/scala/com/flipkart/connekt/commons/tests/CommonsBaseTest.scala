@@ -69,7 +69,7 @@ class CommonsBaseTest extends ConnektUTSpec {
     DaoFactory.initAeroSpike(aeroSpikeCf)
 
 
-    DaoFactory.initReportingDao(DaoFactory.getCouchbaseBucket("StatsReporting"))
+    DaoFactory.initReportingDao(DaoFactory.getCouchbaseBucket(ConnektConfig.getOrElse("couchbase.reporting.bucketname", "StatsReporting")))
 
     ServiceFactory.initPNMessageService(DaoFactory.getPNRequestDao, DaoFactory.getUserConfigurationDao, getKafkaProducerHelper, getKafkaConsumerConf, null)
     ServiceFactory.initEmailMessageService(DaoFactory.getEmailRequestDao, DaoFactory.getUserConfigurationDao, getKafkaProducerHelper, getKafkaConsumerConf)
