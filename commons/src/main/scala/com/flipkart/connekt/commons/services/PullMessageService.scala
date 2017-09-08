@@ -97,13 +97,6 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
     })
   }
 
-  def writeDeleteCallbackEvent(appName: String, contactIdentifier: String, messageIds: List[String], filter: Map[String, Any]) = {
-    val fetchedMessages: Try[List[ConnektRequest]] = getRequestbyIds(messageIds)
-    fetchedMessages.map { _messages =>
-      saveCallbackEvent(appName, _messages, contactIdentifier, filter, "DELETE")
-    }
-  }
-
   def saveCallbackEvent(appName: String, messages: List[ConnektRequest], contactIdentifier: String, filter: Map[String, Any], eventType: String) = {
     messages.map(msg => {
       PullCallbackEvent(
