@@ -67,7 +67,7 @@ class StencilService(stencilDao: TStencilDao) extends TStencilService with Instr
 
   @Timed("add")
   def add(id: String, stencils: List[Stencil]): Try[Unit] = Try_ {
-    stencils.foreach(stencilDao.writeStencil)
+    stencilDao.writeStencils(stencils)
   }
 
   @Timed("delete")
@@ -77,7 +77,7 @@ class StencilService(stencilDao: TStencilDao) extends TStencilService with Instr
 
   @Timed("update")
   def update(id: String, stencils: List[Stencil]): Try[Unit] = Try_ {
-    stencils.foreach(stencilDao.writeStencil)
+    stencilDao.writeStencils(stencils)
     LocalCacheManager.getCache(LocalCacheType.Stencils).remove(stencilCacheKey(id))
     SyncManager.get().publish(SyncMessage(SyncType.STENCIL_CHANGE, List(id)))
     stencils.headOption.foreach { stn =>

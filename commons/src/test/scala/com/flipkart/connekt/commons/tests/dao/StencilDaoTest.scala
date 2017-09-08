@@ -41,7 +41,7 @@ class StencilDaoTest extends CommonsBaseTest {
   bucket.name = StringUtils.generateRandomStr(10)
 
   "Stencil Dao write Test" should "not throw exception" in {
-    noException should be thrownBy DaoFactory.getStencilDao.writeStencil(stencil)
+    noException should be thrownBy DaoFactory.getStencilDao.writeStencils(List(stencil))
   }
 
   "Fetch Stencil" should "return a stencil" in {
