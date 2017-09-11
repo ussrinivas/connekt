@@ -20,10 +20,10 @@ import com.flipkart.connekt.commons.iomodels._
 class PullRequestDao(tableName: String, hTableFactory: THTableFactory) extends RequestDao(tableName: String, hTableFactory: THTableFactory) {
   override protected def channelRequestInfoMap(channelRequestInfo: ChannelRequestInfo): Map[String, Array[Byte]] = {
     val pullRequestInfo = channelRequestInfo.asInstanceOf[PullRequestInfo]
-    val m = scala.collection.mutable.Map[String, Array[Byte]]()
-    m += "userId" -> pullRequestInfo.userIds.mkString(",").getUtf8Bytes
-    m += "appName" -> pullRequestInfo.appName.getUtf8Bytes
-    m.toMap
+    Map(
+      "userId" -> pullRequestInfo.userIds.mkString(",").getUtf8Bytes,
+      "appName" -> pullRequestInfo.appName.getUtf8Bytes
+    )
   }
 
   override protected def getChannelRequestInfo(reqInfoProps: Map[String, Array[Byte]]): ChannelRequestInfo = PullRequestInfo(
@@ -32,10 +32,10 @@ class PullRequestDao(tableName: String, hTableFactory: THTableFactory) extends R
   )
 
   override protected def channelRequestDataMap(channelRequestData: ChannelRequestData): Map[String, Array[Byte]] = {
-    val m = scala.collection.mutable.Map[String, Array[Byte]]()
     val pullRequestData = channelRequestData.asInstanceOf[PullRequestData]
-    Option(pullRequestData.data).foreach(m += "data" -> _.toString.getUtf8Bytes)
-    m.toMap
+    Map(
+      "data" -> pullRequestData.data.toString.getUtf8Bytes
+    )
   }
 
   override protected def getChannelRequestData(reqDataProps: Map[String, Array[Byte]]): PullRequestData = {

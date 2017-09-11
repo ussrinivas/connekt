@@ -156,7 +156,10 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                       parameterMap { urlParams =>
                         complete {
                           ServiceFactory.getPullMessageQueueService.removeMessage(appName, contactIdentifier, messageId).map { _ =>
-                            ServiceFactory.getPullMessageService.writeCallbackEvent(appName, contactIdentifier, List(messageId), urlParams)
+                            val fetchedMessages: Try[List[ConnektRequest]] = ServiceFactory.getPullMessageService.getRequestbyIds(List(messageId))
+                            fetchedMessages.map { _messages =>
+                              ServiceFactory.getPullMessageService.saveCallbackEvent(appName, _messages, contactIdentifier, urlParams, "DELETE")
+                            }
                             GenericResponse(StatusCodes.OK.intValue, null, Response(s"Removed $messageId from $appName / $contactIdentifier", null))
                           }
                         }
