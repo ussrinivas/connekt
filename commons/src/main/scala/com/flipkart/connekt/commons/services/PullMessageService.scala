@@ -33,7 +33,7 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
     Try_#(message = "PullMessageService.saveRequest: Failed to save pull request ") {
 
       val pullData = request.channelData.asInstanceOf[PullRequestData]
-      // TODO : To remove after hedwig migration. It is required to restrict duplicate entry of messages.
+      // This should be moved to either update API or delete older message and create new one
       val reqWithId = request.copy(id = Option(pullData.data.get("uid"))
                                                             .filterNot(_.isNull)
                                                             .map(_.asText.trim)
@@ -41,13 +41,10 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
                                                             .getOrElse(generateUUID))
       val pullInfo = request.channelInfo.asInstanceOf[PullRequestInfo]
 
-      // read and createTS will be removed after migration Completes
-      val read = pullData.data.get("read") != null && pullData.data.get("read").asBoolean()
-      val createTS = Option(pullData.data.get("generationTime")).map(_.asLong).getOrElse(System.currentTimeMillis())
       if (!request.isTestRequest) {
         messageDao.saveRequest(reqWithId.id, reqWithId, true)
         pullInfo.userIds.map(
-          ServiceFactory.getPullMessageQueueService.enqueueMessage(reqWithId.appName, _, reqWithId.id, reqWithId.expiryTs, Some(read), Some(createTS))
+          ServiceFactory.getPullMessageQueueService.enqueueMessage(reqWithId.appName, _, reqWithId.id, reqWithId.expiryTs)
         )
       }
       reqWithId.id
