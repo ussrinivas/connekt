@@ -30,6 +30,7 @@ class RouteRegistry(implicit mat: ActorMaterializer) extends AuthenticationDirec
   private val tracking = new TrackingRoute().route
   private val registration = new RegistrationRoute().route
   private val send = new SendRoute().route
+  private val resend = new RetryRoute().route
   private val callback = new CallbackRoute().route
   private val inbound = new InboundMessageRoute().route
   private val report = new ReportsRoute().route
@@ -44,5 +45,5 @@ class RouteRegistry(implicit mat: ActorMaterializer) extends AuthenticationDirec
   private val exclusionRoute = new SuppressionsRoute().route
 
   val allRoutes =
-    health ~ clientAuth ~ tracking ~ send ~ registration ~ callback ~ inbound ~ report ~ fetch ~ stencil ~ client ~ keyChain ~ projectConfig ~ debugger ~ admin ~ subscription ~ exclusionRoute
+    health ~ clientAuth ~ tracking ~ send ~ resend ~ registration ~ callback ~ inbound ~ report ~ fetch ~ stencil ~ client ~ keyChain ~ projectConfig ~ debugger ~ admin ~ subscription ~ exclusionRoute
 }

@@ -352,6 +352,24 @@ paths:
           description: Unexpected error
           schema:
             $ref: '#/definitions/Error'
+  /resend/{channel}/{appName}/{messageId}:
+      post:
+        summary: Resend given messageId
+        description: |
+          Resend given messageId
+        parameters:
+          - $ref: '#/parameters/channel'
+          - $ref: '#/parameters/appName'
+          - $ref: '#/parameters/messageId'
+        tags:
+          - "Send"
+        responses:
+          '202':
+            description:  Request Accepted
+          default:
+            description: Unexpected error
+            schema:
+              $ref: '#/definitions/Error'
   /push/callback/{MPlatform}/{appName}/{deviceId}:
     post:
       summary: Notification Callback
