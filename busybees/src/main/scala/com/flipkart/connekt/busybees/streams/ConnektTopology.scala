@@ -57,8 +57,10 @@ trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate{
   override def onUpdate(_type: SyncType, args: List[AnyRef]): Any = {
     _type match {
       case SyncType.CLIENT_QUEUE_CREATE => Try_ {
-        ConnektLogger(LogFile.SERVICE).info(s"Topology Restart for CLIENT_QUEUE_CREATE Client: ${args.head}, New Topic: ${args.last} ")
-        restart
+        if (args.head.toString.equals(channelName)) {
+          ConnektLogger(LogFile.SERVICE).info(s"Topology Restart for CLIENT_QUEUE_CREATE Client: ${args(1)}, New Topic: ${args.last} ")
+          restart
+        }
       }
       case SyncType.TOPOLOGY_UPDATE => Try_ {
         if (args.last.toString.equals(channelName)) {

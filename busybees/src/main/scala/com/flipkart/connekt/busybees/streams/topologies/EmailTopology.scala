@@ -31,7 +31,6 @@ import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFa
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.streams.FirewallRequestTransformer
-import com.flipkart.connekt.commons.sync.{SyncManager, SyncType}
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.typesafe.config.Config
 
@@ -40,8 +39,6 @@ import scala.concurrent.ExecutionContextExecutor
 class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCallbackEvent] {
 
   private val blockingDispatcher = system.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
-  SyncManager.get().addObserver(this, List(SyncType.CLIENT_QUEUE_CREATE))
-  SyncManager.get().addObserver(this, List(SyncType.TOPOLOGY_UPDATE))
 
   private def createMergedSource(checkpointGroup: CheckPointGroup, topics: Seq[String]): Source[ConnektRequest, NotUsed] = Source.fromGraph(GraphDSL.create() { implicit b =>
 
