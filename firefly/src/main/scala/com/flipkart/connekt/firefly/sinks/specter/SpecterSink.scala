@@ -31,7 +31,7 @@ class SpecterSink extends Instrumented {
 
       callbackEvent match {
         case bfSupported: PublishSupport =>
-          BigfootService.ingestEvent(bfSupported.toPublishFormat, callbackEvent.namespace)
+          BigfootService.ingestEvent(bfSupported.toPublishFormat, bfSupported.namespace)
           ConnektLogger(LogFile.SERVICE).trace(s"SpecterSink message delivered: {}", supplier(bfSupported))
           meter(s"firefly.specter.bf.ingested").mark()
         case _ =>

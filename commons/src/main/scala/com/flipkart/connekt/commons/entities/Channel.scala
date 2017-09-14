@@ -22,6 +22,7 @@ object Channel extends Enumeration {
   val SMS = Value("sms")
   val CARDS = Value("cards")
   val OPENWEB = Value("openweb")
+  val PULL = Value("pull")
 }
 
 class ChannelToStringSerializer extends JsonSerializer[Channel.Value] {

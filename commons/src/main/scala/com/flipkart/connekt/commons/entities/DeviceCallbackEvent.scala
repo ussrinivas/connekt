@@ -13,6 +13,7 @@
 package com.flipkart.connekt.commons.entities
 
 import com.flipkart.concord.publisher.TPublishRequest
+import com.flipkart.connekt.commons.entities.bigfoot.PublishSupport
 import com.flipkart.connekt.commons.iomodels.CallbackEvent
 import com.flipkart.connekt.commons.utils.DateTimeUtils
 
@@ -27,7 +28,7 @@ sealed case class DeviceCallbackEvent(deviceId: String,
                                       state: String,
                                       ts: Long,
                                       active: Boolean
-                                     ) extends CallbackEvent {
+                                     ) extends CallbackEvent with PublishSupport {
 
   override def clientId: String = throw new RuntimeException(s"`clientId` undefined for DeviceCallbackEvent")
 

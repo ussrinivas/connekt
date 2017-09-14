@@ -12,7 +12,7 @@
  */
 package com.flipkart.connekt.commons.services
 
-import com.flipkart.connekt.commons.dao.MessageQueueDao
+import com.flipkart.connekt.commons.dao.{MessageMetaData, MessageQueueDao}
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.metrics.Timed
@@ -21,10 +21,8 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-class MessageQueueService(dao: MessageQueueDao) extends TService with Instrumented {
+class MessageQueueService(dao: MessageQueueDao, private val defaultTTL: Long = 7.days.toMillis, private val maxRecords: Int = 100) extends TService with Instrumented {
 
-  private val defaultTTL = 7.days.toMillis
-  private val maxRecords = 100
   private val cleanupFactor = 0.1
 
   @Timed("enqueueMessage")
@@ -45,7 +43,12 @@ class MessageQueueService(dao: MessageQueueDao) extends TService with Instrument
   @Timed("removeMessage")
   def removeMessage(appName: String, contactIdentifier: String, messageId: String): Future[_] = dao.removeMessage(appName.toLowerCase, contactIdentifier, messageId)
 
-  @Timed("getMessages")
-  def getMessages(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[Seq[String]] =  dao.getMessages(appName.toLowerCase, contactIdentifier, timestampRange)
+  @Timed("getMessageIds")
+  def getMessageIds(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[Seq[String]] =  dao.getMessageIds(appName.toLowerCase, contactIdentifier, timestampRange)
 
+  @Timed("getMessages")
+  def getMessages(appName: String, contactIdentifier: String, timestampRange: Option[(Long, Long)])(implicit ec: ExecutionContext): Future[Seq[(String, MessageMetaData)]] =  dao.getMessages(appName.toLowerCase, contactIdentifier, timestampRange)
+
+  @Timed("markAsRead")
+  def markAsRead(appName: String, contactIdentifier: String, messageIds: Seq[String])(implicit ec: ExecutionContext): Future[List[String]] =  dao.markAsRead(appName.toLowerCase, contactIdentifier, messageIds)
 }

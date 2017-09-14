@@ -19,6 +19,7 @@ import com.couchbase.client.java.Bucket
 import com.flipkart.connekt.commons.connections.TConnectionProvider
 import com.flipkart.connekt.commons.factories.{HTableFactory, MySQLFactory, THTableFactory, TMySQLFactory}
 import com.typesafe.config.Config
+import scala.concurrent.duration._
 
 object DaoFactory {
 
@@ -43,10 +44,12 @@ object DaoFactory {
     daoMap += DaoType.EXCLUSION_DETAILS -> ExclusionDao("fk-connekt-exclusions", hTableFactory)
     daoMap += DaoType.PN_REQUEST_INFO -> PNRequestDao(tableName = "fk-connekt-pn-info", hTableFactory = hTableFactory)
     daoMap += DaoType.SMS_REQUEST_INFO -> SmsRequestDao(tableName = "fk-connekt-sms-info", hTableFactory = hTableFactory)
+    daoMap += DaoType.PULL_REQUEST_INFO -> PullRequestDao(tableName = "fk-connekt-pull-info", hTableFactory = hTableFactory)
     daoMap += DaoType.EMAIL_REQUEST_INFO -> new EmailRequestDao(tableName = "fk-connekt-email-info-v2", hTableFactory = hTableFactory)
     daoMap += DaoType.CALLBACK_PN -> PNCallbackDao("fk-connekt-events", hTableFactory)
     daoMap += DaoType.CALLBACK_EMAIL -> new EmailCallbackDao("fk-connekt-email-events", hTableFactory)
     daoMap += DaoType.CALLBACK_SMS -> new SmsCallbackDao("fk-connekt-sms-events", hTableFactory)
+    daoMap += DaoType.CALLBACK_PULL -> new PullCallbackDao("fk-connekt-pull-events", hTableFactory)
   }
 
   def getHTableFactory = hTableFactory
@@ -96,16 +99,19 @@ object DaoFactory {
   }
 
 
-  def initAeroSpike(config: Config): Unit ={
+  def initAeroSpike(config: Config): Unit = {
     val aeroSpikeClient = connectionProvider.createAeroSpikeConnection(config.getString("hosts").split(",").toList)
-    daoMap += DaoType.PULL_MESSAGE -> new MessageQueueDao("pull", aeroSpikeClient)
+    daoMap += DaoType.FETCH_PUSH_MESSAGE -> new MessageQueueDao("pull", aeroSpikeClient, Some(config.getConfig("pull").getInt("ttl").days.toMillis))
+    daoMap += DaoType.PULL_MESSAGE -> new MessageQueueDao("inapp", aeroSpikeClient, Some(config.getConfig("inapp").getInt("ttl").days.toMillis))
   }
 
   def initReportingDao(bucket: Bucket): Unit = {
     daoMap += DaoType.STATS_REPORTING -> StatsReportingDao(bucket)
   }
 
-  def getMessageQueueDao : MessageQueueDao = daoMap(DaoType.PULL_MESSAGE).asInstanceOf[MessageQueueDao]
+  def getMessageQueueDao : MessageQueueDao = daoMap(DaoType.FETCH_PUSH_MESSAGE).asInstanceOf[MessageQueueDao]
+
+  def getPullMessageQueueDao : MessageQueueDao = daoMap(DaoType.PULL_MESSAGE).asInstanceOf[MessageQueueDao]
 
   def getDeviceDetailsDao: DeviceDetailsDao = daoMap(DaoType.DEVICE_DETAILS).asInstanceOf[DeviceDetailsDao]
 
@@ -115,11 +121,15 @@ object DaoFactory {
 
   def getSmsRequestDao: SmsRequestDao = daoMap(DaoType.SMS_REQUEST_INFO).asInstanceOf[SmsRequestDao]
 
+  def getPullRequestDao: PullRequestDao = daoMap(DaoType.PULL_REQUEST_INFO).asInstanceOf[PullRequestDao]
+
   def getPNCallbackDao: PNCallbackDao = daoMap(DaoType.CALLBACK_PN).asInstanceOf[PNCallbackDao]
 
   def getEmailCallbackDao: EmailCallbackDao = daoMap(DaoType.CALLBACK_EMAIL).asInstanceOf[EmailCallbackDao]
 
   def getSmsCallbackDao: SmsCallbackDao = daoMap(DaoType.CALLBACK_SMS).asInstanceOf[SmsCallbackDao]
+
+  def getPullCallbackDao: PullCallbackDao = daoMap(DaoType.CALLBACK_PULL).asInstanceOf[PullCallbackDao]
 
   def getEmailRequestDao: EmailRequestDao = daoMap(DaoType.EMAIL_REQUEST_INFO).asInstanceOf[EmailRequestDao]
 
@@ -158,5 +168,8 @@ object DaoType extends Enumeration {
   STATS_REPORTING,
   SUBSCRIPTION,
   KEY_CHAIN,
-  PULL_MESSAGE = Value
+  FETCH_PUSH_MESSAGE,
+  PULL_MESSAGE,
+  PULL_REQUEST_INFO,
+  CALLBACK_PULL = Value
 }

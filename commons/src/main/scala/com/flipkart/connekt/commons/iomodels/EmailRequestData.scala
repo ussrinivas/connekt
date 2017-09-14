@@ -12,6 +12,10 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
+import com.flipkart.connekt.commons.services.TStencilService
+
 case class Attachment(base64Data:String, name:String, mime:String)
 
-case class EmailRequestData(subject: String, html: String, text:String, attachments:List[Attachment]) extends ChannelRequestData
+case class EmailRequestData(subject: String, html: String, text:String, attachments:List[Attachment]) extends ChannelRequestData {
+  def validate(appName: String)(implicit stencilService: TStencilService){}
+}

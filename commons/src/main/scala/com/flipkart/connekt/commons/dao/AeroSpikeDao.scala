@@ -38,7 +38,7 @@ trait AeroSpikeDao  extends  Instrumented {
     client.put(policy, new AeroSpikeWriteHandler(promise), key, bin)
     promise.future
   }
-
+  
   protected def addMapRow(key: Key, binName: String, values: Map[String, String], ttl: Option[Long] = None)(implicit client: AsyncClient): Future[Record] = {
     val policy = new WritePolicy()
     policy.timeout = timeout

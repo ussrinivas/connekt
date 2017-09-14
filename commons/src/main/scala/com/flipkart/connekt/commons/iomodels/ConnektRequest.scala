@@ -44,6 +44,7 @@ case class ConnektRequest(@JsonProperty(required = false) id: String,
     require(meta != null, "`meta` field cannot be null. It is optional but non-null")
     require(channelInfo != null, "`channelInfo` field cannot be null.")
     require(contextId.forall(_.length <= 20), "`contextId` can be max 20 characters")
+    Option(channelData).foreach(_.validate(channelInfo.appName.toLowerCase))
   }
 
   @JsonIgnore

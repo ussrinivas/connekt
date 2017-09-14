@@ -16,9 +16,11 @@ import com.flipkart.connekt.commons.dao._
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.helpers.KafkaProducerHelper
+import com.flipkart.connekt.commons.iomodels.PullRequestInfo
 import com.flipkart.connekt.commons.services.{KeyChainService, _}
 import com.typesafe.config.Config
 import org.apache.hadoop.hbase.client.Connection
+import scala.concurrent.duration._
 
 object ServiceFactory {
 
@@ -34,6 +36,10 @@ object ServiceFactory {
 
   def initSMSMessageService(requestDao: SmsRequestDao, userConfiguration: TUserConfiguration, queueProducerHelper: KafkaProducerHelper, kafkaConsumerConfig: Config, schedulerService: SchedulerService) = {
     serviceCache += ServiceType.SMS_MESSAGE -> new MessageService(requestDao, userConfiguration, queueProducerHelper, kafkaConsumerConfig, schedulerService)
+  }
+
+  def initPULLMessageService(requestDao: PullRequestDao) = {
+    serviceCache += ServiceType.PULL_MESSAGE -> new PullMessageService(requestDao)
   }
 
   def initCallbackService(eventsDao: EventsDaoContainer, requestDao: RequestDaoContainer, queueProducerHelper: KafkaProducerHelper) = {
@@ -65,7 +71,11 @@ object ServiceFactory {
   }
 
   def initMessageQueueService(dao: MessageQueueDao):Unit = {
-    serviceCache += ServiceType.PULL_QUEUE -> new MessageQueueService(dao)
+    serviceCache += ServiceType.FETCH_PUSH_QUEUE -> new MessageQueueService(dao)
+  }
+
+  def initPullMessageQueueService(dao: MessageQueueDao, config: Config):Unit = {
+    serviceCache += ServiceType.PULL_QUEUE -> new MessageQueueService(dao, config.getConfig("hbase.pull").getInt("ttl").days.toMillis, config.getConfig("hbase.pull").getInt("maxRecords"))
   }
 
   def getMessageService(channel: Channel): TMessageService = {
@@ -76,7 +86,11 @@ object ServiceFactory {
     }
   }
 
-  def getMessageQueueService = serviceCache(ServiceType.PULL_QUEUE).asInstanceOf[MessageQueueService]
+  def getPullMessageService = serviceCache(ServiceType.PULL_MESSAGE).asInstanceOf[PullMessageService]
+
+  def getMessageQueueService = serviceCache(ServiceType.FETCH_PUSH_QUEUE).asInstanceOf[MessageQueueService]
+
+  def getPullMessageQueueService = serviceCache(ServiceType.PULL_QUEUE).asInstanceOf[MessageQueueService]
 
   def initStencilService(dao: TStencilDao) = serviceCache += ServiceType.STENCIL -> new StencilService(dao)
 
@@ -99,5 +113,5 @@ object ServiceFactory {
 }
 
 object ServiceType extends Enumeration {
-  val PN_MESSAGE, TEMPLATE, CALLBACK, USER_INFO, AUTHORISATION, KEY_CHAIN, STATS_REPORTING, SCHEDULER, STENCIL, SMS_MESSAGE, EMAIL_MESSAGE, APP_CONFIG, PULL_QUEUE = Value
+  val PN_MESSAGE, TEMPLATE, CALLBACK, USER_INFO, AUTHORISATION, KEY_CHAIN, STATS_REPORTING, SCHEDULER, STENCIL, SMS_MESSAGE, EMAIL_MESSAGE, APP_CONFIG, FETCH_PUSH_QUEUE, PULL_MESSAGE, PULL_QUEUE = Value
 }
