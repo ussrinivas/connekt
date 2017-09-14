@@ -16,7 +16,6 @@ import akka.NotUsed
 import akka.stream._
 import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl._
-import com.flipkart.connekt.busybees.BusyBeesBoot.emailTopology
 import com.flipkart.connekt.busybees.models.EmailRequestTracker
 import com.flipkart.connekt.busybees.streams.ConnektTopology
 import com.flipkart.connekt.busybees.streams.flows._
@@ -27,57 +26,22 @@ import com.flipkart.connekt.busybees.streams.flows.reponsehandlers._
 import com.flipkart.connekt.busybees.streams.flows.transformers.{EmailProviderPrepare, EmailProviderResponseFormatter}
 import com.flipkart.connekt.busybees.streams.sources.KafkaSource
 import com.flipkart.connekt.busybees.streams.topologies.EmailTopology._
-import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.streams.FirewallRequestTransformer
-import com.flipkart.connekt.commons.sync.SyncType.SyncType
-import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
+import com.flipkart.connekt.commons.sync.{SyncManager, SyncType}
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.typesafe.config.Config
 
 import scala.concurrent.ExecutionContextExecutor
 
-class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCallbackEvent] with SyncDelegate {
+class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCallbackEvent] {
 
   private val blockingDispatcher = system.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
   SyncManager.get().addObserver(this, List(SyncType.CLIENT_QUEUE_CREATE))
   SyncManager.get().addObserver(this, List(SyncType.TOPOLOGY_UPDATE))
-  private var isEmailTopologyEnabled = true
-
-  override def onUpdate(_type: SyncType, args: List[AnyRef]): Any = {
-    _type match {
-      case SyncType.CLIENT_QUEUE_CREATE => Try_ {
-        ConnektLogger(LogFile.SERVICE).info(s"EmailTopology Restart for CLIENT_QUEUE_CREATE Client: ${args.head}, New Topic: ${args.last} ")
-        restart
-      }
-      case SyncType.TOPOLOGY_UPDATE => Try_ {
-        if (args.last.toString.equals(Channel.EMAIL.toString)) {
-          args.head.toString match {
-            case "start" =>
-              if (isEmailTopologyEnabled) {
-                ConnektLogger(LogFile.SERVICE).info(s"EMAIL channel topology is already up.")
-              } else {
-                ConnektLogger(LogFile.SERVICE).info(s"EMAIL channel topology restarting.")
-                run(mat)
-                isEmailTopologyEnabled = true
-              }
-            case "stop" =>
-              if (isEmailTopologyEnabled) {
-                ConnektLogger(LogFile.SERVICE).info(s"EMAIL channel topology shutting down.")
-                killSwitch.shutdown()
-                isEmailTopologyEnabled = false
-              } else {
-                ConnektLogger(LogFile.SERVICE).info(s"EMAIL channel topology is already stopped.")
-              }
-          }
-        }
-      }
-      case _ =>
-    }
-  }
 
   private def createMergedSource(checkpointGroup: CheckPointGroup, topics: Seq[String]): Source[ConnektRequest, NotUsed] = Source.fromGraph(GraphDSL.create() { implicit b =>
 
@@ -116,6 +80,8 @@ class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCa
   override def transformers: Map[CheckPointGroup, Flow[ConnektRequest, EmailCallbackEvent, NotUsed]] = {
     Map(Channel.EMAIL.toString -> emailHTTPTransformFlow(ioMat, ec,ioDispatcher,blockingDispatcher))
   }
+
+  override def channelName: String = Channel.EMAIL.toString
 }
 
 object EmailTopology {

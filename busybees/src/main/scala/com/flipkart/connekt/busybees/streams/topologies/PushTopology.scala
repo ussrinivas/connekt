@@ -18,7 +18,6 @@ import akka.NotUsed
 import akka.stream._
 import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl._
-import com.flipkart.connekt.busybees.BusyBeesBoot.pushTopology
 import com.flipkart.connekt.busybees.models.{GCMRequestTracker, OpenWebRequestTracker, WNSRequestTracker}
 import com.flipkart.connekt.busybees.streams.ConnektTopology
 import com.flipkart.connekt.busybees.streams.flows.dispatchers._
@@ -28,14 +27,12 @@ import com.flipkart.connekt.busybees.streams.flows.profilers.TimedFlowOps._
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers._
 import com.flipkart.connekt.busybees.streams.flows.{FlowMetrics, RenderFlow}
 import com.flipkart.connekt.busybees.streams.sources.KafkaSource
-import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.entities.{Channel, MobilePlatform}
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.streams.FirewallRequestTransformer
-import com.flipkart.connekt.commons.sync.SyncType.SyncType
-import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
+import com.flipkart.connekt.commons.sync.SyncDelegate
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.typesafe.config.Config
 
@@ -43,11 +40,7 @@ protected object AndroidProtocols extends Enumeration {
   val http, xmpp = Value
 }
 
-class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallbackEvent] with SyncDelegate {
-
-  SyncManager.get().addObserver(this, List(SyncType.CLIENT_QUEUE_CREATE))
-  SyncManager.get().addObserver(this, List(SyncType.TOPOLOGY_UPDATE))
-  private var isPushTopologyEnabled = true
+class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallbackEvent] {
 
   private def createMergedSource(checkpointGroup: CheckPointGroup, topics: Seq[String]): Source[ConnektRequest, NotUsed] = Source.fromGraph(GraphDSL.create() { implicit b =>
 
@@ -253,38 +246,6 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
     SinkShape(metrics.in)
   })
 
-  override def onUpdate(_type: SyncType, args: List[AnyRef]): Any = {
-    _type match {
-      case SyncType.CLIENT_QUEUE_CREATE => Try_ {
-        ConnektLogger(LogFile.SERVICE).info(s"Busybees Restart for CLIENT_QUEUE_CREATE Client: ${args.head}, New Topic: ${args.last} ")
-        restart
-      }
-      case SyncType.TOPOLOGY_UPDATE => Try_ {
-          if (args.last.toString.equals(Channel.PUSH.toString)) {
-            args.head.toString match {
-              case "start" =>
-                if (isPushTopologyEnabled) {
-                  ConnektLogger(LogFile.SERVICE).info(s"PUSH channel topology is already up.")
-                } else {
-                  ConnektLogger(LogFile.SERVICE).info(s"PUSH channel topology restarting.")
-                  run(mat)
-                  isPushTopologyEnabled = true
-                }
-              case "stop" =>
-                if (isPushTopologyEnabled) {
-                  ConnektLogger(LogFile.SERVICE).info(s"PUSH channel topology shutting down.")
-                  killSwitch.shutdown()
-                  isPushTopologyEnabled = false
-                } else {
-                  ConnektLogger(LogFile.SERVICE).info(s"PUSH channel topology is already stopped.")
-                }
-            }
-          }
-      }
-      case _ =>
-    }
-  }
-
   override def transformers: Map[CheckPointGroup, Flow[ConnektRequest, PNCallbackEvent, NotUsed]] = {
     Map(MobilePlatform.IOS.toString -> iosTransformFlow,
       MobilePlatform.ANDROID.toString -> androidTransformFlow,
@@ -292,4 +253,6 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
       MobilePlatform.OPENWEB.toString -> openWebTransformFlow
     )
   }
+
+  override def channelName: String = Channel.PUSH.toString
 }
