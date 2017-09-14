@@ -56,12 +56,14 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                               profile(s"sendDevicePush.$appPlatform.$appName") {
                                 val request = r.copy(clientId = user.userId, channel = "push", meta = {
                                   Option(r.meta).getOrElse(Map.empty[String, String]) ++ headers
-                                })
+                                }, channelInfo =
+                                  r.channelInfo.asInstanceOf[PNRequestInfo].copy(appName = appName.toLowerCase)
+                                )
                                 request.validate
 
                                 ConnektLogger(LogFile.SERVICE).debug(s"Received PN request with payload: ${request.toString}")
 
-                                val pnRequestInfo = request.channelInfo.asInstanceOf[PNRequestInfo].copy(appName = appName.toLowerCase)
+                                val pnRequestInfo = request.channelInfo.asInstanceOf[PNRequestInfo]
 
                                 if (pnRequestInfo.deviceIds != null && pnRequestInfo.deviceIds.nonEmpty) {
 
@@ -130,12 +132,14 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                               profile(s"sendUserPush.$appPlatform.$appName") {
                                 val request = r.copy(clientId = user.userId, channel = "push", meta = {
                                   Option(r.meta).getOrElse(Map.empty[String, String]) ++ headers
-                                })
+                                }, channelInfo =
+                                  r.channelInfo.asInstanceOf[PNRequestInfo].copy(appName = appName.toLowerCase)
+                                )
                                 request.validate
 
                                 ConnektLogger(LogFile.SERVICE).debug(s"Received PN request sent for user : $userId with payload: {}", supplier(request))
 
-                                val pnRequestInfo = request.channelInfo.asInstanceOf[PNRequestInfo].copy(appName = appName.toLowerCase)
+                                val pnRequestInfo = request.channelInfo.asInstanceOf[PNRequestInfo]
                                 val groupedPlatformRequests = ListBuffer[ConnektRequest]()
 
                                 appPlatform match {
@@ -198,12 +202,14 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                               profile("email") {
                                 val request = r.copy(clientId = user.userId, channel = "email", meta = {
                                   Option(r.meta).getOrElse(Map.empty[String, String]) ++ headers
-                                })
+                                }, channelInfo =
+                                  r.channelInfo.asInstanceOf[EmailRequestInfo].copy(appName = appName.toLowerCase)
+                                )
                                 request.validate
 
                                 ConnektLogger(LogFile.SERVICE).debug(s"Received EMAIL request sent for user : $user with payload: {}", supplier(request))
 
-                                val emailRequestInfo = request.channelInfo.asInstanceOf[EmailRequestInfo].copy(appName = appName.toLowerCase).toStrict
+                                val emailRequestInfo = request.channelInfo.asInstanceOf[EmailRequestInfo].toStrict
 
                                 if (emailRequestInfo.to != null && emailRequestInfo.to.nonEmpty) {
                                   if (isTestRequest) {
@@ -263,12 +269,14 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                 profile("sms") {
                                   val request = r.copy(clientId = user.userId, channel = Channel.SMS.toString, meta = {
                                     Option(r.meta).getOrElse(Map.empty[String, String]) ++ headers
-                                  })
+                                  }, channelInfo =
+                                    r.channelInfo.asInstanceOf[SmsRequestInfo].copy(appName = appName.toLowerCase)
+                                  )
                                   request.validate
 
                                   val appLevelConfigService = ServiceFactory.getUserProjectConfigService
                                   ConnektLogger(LogFile.SERVICE).debug(s"Received SMS request with payload: ${request.toString}")
-                                  val smsRequestInfo = request.channelInfo.asInstanceOf[SmsRequestInfo].copy(appName = appName.toLowerCase)
+                                  val smsRequestInfo = request.channelInfo.asInstanceOf[SmsRequestInfo]
 
                                   val appDefaultCountryCode = appLevelConfigService.getProjectConfiguration(appName.toLowerCase, "app-local-country-code").get.get.value.getObj[ObjectNode]
                                   val phoneUtil: PhoneNumberUtil = PhoneNumberUtil.getInstance()
@@ -329,6 +337,50 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                     }
                   }
                 }
+            }
+          } ~ pathPrefix("send" / "pull") {
+            path(Segment) {
+              (appName: String) => {
+                authorize(user, "SEND_PULL", "SEND_" + appName) {
+                  idempotentRequest(appName) {
+                    post {
+                      getXHeaders { headers =>
+                        entity(as[ConnektRequest]) { r =>
+                          complete {
+                            Future {
+                              profile(s"pull.send.$appName") {
+
+                                val request = r.copy(clientId = user.userId, channel = "pull", meta = {
+                                  Option(r.meta).getOrElse(Map.empty[String, String]) ++ headers
+                                }, channelInfo =
+                                  r.channelInfo.asInstanceOf[PullRequestInfo].copy(appName = appName.toLowerCase)
+                                )
+                                request.validate
+                                ConnektLogger(LogFile.SERVICE).debug(s"Received PULL request with payload: ${request.toString}")
+
+                                val pullRequestInfo = request.channelInfo.asInstanceOf[PullRequestInfo]
+                                if (pullRequestInfo.userIds != null && pullRequestInfo.userIds.nonEmpty) {
+                                  val success = scala.collection.mutable.Map[String, Set[String]]()
+                                  val failure = ListBuffer[String]()
+                                  ServiceFactory.getPullMessageService.saveRequest(request) match {
+                                    case Success(result) => success += result -> pullRequestInfo.userIds
+                                    case Failure(t) => failure ++= pullRequestInfo.userIds
+                                  }
+                                  val (responseCode, message) = if (success.nonEmpty) Tuple2(StatusCodes.Created, s"In App request processed") else Tuple2(StatusCodes.InternalServerError, s"In App request failed")
+                                  GenericResponse(responseCode.intValue, null, SendResponse(message, success.toMap, failure.toList)).respond
+                                } else {
+                                  ConnektLogger(LogFile.SERVICE).error(s"Request Validation Failed, $request ")
+                                  GenericResponse(StatusCodes.BadRequest.intValue, null, Response("Request Validation Failed, Please ensure mandatory field values.", null)).respond
+                                }
+                              }
+                            }(ioDispatcher)
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
         }

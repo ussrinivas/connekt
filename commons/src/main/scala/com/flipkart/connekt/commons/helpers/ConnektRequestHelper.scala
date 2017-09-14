@@ -12,7 +12,7 @@
  */
 package com.flipkart.connekt.commons.helpers
 
-import com.flipkart.connekt.commons.iomodels.{ConnektRequest, EmailRequestInfo, PNRequestInfo, SmsRequestInfo}
+import com.flipkart.connekt.commons.iomodels._
 
 object ConnektRequestHelper {
 
@@ -33,6 +33,7 @@ object ConnektRequestHelper {
       case pn: PNRequestInfo => pn.appName
       case email: EmailRequestInfo => email.appName
       case sms: SmsRequestInfo => sms.appName
+      case pull: PullRequestInfo => pull.appName
       case _ => null
     }
 

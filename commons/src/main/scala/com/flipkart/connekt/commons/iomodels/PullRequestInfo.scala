@@ -12,8 +12,14 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
-import com.flipkart.connekt.commons.services.TStencilService
+import com.fasterxml.jackson.annotation.JsonProperty
 
-class GCardRequestData(status: String, reason: String) extends ChannelRequestData{
-  def validate(appName: String)(implicit stencilService: TStencilService){}
+case class PullRequestInfo(
+              @JsonProperty(required = false) appName: String,
+              @JsonProperty(required = true) userIds: Set[String]
+            ) extends ChannelRequestInfo {
+
+  def this() {
+    this(null, Set.empty[String])
+  }
 }

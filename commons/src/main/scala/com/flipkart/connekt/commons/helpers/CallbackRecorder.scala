@@ -38,6 +38,8 @@ object CallbackRecorder extends Instrumented {
             ServiceFactory.getCallbackService.persistCallbackEvents(Channel.EMAIL, events.toList).get
           case _:SmsCallbackEvent =>
             ServiceFactory.getCallbackService.persistCallbackEvents(Channel.SMS, events.toList).get
+          case _:PullCallbackEvent =>
+            ServiceFactory.getCallbackService.persistCallbackEvents(Channel.PULL, events.toList).get
           case _:InboundMessageCallbackEvent =>
             ServiceFactory.getCallbackService.enqueueCallbackEvents(events.toList, ConnektConfig.get("inbound.messages.topic").getOrElse("inbound_messages"))
         }
