@@ -381,6 +381,7 @@ private[xmpp] class XmppConnectionActor(googleCredential: GoogleCredential, appI
     }
     catch {
       case ex: Exception =>
+        meter(s"xmpp.connect.failure").mark()
         //TODO how to handle
         ConnektLogger(LogFile.CLIENTS).error("Unable to connect:", ex)
         throw ex

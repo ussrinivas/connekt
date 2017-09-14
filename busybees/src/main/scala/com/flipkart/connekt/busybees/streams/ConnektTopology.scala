@@ -42,13 +42,15 @@ trait ConnektTopology[E <: CallbackEvent] {
   val ioMat = BusyBeesBoot.ioMat
   val ioDispatcher = system.dispatchers.lookup("akka.actor.io-dispatcher")
 
-  private val killSwitch = KillSwitches.shared(UUID.randomUUID().toString)
+  protected val killSwitch = KillSwitches.shared(UUID.randomUUID().toString)
   private var shutdownComplete:Future[Done] = _
 
   def graphs(): List[RunnableGraph[NotUsed]] = {
     val sourcesMap = sources
     transformers.filterKeys(sourcesMap.contains).map { case (group, flow) =>
-      sourcesMap(group).via(killSwitch.flow).withAttributes(ActorAttributes.dispatcher("akka.actor.default-pinned-dispatcher"))
+      sourcesMap(group)
+        .via(killSwitch.flow)
+        .withAttributes(ActorAttributes.dispatcher("akka.actor.default-pinned-dispatcher"))
         .via(flow)
         .watchTermination(){
           case (materializedValue, completed) =>

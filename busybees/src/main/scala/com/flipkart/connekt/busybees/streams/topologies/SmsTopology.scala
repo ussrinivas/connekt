@@ -16,6 +16,7 @@ import akka.NotUsed
 import akka.stream._
 import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl._
+import com.flipkart.connekt.busybees.BusyBeesBoot.smsTopology
 import com.flipkart.connekt.busybees.models.SmsRequestTracker
 import com.flipkart.connekt.busybees.streams.ConnektTopology
 import com.flipkart.connekt.busybees.streams.flows._
@@ -37,11 +38,13 @@ import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.typesafe.config.Config
 
-import scala.concurrent.{ExecutionContextExecutor, Promise}
+import scala.concurrent.ExecutionContextExecutor
 
 class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallbackEvent] with SyncDelegate {
 
   SyncManager.get().addObserver(this, List(SyncType.CLIENT_QUEUE_CREATE))
+  SyncManager.get().addObserver(this, List(SyncType.TOPOLOGY_UPDATE))
+  private var isSmsTopologyEnabled = true
 
   private def createMergedSource(checkpointGroup: CheckPointGroup, topics: Seq[String]): Source[ConnektRequest, NotUsed] = Source.fromGraph(GraphDSL.create() { implicit b =>
 
@@ -82,6 +85,29 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
       case SyncType.CLIENT_QUEUE_CREATE => Try_ {
         ConnektLogger(LogFile.SERVICE).info(s"SmsTopology Restart for CLIENT_QUEUE_CREATE Client: ${args.head}, New Topic: ${args.last} ")
         restart
+      }
+      case SyncType.TOPOLOGY_UPDATE => Try_ {
+        if (args.last.toString.equals(Channel.SMS.toString)) {
+          args.head.toString match {
+            case "start" =>
+              if (isSmsTopologyEnabled) {
+                ConnektLogger(LogFile.SERVICE).info(s"SMS channel topology is already up.")
+              } else {
+                ConnektLogger(LogFile.SERVICE).info(s"SMS channel topology restarting.")
+                smsTopology = new SmsTopology(kafkaConsumerConfig)
+                smsTopology.run
+                isSmsTopologyEnabled = true
+              }
+            case "stop" =>
+              if (isSmsTopologyEnabled) {
+                ConnektLogger(LogFile.SERVICE).info(s"SMS channel topology shutting down.")
+                killSwitch.shutdown()
+                isSmsTopologyEnabled = false
+              } else {
+                ConnektLogger(LogFile.SERVICE).info(s"SMS channel topology is already stopped.")
+              }
+          }
+        }
       }
       case _ =>
     }

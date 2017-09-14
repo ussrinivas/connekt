@@ -18,6 +18,7 @@ import akka.NotUsed
 import akka.stream._
 import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl._
+import com.flipkart.connekt.busybees.BusyBeesBoot.pushTopology
 import com.flipkart.connekt.busybees.models.{GCMRequestTracker, OpenWebRequestTracker, WNSRequestTracker}
 import com.flipkart.connekt.busybees.streams.ConnektTopology
 import com.flipkart.connekt.busybees.streams.flows.dispatchers._
@@ -38,8 +39,6 @@ import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.typesafe.config.Config
 
-import scala.concurrent.Promise
-
 protected object AndroidProtocols extends Enumeration {
   val http, xmpp = Value
 }
@@ -47,6 +46,8 @@ protected object AndroidProtocols extends Enumeration {
 class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallbackEvent] with SyncDelegate {
 
   SyncManager.get().addObserver(this, List(SyncType.CLIENT_QUEUE_CREATE))
+  SyncManager.get().addObserver(this, List(SyncType.TOPOLOGY_UPDATE))
+  private var isPushTopologyEnabled = true
 
   private def createMergedSource(checkpointGroup: CheckPointGroup, topics: Seq[String]): Source[ConnektRequest, NotUsed] = Source.fromGraph(GraphDSL.create() { implicit b =>
 
@@ -257,6 +258,31 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
       case SyncType.CLIENT_QUEUE_CREATE => Try_ {
         ConnektLogger(LogFile.SERVICE).info(s"Busybees Restart for CLIENT_QUEUE_CREATE Client: ${args.head}, New Topic: ${args.last} ")
         restart
+      }
+      case SyncType.TOPOLOGY_UPDATE => Try_ {
+        case SyncType.TOPOLOGY_UPDATE => Try_ {
+          if (args.last.toString.equals(Channel.PUSH.toString)) {
+            args.head.toString match {
+              case "start" =>
+                if (isPushTopologyEnabled) {
+                  ConnektLogger(LogFile.SERVICE).info(s"PUSH channel topology is already up.")
+                } else {
+                  ConnektLogger(LogFile.SERVICE).info(s"PUSH channel topology restarting.")
+                  pushTopology = new PushTopology(kafkaConsumerConfig)
+                  pushTopology.run
+                  isPushTopologyEnabled = true
+                }
+              case "stop" =>
+                if (isPushTopologyEnabled) {
+                  ConnektLogger(LogFile.SERVICE).info(s"PUSH channel topology shutting down.")
+                  killSwitch.shutdown()
+                  isPushTopologyEnabled = false
+                } else {
+                  ConnektLogger(LogFile.SERVICE).info(s"PUSH channel topology is already stopped.")
+                }
+            }
+          }
+        }
       }
       case _ =>
     }
