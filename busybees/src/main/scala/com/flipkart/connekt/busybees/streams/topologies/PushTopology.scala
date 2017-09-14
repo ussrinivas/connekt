@@ -260,7 +260,6 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
         restart
       }
       case SyncType.TOPOLOGY_UPDATE => Try_ {
-        case SyncType.TOPOLOGY_UPDATE => Try_ {
           if (args.last.toString.equals(Channel.PUSH.toString)) {
             args.head.toString match {
               case "start" =>
@@ -282,7 +281,6 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
                 }
             }
           }
-        }
       }
       case _ =>
     }
