@@ -61,8 +61,7 @@ class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCa
                 ConnektLogger(LogFile.SERVICE).info(s"EMAIL channel topology is already up.")
               } else {
                 ConnektLogger(LogFile.SERVICE).info(s"EMAIL channel topology restarting.")
-                emailTopology = new EmailTopology(kafkaConsumerConfig)
-                emailTopology.run
+                run(mat)
                 isEmailTopologyEnabled = true
               }
             case "stop" =>

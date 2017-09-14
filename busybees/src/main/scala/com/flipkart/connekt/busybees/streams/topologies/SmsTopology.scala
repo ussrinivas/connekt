@@ -94,8 +94,7 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
                 ConnektLogger(LogFile.SERVICE).info(s"SMS channel topology is already up.")
               } else {
                 ConnektLogger(LogFile.SERVICE).info(s"SMS channel topology restarting.")
-                smsTopology = new SmsTopology(kafkaConsumerConfig)
-                smsTopology.run
+                run(mat)
                 isSmsTopologyEnabled = true
               }
             case "stop" =>

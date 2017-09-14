@@ -17,13 +17,13 @@ import java.util.UUID
 import akka.{Done, NotUsed}
 import akka.event.Logging
 import akka.stream.scaladsl.{Flow, RunnableGraph, Sink, Source}
-import akka.stream.{ActorAttributes, Attributes, KillSwitches, Materializer}
+import akka.stream._
 import com.flipkart.connekt.busybees.BusyBeesBoot
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels.{CallbackEvent, ConnektRequest}
 import com.flipkart.connekt.commons.core.Wrappers._
-import scala.concurrent.duration._
 
+import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
 trait ConnektTopology[E <: CallbackEvent] {
@@ -42,11 +42,12 @@ trait ConnektTopology[E <: CallbackEvent] {
   val ioMat = BusyBeesBoot.ioMat
   val ioDispatcher = system.dispatchers.lookup("akka.actor.io-dispatcher")
 
-  protected val killSwitch = KillSwitches.shared(UUID.randomUUID().toString)
+  protected var killSwitch: SharedKillSwitch = _
   private var shutdownComplete:Future[Done] = _
 
   def graphs(): List[RunnableGraph[NotUsed]] = {
     val sourcesMap = sources
+    killSwitch = KillSwitches.shared(UUID.randomUUID().toString)
     transformers.filterKeys(sourcesMap.contains).map { case (group, flow) =>
       sourcesMap(group)
         .via(killSwitch.flow)

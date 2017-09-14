@@ -267,8 +267,7 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
                   ConnektLogger(LogFile.SERVICE).info(s"PUSH channel topology is already up.")
                 } else {
                   ConnektLogger(LogFile.SERVICE).info(s"PUSH channel topology restarting.")
-                  pushTopology = new PushTopology(kafkaConsumerConfig)
-                  pushTopology.run
+                  run(mat)
                   isPushTopologyEnabled = true
                 }
               case "stop" =>
