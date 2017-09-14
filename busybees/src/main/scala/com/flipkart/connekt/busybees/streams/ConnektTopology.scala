@@ -87,7 +87,6 @@ trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate{
   }
 
   def graphs(): List[RunnableGraph[NotUsed]] = {
-    isTopologyEnabled.set(true)
     val sourcesMap = sources
     killSwitch = KillSwitches.shared(UUID.randomUUID().toString)
     transformers.filterKeys(sourcesMap.contains).map { case (group, flow) =>
