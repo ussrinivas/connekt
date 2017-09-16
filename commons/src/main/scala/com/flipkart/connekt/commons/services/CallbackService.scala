@@ -59,7 +59,7 @@ class CallbackService(eventsDao: EventsDaoContainer, requestDao: RequestDaoConta
 
   @Timed("enqueueCallbackEvent")
   override def enqueueCallbackEvents(events: List[CallbackEvent], queueName: String): Try[Unit] = Try_ {
-    queueProducerHelper.writeMessages(queueName, events.map(_.getJson): _*)
+    queueProducerHelper.writeMessages(queueName, events.map(event => Tuple2(event.eventId, event.getJson)): _*)
   }
 
   @Timed("fetchCallbackEvent")
