@@ -36,8 +36,6 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
   private lazy implicit val stencilService = ServiceFactory.getStencilService
   private lazy val messageService = ServiceFactory.getMessageService(Channel.PUSH)
-  private lazy val pullmessageService = ServiceFactory.getPullMessageService
-  private lazy val pullMessageTTL = ConnektConfig.get("connections.hbase.hbase.pull.ttl").getOrElse(90)
   private val maxAllowedClockOffsetSecs = ConnektConfig.getInt("sys.clock.max.offset").getOrElse(120)
 
   val route =
