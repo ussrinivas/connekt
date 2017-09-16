@@ -29,7 +29,7 @@ import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
-trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate{
+trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate {
 
   type CheckPointGroup = String
 
@@ -46,13 +46,15 @@ trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate{
   implicit val mat = BusyBeesBoot.mat
   val ioMat = BusyBeesBoot.ioMat
   val ioDispatcher = system.dispatchers.lookup("akka.actor.io-dispatcher")
-  val isTopologyEnabled = new AtomicBoolean(true)
+  val topologyEnabled = new AtomicBoolean(true)
 
   SyncManager.get().addObserver(this, List(SyncType.CLIENT_QUEUE_CREATE))
-  SyncManager.get().addObserver(this, List(SyncType.TOPOLOGY_UPDATE))
+  SyncManager.get().addObserver(this, List(SyncType.EMAIL_TOPOLOGY_UPDATE))
+  SyncManager.get().addObserver(this, List(SyncType.PUSH_TOPOLOGY_UPDATE))
+  SyncManager.get().addObserver(this, List(SyncType.SMS_TOPOLOGY_UPDATE))
 
-  protected var killSwitch: SharedKillSwitch = _
-  private var shutdownComplete:Future[Done] = _
+  private var killSwitch: SharedKillSwitch = _
+  private var shutdownComplete: Future[Done] = _
 
   override def onUpdate(_type: SyncType, args: List[AnyRef]): Any = {
     _type match {
@@ -62,22 +64,22 @@ trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate{
           restart
         }
       }
-      case SyncType.TOPOLOGY_UPDATE => Try_ {
+      case SyncType.PUSH_TOPOLOGY_UPDATE | SyncType.SMS_TOPOLOGY_UPDATE | SyncType.EMAIL_TOPOLOGY_UPDATE => Try_ {
         if (args.last.toString.equals(channelName)) {
           args.head.toString match {
             case "start" =>
-              if (isTopologyEnabled.get()) {
+              if (topologyEnabled.get()) {
                 ConnektLogger(LogFile.SERVICE).info(s"${args.last.toString.toUpperCase} channel topology is already up.")
               } else {
                 ConnektLogger(LogFile.SERVICE).info(s"${args.last.toString.toUpperCase} channel topology restarting.")
                 run(mat)
-                isTopologyEnabled.set(true)
+                topologyEnabled.set(true)
               }
             case "stop" =>
-              if (isTopologyEnabled.get()) {
+              if (topologyEnabled.get()) {
                 ConnektLogger(LogFile.SERVICE).info(s"${args.last.toString.toUpperCase} channel topology shutting down.")
                 killSwitch.shutdown()
-                isTopologyEnabled.set(false)
+                topologyEnabled.set(false)
               } else {
                 ConnektLogger(LogFile.SERVICE).info(s"${args.last.toString.toUpperCase} channel topology is already stopped.")
               }
@@ -96,7 +98,7 @@ trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate{
         .via(killSwitch.flow)
         .withAttributes(ActorAttributes.dispatcher("akka.actor.default-pinned-dispatcher"))
         .via(flow)
-        .watchTermination(){
+        .watchTermination() {
           case (materializedValue, completed) =>
             shutdownComplete = completed
             materializedValue
@@ -111,7 +113,7 @@ trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate{
   def shutdown(): Future[Done] = {
     ConnektLogger(LogFile.PROCESSORS).info(s"Shutting Down " + this.getClass.getSimpleName)
     killSwitch.shutdown()
-    shutdownComplete.onSuccess{ case _ => ConnektLogger(LogFile.PROCESSORS).info(s"Shutdown Complete" + this.getClass.getSimpleName)}
+    shutdownComplete.onSuccess { case _ => ConnektLogger(LogFile.PROCESSORS).info(s"Shutdown Complete" + this.getClass.getSimpleName) }
     Option(shutdownComplete).getOrElse(Future.successful(Done))
   }
 

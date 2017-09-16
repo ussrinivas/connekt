@@ -14,6 +14,7 @@ package com.flipkart.connekt.receptors.routes.common
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.stream.ActorMaterializer
+import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels.{GenericResponse, Response}
@@ -21,6 +22,7 @@ import com.flipkart.connekt.commons.services.DeviceDetailsService
 import com.flipkart.connekt.commons.sync.{SyncManager, SyncMessage, SyncType}
 import com.flipkart.connekt.receptors.directives.ChannelSegment
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
+import org.apache.zookeeper.CreateMode
 
 class AdminRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
@@ -54,7 +56,12 @@ class AdminRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                     get {
                       action match {
                         case ("start" | "stop") =>
-                          SyncManager.get().publish(SyncMessage(topic = SyncType.TOPOLOGY_UPDATE, List(action, channel.toString)))
+                          channel match {
+                            case Channel.EMAIL => SyncManager.get().publish(SyncMessage(topic = SyncType.EMAIL_TOPOLOGY_UPDATE, List(action, channel.toString)), CreateMode.PERSISTENT)
+                            case Channel.SMS => SyncManager.get().publish(SyncMessage(topic = SyncType.SMS_TOPOLOGY_UPDATE, List(action, channel.toString)), CreateMode.PERSISTENT)
+                            case Channel.PUSH => SyncManager.get().publish(SyncMessage(topic = SyncType.PUSH_TOPOLOGY_UPDATE, List(action, channel.toString)), CreateMode.PERSISTENT)
+                            case _ => complete(GenericResponse(StatusCodes.NotFound.intValue, null, Response("Topology not defined.", null)))
+                          }
                           complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Topology for channel $channel action $action successful", null)))
                         case _ =>
                           complete(GenericResponse(StatusCodes.NotFound.intValue, null, Response("Invalid request", null)))

@@ -65,14 +65,14 @@ object ReceptorsBoot extends BaseApp {
       val kafkaProducerPoolConf = ConnektConfig.getConfig("connections.kafka.producerPool").getOrElse(ConfigFactory.empty())
       val kafkaProducerHelper = KafkaProducerHelper.init(kafkaConnConf, kafkaProducerPoolConf)
 
-      ServiceFactory.initMessageQueueService(DaoFactory.getMessageQueueDao)
+      ServiceFactory.initMessageQueueService(DaoFactory.getMessageQueueDao, aeroSpikeCf)
       ServiceFactory.initPullMessageQueueService(DaoFactory.getPullMessageQueueDao, hConfig.get)
       ServiceFactory.initSchedulerService(DaoFactory.getHTableFactory.getConnection)
       ServiceFactory.initPNMessageService(DaoFactory.getPNRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf, ServiceFactory.getSchedulerService)
 
       ServiceFactory.initSMSMessageService(DaoFactory.getSmsRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf, ServiceFactory.getSchedulerService)
       ServiceFactory.initPULLMessageService(DaoFactory.getPullRequestDao)
-      ServiceFactory.initMessageQueueService(DaoFactory.getPullMessageQueueDao)
+      ServiceFactory.initMessageQueueService(DaoFactory.getPullMessageQueueDao, aeroSpikeCf)
 
       ServiceFactory.initEmailMessageService(DaoFactory.getEmailRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf)
 
