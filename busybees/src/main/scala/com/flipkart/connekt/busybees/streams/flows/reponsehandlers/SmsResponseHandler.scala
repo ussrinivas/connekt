@@ -49,7 +49,7 @@ class SmsResponseHandler(parallelism: Int)(implicit m: Materializer, ec: Executi
     val maybeSmsCallbackEvent = tryResponse match {
       case Success(smsResponse) =>
         meter(s"${requestTracker.provider}.${smsResponse.responseCode}").mark()
-        ConnektLogger(LogFile.PROCESSORS).info(s"SmsResponseHandler received http response for: messageId : ${requestTracker.messageId}, code: ${smsResponse.responseCode}, provider: ${requestTracker.provider}")
+        ConnektLogger(LogFile.PROCESSORS).debug(s"SmsResponseHandler received http response for: messageId : ${requestTracker.messageId}, code: ${smsResponse.responseCode}, provider: ${requestTracker.provider}")
         smsResponse.responseCode match {
           case s if 2 == (s / 100) =>
             Right(smsResponse.responsePerReceivers.asScala.map(r => {

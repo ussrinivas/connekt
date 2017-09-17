@@ -49,7 +49,7 @@ class GCMResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends
       case Success(r) =>
         try {
           val stringResponse = r.entity.getString(m)
-          ConnektLogger(LogFile.PROCESSORS).info(s"GCMResponseHandler received http response for: $messageId")
+          ConnektLogger(LogFile.PROCESSORS).debug(s"GCMResponseHandler received http response for: $messageId")
           ConnektLogger(LogFile.PROCESSORS).trace(s"GCMResponseHandler received http response for: $messageId http response body: $stringResponse")
           r.status.intValue() match {
             case 200 =>

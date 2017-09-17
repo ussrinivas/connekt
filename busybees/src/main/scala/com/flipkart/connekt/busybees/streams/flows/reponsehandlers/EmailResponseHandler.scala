@@ -44,7 +44,7 @@ class EmailResponseHandler(parallelism:Int)(implicit m: Materializer, ec: Execut
     val maybeEmailCallbackEvent = tryResponse match {
       case Success(emailResponse) =>
         meter(s"${requestTracker.provider}.${emailResponse.responseCode}").mark()
-        ConnektLogger(LogFile.PROCESSORS).info(s"EmailResponseHandler received http response for: ${requestTracker.messageId} with provider messageId : ${emailResponse.messageId} / ${emailResponse.responseCode}, provider: ${requestTracker.provider}")
+        ConnektLogger(LogFile.PROCESSORS).debug(s"EmailResponseHandler received http response for: ${requestTracker.messageId} with provider messageId : ${emailResponse.messageId} / ${emailResponse.responseCode}, provider: ${requestTracker.provider}")
         emailResponse.responseCode match {
           case s if 2 == (s / 100) =>
             //Good!

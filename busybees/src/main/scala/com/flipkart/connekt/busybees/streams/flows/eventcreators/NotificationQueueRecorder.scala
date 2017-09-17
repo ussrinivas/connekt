@@ -31,7 +31,7 @@ class NotificationQueueRecorder(parallelism: Int)(implicit ec: ExecutionContext)
   override val map: (ConnektRequest) => Future[List[ConnektRequest]] = message => {
     val profiler = timer("map").time()
     try {
-      ConnektLogger(LogFile.PROCESSORS).info(s"NotificationQueueRecorder received message: ${message.id}")
+      ConnektLogger(LogFile.PROCESSORS).trace(s"NotificationQueueRecorder received message: ${message.id}")
 
       val pnInfo = message.channelInfo.asInstanceOf[PNRequestInfo]
       val promise = Promise[List[ConnektRequest]]()
