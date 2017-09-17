@@ -45,7 +45,7 @@ class MessageService(requestDao: TRequestDao, userConfigurationDao: TUserConfigu
           schedulerService.client.add(ScheduledRequest(reqWithId, requestBucket), scheduleTime)
           ConnektLogger(LogFile.SERVICE).info(s"Scheduled request ${reqWithId.id} at $scheduleTime to $requestBucket")
         case _ =>
-          queueProducer.writeMessages(requestBucket, reqWithId.getJson)
+          queueProducer.writeMessages(requestBucket, Tuple2(reqWithId.id, reqWithId.getJson))
           ConnektLogger(LogFile.SERVICE).info(s"Saved request ${reqWithId.id} to $requestBucket")
       }
 
@@ -59,7 +59,7 @@ class MessageService(requestDao: TRequestDao, userConfigurationDao: TUserConfigu
   }
 
   override def enqueueRequest(request: ConnektRequest, requestBucket: String): Unit = {
-    queueProducer.writeMessages(requestBucket, request.getJson)
+    queueProducer.writeMessages(requestBucket, Tuple2(request.id,request.getJson))
     ConnektLogger(LogFile.SERVICE).info(s"EnQueued request ${request.id} in bucket $requestBucket")
   }
 

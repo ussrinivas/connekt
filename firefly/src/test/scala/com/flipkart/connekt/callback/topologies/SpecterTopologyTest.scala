@@ -37,7 +37,7 @@ class SpecterTopologyTest extends TopologyUTSpec with Instrumented {
                                      contextId = StringUtils.generateRandomStr(8))
     val time1 = System.currentTimeMillis()
     for( a <- 1 to 1000) {
-      kafkaProducerHelper.writeMessages("ckt_callback_events", pncallback.getJson)
+      kafkaProducerHelper.writeMessages("ckt_callback_events", Tuple2(null,pncallback.getJson))
     }
 
     val time2 =  System.currentTimeMillis()
