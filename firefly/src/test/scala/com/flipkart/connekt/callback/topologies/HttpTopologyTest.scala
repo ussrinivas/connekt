@@ -48,7 +48,7 @@ class HttpTopologyTest extends TopologyUTSpec with Instrumented {
 
     val time1 = System.currentTimeMillis()
     for( a <- 1 to 1000) {
-      kafkaProducerHelper.writeMessages("active_events", msg.toCallbackEvent.getJson)
+      kafkaProducerHelper.writeMessages("active_events", Tuple2( null,  msg.toCallbackEvent.getJson))
     }
 
     val time2 =  System.currentTimeMillis()

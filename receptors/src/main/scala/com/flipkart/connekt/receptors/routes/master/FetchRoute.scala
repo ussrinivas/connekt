@@ -36,8 +36,7 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
   private lazy implicit val stencilService = ServiceFactory.getStencilService
   private lazy val messageService = ServiceFactory.getMessageService(Channel.PUSH)
-  private lazy val pullmessageService = ServiceFactory.getPullMessageService
-  private lazy val pullMessageTTL = ConnektConfig.get("connections.hbase.hbase.pull.ttl").getOrElse(90)
+  private val maxAllowedClockOffsetSecs = ConnektConfig.getInt("sys.clock.max.offset").getOrElse(120)
 
   val route =
     authenticate {
@@ -50,7 +49,7 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                   authorize(user, "FETCH", s"FETCH_$appName") {
                     parameters('startTs.as[Long], 'endTs ? System.currentTimeMillis, 'skipIds.*) { (startTs, endTs, skipIds) =>
 
-                      require(startTs < endTs, "startTs must be prior to endTs")
+                      require((startTs - maxAllowedClockOffsetSecs) < endTs, "startTs must be prior to endTs")
 
                       val profiler = timer(s"fetch.$platform.$appName").time()
 

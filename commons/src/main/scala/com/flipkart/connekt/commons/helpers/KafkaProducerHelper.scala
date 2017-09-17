@@ -21,7 +21,7 @@ import scala.util.Try
 import scala.util.control.NonFatal
 
 trait KafkaProducer {
-  def writeMessages(topic: String, message: String*)
+  def writeMessages(topic: String, message: (String,String)*)
 }
 
 class KafkaProducerHelper(producerFactoryConf: Config, globalContextConf: Config) extends KafkaConnectionHelper with GenericObjectPoolHelper {
@@ -44,10 +44,10 @@ class KafkaProducerHelper(producerFactoryConf: Config, globalContextConf: Config
     }
   }
 
-  def writeMessages(topic: String, message: String*) = {
+  def writeMessages(topic: String, message: (String,String)*) = {
     val producer = kafkaProducerPool.borrowObject()
     try {
-      val keyedMessages = message.map(new KeyedMessage[String, String](topic, _))
+      val keyedMessages = message.map(m => new KeyedMessage[String,  String](topic,m._1 ,m._2))
       producer.send(keyedMessages:_*)
     } finally {
       kafkaProducerPool.returnObject(producer)
@@ -74,6 +74,10 @@ object KafkaProducerHelper extends KafkaProducer {
     }
     instance
   }
-  
-  def writeMessages(topic: String, message: String*) = instance.writeMessages(topic, message:_*)
+
+  def writeMessages(topic: String, message: (String,String)*) = instance.writeMessages(topic, message :_ *)
+
+//  for old compatibity
+//  def writeMessages(topic: String, messages: String*) = writeMessages(topic, messages.map(Tuple2[String,String](null,_)) :_ *)
+
 }

@@ -70,12 +70,12 @@ object ServiceFactory {
     serviceCache += ServiceType.SCHEDULER -> instance
   }
 
-  def initMessageQueueService(dao: MessageQueueDao):Unit = {
-    serviceCache += ServiceType.FETCH_PUSH_QUEUE -> new MessageQueueService(dao)
+  def initMessageQueueService(dao: MessageQueueDao, config: Config):Unit = {
+    serviceCache += ServiceType.FETCH_PUSH_QUEUE -> new MessageQueueService(dao, config.getConfig("pull").getInt("ttl").days.toMillis, config.getConfig("pull").getInt("maxRecords"))
   }
 
   def initPullMessageQueueService(dao: MessageQueueDao, config: Config):Unit = {
-    serviceCache += ServiceType.PULL_QUEUE -> new MessageQueueService(dao, config.getConfig("hbase.pull").getInt("ttl").days.toMillis, config.getConfig("hbase.pull").getInt("maxRecords"))
+    serviceCache += ServiceType.PULL_QUEUE -> new MessageQueueService(dao, config.getConfig("inapp").getInt("ttl").days.toMillis, config.getConfig("inapp").getInt("maxRecords"))
   }
 
   def getMessageService(channel: Channel): TMessageService = {
