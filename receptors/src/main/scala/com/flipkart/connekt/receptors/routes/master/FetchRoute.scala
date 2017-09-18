@@ -37,8 +37,8 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
   private lazy implicit val stencilService = ServiceFactory.getStencilService
   private lazy val messageService = ServiceFactory.getMessageService(Channel.PUSH)
   private val maxAllowedClockOffsetSecs = ConnektConfig.getInt("sys.clock.max.offset").getOrElse(120)
-  private val pushTimeout = ConnektConfig.getInt("timeout.fetch.push").getOrElse(8).seconds
-  private val pullTimeout = ConnektConfig.getInt("timeout.fetch.pull").getOrElse(3).seconds
+  private val pushTimeout = ConnektConfig.getInt("timeout.fetch.push").getOrElse(5000).millis
+  private val pullTimeout = ConnektConfig.getInt("timeout.fetch.pull").getOrElse(2000).millis
 
   val route =
     authenticate {
@@ -58,8 +58,7 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
                         val skipMessageIds: Set[String] = skipIds.toSet
                         val safeStartTs = if (startTs < (System.currentTimeMillis - 7.days.toMillis)) System.currentTimeMillis - 1.days.toMillis else startTs
-
-                        val pendingMessageIds = ServiceFactory.getMessageQueueService.getMessageIds(appName, instanceId, Some(Tuple2(safeStartTs + 1, endTs)))
+                        val pendingMessageIds = ServiceFactory.getMessageQueueService.getMessageIds(appName, instanceId, Some(Tuple2(safeStartTs + 1, endTs)))(ioDispatcher)
 
                         complete {
                           pendingMessageIds.map(_ids => {
@@ -126,11 +125,11 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                           meteredResource(s"pull.fetch.$appName") {
                             // TODO: iOs sending invalid endTs
                             // require(startTs < endTs, "startTs must be prior to endTs")
-
-                            val sortedMessages = ServiceFactory.getPullMessageService.getRequest(appName, contactIdentifier, Some(startTs, endTs), urlParams)
+                            val sortedMessages = ServiceFactory.getPullMessageService.getRequest(appName, contactIdentifier, Some(startTs, endTs), urlParams)(ioDispatcher)
                             complete {
                               sortedMessages.map {
-                                case (messages, messageMetaDataMap) => {
+                                case (messages, messageMetaDataMap) =>
+
                                   val unreadCount = messages.count(m => !messageMetaDataMap(m.id).read.get)
                                   val pullRequesData = messages.map { prd =>
                                     val data = prd.channelData.asInstanceOf[PullRequestData].data
@@ -147,7 +146,6 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                   )
                                   GenericResponse(StatusCodes.OK.intValue, null, Response(s"Fetched result for $contactIdentifier", pullResponse))
                                     .respondWithHeaders(scala.collection.immutable.Seq(RawHeader("endTs", endTs.toString), RawHeader("Access-Control-Expose-Headers", "endTs")))
-                                }
                               }(ioDispatcher)
                             }
                           }

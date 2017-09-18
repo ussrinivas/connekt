@@ -36,8 +36,7 @@ import scala.util.{Failure, Success}
 class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
   private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
-  private val registrationTimeout = ConnektConfig.getInt("timeout.registration").getOrElse(8).seconds
-
+  private val registrationTimeout = ConnektConfig.getInt("timeout.registration").getOrElse(8000).millis
 
   val route =
     authenticate {

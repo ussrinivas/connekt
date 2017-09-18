@@ -31,7 +31,7 @@ class RetryRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
   private lazy implicit val stencilService = ServiceFactory.getStencilService
   private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
-  private val resendTimeout =  ConnektConfig.getInt("timeout.resend").getOrElse(10).seconds
+  private val resendTimeout =  ConnektConfig.getInt("timeout.resend").getOrElse(5000).millis
 
   val route =
     authenticate {
