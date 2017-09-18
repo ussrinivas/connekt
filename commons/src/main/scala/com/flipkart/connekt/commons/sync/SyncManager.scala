@@ -53,7 +53,11 @@ class SyncManager(zkQuorum: String) {
 
   }
 
-   def addListeners() {
+  def getNodeData(path: String): Option[SyncMessage] = {
+    Option(getZK.exists(path, false)).map(_ => new String(getZK.getData(path, false, null)).getObj[SyncMessage])
+  }
+
+  def addListeners() {
     cache.getListenable.addListener(new TreeCacheListener {
       override def childEvent(curatorFramework: CuratorFramework, event: TreeCacheEvent): Unit = {
         event.getType match {
@@ -112,7 +116,7 @@ class SyncManager(zkQuorum: String) {
 
   private var broadcasting: Int = 0
 
-  private [connekt] def postNotification(id: SyncType, args: List[AnyRef]) {
+  private[connekt] def postNotification(id: SyncType, args: List[AnyRef]) {
     broadcasting += 1
     if (observers.get(id).isDefined) {
       for (obj <- observers(id)) {
@@ -183,5 +187,9 @@ object SyncManager {
   }
 
   def get(): SyncManager = instance
+
+  def getNodeData(path: String): Option[SyncMessage] = get().getNodeData(path)
+
+  def getBucketNodePath : String = get().BUCKET_NODE_PATH
 
 }
