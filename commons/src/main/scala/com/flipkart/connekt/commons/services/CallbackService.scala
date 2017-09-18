@@ -52,7 +52,6 @@ class CallbackService(eventsDao: EventsDaoContainer, requestDao: RequestDaoConta
     Try {
       val rowKeys = eventsDao(channel).asyncSaveCallbackEvents(events)
       enqueueCallbackEvents(events, CALLBACK_QUEUE_NAME.format(channel.toString.toLowerCase)).get
-      ConnektLogger(LogFile.SERVICE).debug(s"Event saved with rowKeys $rowKeys")
       rowKeys
     }
   }

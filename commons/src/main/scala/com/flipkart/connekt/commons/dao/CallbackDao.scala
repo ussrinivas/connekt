@@ -24,6 +24,7 @@ import com.flipkart.connekt.commons.utils.StringUtils.JSONMarshallFunctions
 import com.flipkart.metrics.Timed
 import com.roundeights.hasher.Implicits._
 import org.apache.hadoop.hbase.client.BufferedMutator
+import com.flipkart.connekt.commons.utils.StringUtils._
 
 abstract class CallbackDao(tableName: String, hTableFactory: THTableFactory) extends TCallbackDao with HbaseDao with Instrumented {
   private val hTableConnFactory = hTableFactory
@@ -64,7 +65,7 @@ abstract class CallbackDao(tableName: String, hTableFactory: THTableFactory) ext
       }
       rowKey
     })
-    ConnektLogger(LogFile.DAO).info(s"Events details async-persisted with rowkeys ${rowKeys.mkString(",")}")
+    ConnektLogger(LogFile.DAO).debug(s"Events details async-persisted with rowkeys {}", supplier(rowKeys.mkString(",")))
     rowKeys
   }
 
@@ -79,7 +80,7 @@ abstract class CallbackDao(tableName: String, hTableFactory: THTableFactory) ext
         addRow(rowKey, rawData)
         e.messageId
       })
-      ConnektLogger(LogFile.DAO).info(s"Events details persisted with rowkeys ${rowKeys.mkString(",")}")
+      ConnektLogger(LogFile.DAO).debug(s"Events details persisted with rowkeys {}", supplier(rowKeys.mkString(",")))
       rowKeys
     } catch {
       case e: IOException =>

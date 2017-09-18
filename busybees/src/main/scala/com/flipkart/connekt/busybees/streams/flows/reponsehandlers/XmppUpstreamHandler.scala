@@ -20,11 +20,12 @@ import com.flipkart.connekt.commons.iomodels.{PNCallbackEvent, XmppUpstreamRespo
 import com.flipkart.connekt.commons.metrics.Instrumented
 
 import scala.concurrent.{ExecutionContext, Future}
+import com.flipkart.connekt.commons.utils.StringUtils._
 
 class XmppUpstreamHandler(implicit m: Materializer, ec: ExecutionContext) extends PNProviderResponseHandler[XmppUpstreamResponse](4) with Instrumented {
 
   override val map: (XmppUpstreamResponse) => Future[List[PNCallbackEvent]] = upstreamResponse => Future(profile("map") {
-    ConnektLogger(LogFile.PROCESSORS).info(s"XmppUpstreamHandler received xmpp upstream message : " + upstreamResponse)
+    ConnektLogger(LogFile.PROCESSORS).trace(s"XmppUpstreamHandler received xmpp upstream message : {}" , supplier(upstreamResponse))
     val events = upstreamResponse.getPnCallbackEvent().toList
     events.foreach { event =>
       ServiceFactory.getReportingService.recordPushStatsDelta(event.clientId,

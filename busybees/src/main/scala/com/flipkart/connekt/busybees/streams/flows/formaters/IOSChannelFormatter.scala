@@ -33,8 +33,7 @@ class IOSChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecuto
 
   override def map: (ConnektRequest) => List[APSPayloadEnvelope] = message => {
     try {
-      ConnektLogger(LogFile.PROCESSORS).info(s"IOSChannelFormatter received message: ${message.id}")
-      ConnektLogger(LogFile.PROCESSORS).trace(s"IOSChannelFormatter received message: ${message.getJson}")
+      ConnektLogger(LogFile.PROCESSORS).debug(s"IOSChannelFormatter received message: ${message.id}")
       val pnInfo = message.channelInfo.asInstanceOf[PNRequestInfo]
 
       val devicesInfo = DeviceDetailsService.get(pnInfo.appName, pnInfo.deviceIds).get

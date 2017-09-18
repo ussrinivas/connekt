@@ -43,8 +43,7 @@ class OpenWebChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExe
   override def map: ConnektRequest => List[OpenWebStandardPayloadEnvelope] = message => {
 
     try {
-      ConnektLogger(LogFile.PROCESSORS).info(s"OpenWebChannelFormatter received message: ${message.id}")
-      ConnektLogger(LogFile.PROCESSORS).trace(s"OpenWebChannelFormatter received message: ${message.toString}")
+      ConnektLogger(LogFile.PROCESSORS).debug(s"OpenWebChannelFormatter received message: ${message.id}")
 
       val pnInfo = message.channelInfo.asInstanceOf[PNRequestInfo]
 

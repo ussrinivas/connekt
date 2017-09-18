@@ -34,8 +34,7 @@ class SmsChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecuto
   override def map: ConnektRequest => List[SmsPayloadEnvelope] = message => profile("map") {
 
     try {
-      ConnektLogger(LogFile.PROCESSORS).info(s"SMSChannelFormatter received message: ${message.id}")
-      ConnektLogger(LogFile.PROCESSORS).trace(s"SMSChannelFormatter received message {}", supplier(message.toString))
+      ConnektLogger(LogFile.PROCESSORS).debug(s"SMSChannelFormatter received message: ${message.id}")
 
       val smsInfo = message.channelInfo.asInstanceOf[SmsRequestInfo]
 

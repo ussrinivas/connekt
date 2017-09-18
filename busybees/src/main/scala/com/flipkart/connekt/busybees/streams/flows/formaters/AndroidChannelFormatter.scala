@@ -35,8 +35,7 @@ abstract class AndroidChannelFormatter(parallelism: Int)(implicit ec: ExecutionC
   override def map: ConnektRequest => List[GCMPayloadEnvelope] = message => {
 
     try {
-      ConnektLogger(LogFile.PROCESSORS).info(s"AndroidChannelFormatter received message: ${message.id}")
-      ConnektLogger(LogFile.PROCESSORS).trace(s"AndroidChannelFormatter received message: ${message.toString}")
+      ConnektLogger(LogFile.PROCESSORS).debug(s"AndroidChannelFormatter received message: ${message.id}")
 
       val pnInfo = message.channelInfo.asInstanceOf[PNRequestInfo]
 

@@ -53,7 +53,7 @@ abstract class RequestDao(tableName: String, hTableFactory: THTableFactory) exte
 
   private def channelRequestModel(requestModel: ObjectNode) = Map[String, Array[Byte]]("model" -> requestModel.toString.getUtf8Bytes)
 
-  override def saveRequest(requestId: String, request: ConnektRequest, persistDataProps: Boolean) = {
+  override def  saveRequest(requestId: String, request: ConnektRequest, persistDataProps: Boolean) = {
     try {
       var requestProps = Map[String, Array[Byte]](
         "id" -> requestId.getUtf8Bytes,
@@ -80,7 +80,7 @@ abstract class RequestDao(tableName: String, hTableFactory: THTableFactory) exte
       val rawData = Map[String, Map[String, Array[Byte]]]("r" -> requestProps, "c" -> channelRequestInfoProps, "t" -> channelDataProps)
       asyncAddRow(requestId, rawData)
 
-      ConnektLogger(LogFile.DAO).info(s"Request info persisted for $requestId")
+      ConnektLogger(LogFile.DAO).debug(s"Request info persisted for $requestId")
     } catch {
       case e: IOException =>
         ConnektLogger(LogFile.DAO).error(s"Request info persistence failed for $requestId ${e.getMessage}", e)

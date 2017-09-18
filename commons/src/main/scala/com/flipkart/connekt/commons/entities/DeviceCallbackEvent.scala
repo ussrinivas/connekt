@@ -40,7 +40,7 @@ sealed case class DeviceCallbackEvent(deviceId: String,
 
   override def eventType: String = throw new RuntimeException(s"`eventType` undefined for DeviceCallbackEvent")
 
-  override def eventId: String = throw new RuntimeException(s"`eventId` undefined for DeviceCallbackEvent")
+  override def eventId: String = null
 
   override def namespace: String = "fkint/mp/connekt/DeviceDetails"
 

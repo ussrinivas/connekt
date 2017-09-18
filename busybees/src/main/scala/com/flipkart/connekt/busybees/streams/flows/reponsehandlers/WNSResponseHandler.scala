@@ -52,11 +52,11 @@ class WNSResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends
     val maybePNCallbackEvent: Option[PNCallbackEvent] = tryResponse match {
       case Success(r) =>
         val response = r.entity.getString
-        ConnektLogger(LogFile.PROCESSORS).info(s"WNSResponseHandler received http response for r: $requestId")
+        ConnektLogger(LogFile.PROCESSORS).debug(s"WNSResponseHandler received http response for r: $requestId")
         Option(r.status.intValue() match {
           case 200 =>
             ServiceFactory.getReportingService.recordPushStatsDelta(client, Option(contextId), requestTracker.meta.get("stencilId").map(_.toString), Option(MobilePlatform.WINDOWS), appName, WNSResponseStatus.Received)
-            ConnektLogger(LogFile.PROCESSORS).info(s"WNSResponseHandler 200 for $requestId")
+            ConnektLogger(LogFile.PROCESSORS).debug(s"WNSResponseHandler 200 for $requestId")
             PNCallbackEvent(requestId, client, deviceId, WNSResponseStatus.Received, MobilePlatform.WINDOWS, appName, contextId, r.optHeader("X-WNS-MSG-ID"), eventTS)
           case 400 =>
             ServiceFactory.getReportingService.recordPushStatsDelta(client, Option(contextId), requestTracker.meta.get("stencilId").map(_.toString), Option(MobilePlatform.WINDOWS), appName, WNSResponseStatus.InvalidHeader)

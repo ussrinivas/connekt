@@ -33,8 +33,7 @@ class WindowsChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExe
   override def map: (ConnektRequest) => List[WNSPayloadEnvelope] = message => {
 
     try {
-      ConnektLogger(LogFile.PROCESSORS).info(s"WindowsChannelFormatter received message: ${message.id}")
-      ConnektLogger(LogFile.PROCESSORS).trace(s"WindowsChannelFormatter received message: ${message.getJson}")
+      ConnektLogger(LogFile.PROCESSORS).debug(s"WindowsChannelFormatter received message: ${message.id}")
 
       val pnInfo = message.channelInfo.asInstanceOf[PNRequestInfo]
 

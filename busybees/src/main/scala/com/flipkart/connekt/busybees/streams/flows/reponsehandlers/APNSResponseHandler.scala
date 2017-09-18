@@ -42,7 +42,7 @@ class APNSResponseHandler(implicit m: Materializer, ec: ExecutionContext) extend
     tryResponse match {
       case Success(pushNotificationResponse) =>
 
-        ConnektLogger(LogFile.PROCESSORS).info(s"APNSResponseHandler received http2 response for: ${requestTracker.messageId}")
+        ConnektLogger(LogFile.PROCESSORS).debug(s"APNSResponseHandler received http2 response for: ${requestTracker.messageId}")
 
         pushNotificationResponse.isAccepted match {
           case true =>
