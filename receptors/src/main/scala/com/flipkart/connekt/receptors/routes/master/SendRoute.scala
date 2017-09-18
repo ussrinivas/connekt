@@ -126,7 +126,6 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                     post {
                       getXHeaders { headers =>
                         entity(as[ConnektRequest]) { r =>
-
                           complete {
                             Future {
                               profile(s"sendUserPush.$appPlatform.$appName") {
