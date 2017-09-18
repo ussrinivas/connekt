@@ -18,13 +18,14 @@ import java.util.UUID
 import akka.Done
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.Source
-import akka.stream.{ThrottleMode, ActorMaterializer, KillSwitch, KillSwitches}
+import akka.stream.{ActorMaterializer, KillSwitch, KillSwitches, ThrottleMode}
 import com.flipkart.connekt.busybees.streams.sources.KafkaSource
 import com.flipkart.connekt.commons.entities._
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.RMQProducer
 import com.flipkart.connekt.commons.iomodels.CallbackEvent
 import com.flipkart.connekt.commons.utils.StringUtils._
+import com.flipkart.connekt.firefly.sinks.hbase.HbaseSink
 import com.flipkart.connekt.firefly.sinks.http.HttpSink
 import com.flipkart.connekt.firefly.sinks.kafka.KafkaSink
 import com.flipkart.connekt.firefly.sinks.rmq.RMQSink
@@ -65,6 +66,7 @@ class ClientTopology(topic: String, retryLimit: Int, kafkaConsumerConnConf: Conf
       case hs: HTTPEventSink => source.runWith(new HttpSink(subscription, retryLimit, killSwitch).getHttpSink)
       case kafka: KafkaEventSink => source.runWith(new KafkaSink(kafka.topic, kafka.broker).getKafkaSink)
       case ss: SpecterEventSink => source.runWith(new SpecterSink().sink)
+      case int: HbaseEventSink => source.runWith(new HbaseSink().sink)
       case rmq: RMQEventSink => source.runWith(new RMQSink(rmq.queue, new RMQProducer(rmq.host, rmq.username, rmq.password, List(rmq.queue))).sink)
     }
 

@@ -53,7 +53,7 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with
                         entity(as[PNCallbackEvent]) { e =>
                           val event = e.copy(messageId = Option(e.messageId).orEmpty, eventId = RandomStringUtils.randomAlphabetic(10), clientId = user.userId, contextId = Option(e.contextId).orEmpty, platform = appPlatform.toString, appName = appName, deviceId = deviceId, eventType = Option(e.eventType).map(_.toLowerCase).orNull)
                           event.validate()
-                          event.persist
+                          event.enqueue
 
                           ServiceFactory.getReportingService.recordPushStatsDelta(user.userId, Option(e.contextId), None, Some(event.platform), event.appName, event.eventType)
                           if(seenEventTypes.contains(event.eventType.toLowerCase))
@@ -82,7 +82,7 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with
                             }.getOrElse(None)
                           }).toList
 
-                          validEvents.persist
+                          validEvents.enqueue
 
                           validEvents.foreach(event => {
                             ServiceFactory.getReportingService.recordPushStatsDelta(user.userId, Some(event.contextId), None, Some(event.platform), event.appName, event.eventType)
@@ -141,7 +141,7 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with
                             }).toList
                           }
 
-                          validEvents.persist
+                          validEvents.enqueue
 
                           validEvents.foreach(event => {
                             ServiceFactory.getReportingService.recordChannelStatsDelta(event.clientId, Some(event.contextId), None, channel, event.appName, event.eventType)
