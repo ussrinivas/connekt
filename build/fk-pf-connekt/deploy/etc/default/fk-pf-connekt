@@ -34,3 +34,6 @@ JAVA_OPTS="$JAVA_OPTS -Dcom.sun.management.jmxremote.port=28005 -Dcom.sun.manage
 
 ## Log4j2 Settings
 JAVA_OPTS="$JAVA_OPTS -DLog4jContextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector -DAsyncLogger.RingBufferSize=524288"
+
+## JAVA Security Seetting
+JAVA_OPTS="$JAVA_OPTS -Dzookeeper.sasl.client=false"
