@@ -29,8 +29,7 @@ import scala.util.Try
 object TimedFlowOps extends Instrumented {
 
   private val _timer = new ConcurrentHashMap[String,Timer]().asScala
-
-  private def timer(name:String):Timer =  _timer.getOrElseUpdate(name, {
+  private def slidingTimer(name:String):Timer =  _timer.getOrElseUpdate(name, {
     val slidingTimer = new Timer(new SlidingTimeWindowReservoir(6, TimeUnit.MINUTES))
     registry.register(name, slidingTimer)
     slidingTimer
@@ -55,7 +54,7 @@ object TimedFlowOps extends Instrumented {
             val duration = System.currentTimeMillis() - start
             ConnektLogger(LogFile.PROCESSORS).trace(s"TimedFlowOps/$apiName MessageId: ${httpRequestTracker.messageId} took : $duration ms")
             duration
-          }).foreach(timer(getMetricName(apiName + Option(httpRequestTracker.provider).map("." + _).orEmpty)).update(_, TimeUnit.MILLISECONDS))
+          }).foreach(slidingTimer(getMetricName(apiName + Option(httpRequestTracker.provider).map("." + _).orEmpty)).update(_, TimeUnit.MILLISECONDS))
 
           (response, httpRequestTracker)
       })
