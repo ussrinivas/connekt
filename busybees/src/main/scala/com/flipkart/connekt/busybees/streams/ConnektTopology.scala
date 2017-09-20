@@ -60,7 +60,10 @@ trait ConnektTopology[E <: CallbackEvent] {
     }.toList
   }
 
-  def run(implicit mat: Materializer): Unit = graphs().foreach(_.run())
+  def run(implicit mat: Materializer): Unit = {
+    ConnektLogger(LogFile.PROCESSORS).info(s"Starting Topology " + this.getClass.getSimpleName)
+    graphs().foreach(_.run())
+  }
 
   def shutdown(): Future[Done] = {
     ConnektLogger(LogFile.PROCESSORS).info(s"Shutting Down " + this.getClass.getSimpleName)

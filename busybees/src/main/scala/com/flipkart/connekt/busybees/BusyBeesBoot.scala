@@ -117,14 +117,20 @@ object BusyBeesBoot extends BaseApp {
 
       HttpDispatcher.init(ConnektConfig.getConfig("react").get)
 
-      pushTopology = new PushTopology(kafkaConnConf)
-      pushTopology.run
+      if(Option(System.getProperty("topology.push.enabled")).forall(_.toBoolean)){
+        pushTopology = new PushTopology(kafkaConnConf)
+        pushTopology.run
+      }
 
-      emailTopology = new EmailTopology(kafkaConnConf)
-      emailTopology.run
+      if(Option(System.getProperty("topology.email.enabled")).forall(_.toBoolean)) {
+        emailTopology = new EmailTopology(kafkaConnConf)
+        emailTopology.run
+      }
 
-      smsTopology = new SmsTopology(kafkaConnConf)
-      smsTopology.run
+      if(Option(System.getProperty("topology.sms.enabled")).forall(_.toBoolean)) {
+        smsTopology = new SmsTopology(kafkaConnConf)
+        smsTopology.run
+      }
 
       ConnektLogger(LogFile.SERVICE).info("Started `Busybees` app")
     }
