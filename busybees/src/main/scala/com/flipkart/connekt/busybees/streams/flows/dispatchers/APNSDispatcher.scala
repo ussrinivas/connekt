@@ -37,14 +37,18 @@ import scala.util.control.NonFatal
 
 object APNSDispatcher extends Instrumented {
 
-  private val apnsHost: String = ConnektConfig.getOrElse("ios.apns.hostname", ApnsClient.PRODUCTION_APNS_HOST)
-  private val apnsPort: Int = ConnektConfig.getInt("ios.apns.port").getOrElse(ApnsClient.DEFAULT_APNS_PORT)
+  private val apnsHost: String = ConnektConfig.getOrElse("ios.apns.hostname", ApnsClientBuilder.PRODUCTION_APNS_HOST)
+  private val apnsPort: Int = ConnektConfig.getInt("ios.apns.port").getOrElse(ApnsClientBuilder.DEFAULT_APNS_PORT)
+  private val apnsConcurrency = ConnektConfig.getInt("ios.apns.concurrency").getOrElse(8)
+
   private val pingInterval = ConnektConfig.getInt("sys.ping.interval").getOrElse(30)
   private val responseTimeout = ConnektConfig.getInt("ios.apns.response.timeout").getOrElse(60)
 
   private [busybees] val clientGatewayCache = new ConcurrentHashMap[String, Future[ApnsClient]]()
 
   private[busybees] def removeClient(appName: String): Boolean = {
+    ConnektLogger(LogFile.PROCESSORS).info(s"APNSDispatcher apns-client destroying $appName .")
+    clientGatewayCache.get(appName).map(_.close())(scala.concurrent.ExecutionContext.Implicits.global)
     clientGatewayCache.remove(appName)
     registry.remove(getMetricName(appName))
   }
@@ -52,21 +56,21 @@ object APNSDispatcher extends Instrumented {
   private def createAPNSClient(appName: String): ApnsClient = {
     ConnektLogger(LogFile.PROCESSORS).info(s"APNSDispatcher starting $appName apns-client")
     val credential = KeyChainManager.getAppleCredentials(appName).get
-    //TODO: shutdown this eventloop when client is closed.
-    val eventLoop = new NioEventLoopGroup(4, new ThreadFactoryBuilder().setNameFormat(s"apns-nio-$appName-${StringUtils.generateRandomStr(4)}-%s").build())
+
+    //TODO: shutdown this event-loop when client is closed.
+    val eventLoop = new NioEventLoopGroup(16, new ThreadFactoryBuilder().setNameFormat(s"apns-nio-$appName-${StringUtils.generateRandomStr(4)}-%s").build())
 
     val metricsListener = new DropwizardApnsClientMetricsListener()
     Try_(registry.register(getMetricName(appName), metricsListener))
 
     val client = new ApnsClientBuilder()
+      .setApnsServer(apnsHost,apnsPort)
+      .setConcurrentConnections(apnsConcurrency)
+        .setEventLoopGroup(eventLoop)
       .setClientCredentials(credential.getCertificateFile, credential.passkey)
-      .setEventLoopGroup(eventLoop)
-      .setIdlePingInterval(pingInterval, TimeUnit.SECONDS)
+      .setIdlePingInterval(pingInterval.toLong, TimeUnit.SECONDS)
       .setMetricsListener(metricsListener)
       .build()
-    client.connect(apnsHost,apnsPort).await(60, TimeUnit.SECONDS)
-    if (!client.isConnected)
-      ConnektLogger(LogFile.PROCESSORS).error(s"APNSDispatcher Unable to connect [$appName] apns-client in 2minutes")
     client
   }
 
@@ -75,7 +79,6 @@ object APNSDispatcher extends Instrumented {
     clientGatewayCache.putIfAbsent(appName, gatewayPromise.future) match {
       case null ⇒ // only one thread can get here at a time
         val gateway =
-        //TODO: Move to a pooled client(as recommended by apns)
           try createAPNSClient(appName)
           catch {
             case NonFatal(e) =>
@@ -95,7 +98,7 @@ object APNSDispatcher extends Instrumented {
     // Disconnect all the APNSClients prior to stop
     clientGatewayCache.asScala.foreach(kv => {
       ConnektLogger(LogFile.PROCESSORS).info(s"APNSDispatcher stopping ${kv._1} apns-client")
-      kv._2.map(_.disconnect().awaitUninterruptibly(5000))(scala.concurrent.ExecutionContext.Implicits.global)
+      kv._2.map(_.close().awaitUninterruptibly(5000))(scala.concurrent.ExecutionContext.Implicits.global)
     })
   }
 
@@ -117,17 +120,7 @@ class APNSDispatcher(parallelism: Int)(implicit ec: ExecutionContextExecutor) {
 
         gatewayFuture
           .flatMap(client => client.sendNotification(request).asScala(responseTimeout.seconds).recoverWith {
-            case nce: ClientNotConnectedException =>
-              ConnektLogger(LogFile.PROCESSORS).info("APNSDispatcher waiting for apns-client to reconnect")
-              Try_(client.getReconnectionFuture.awaitUninterruptibly())
-              ConnektLogger(LogFile.PROCESSORS).info(s"APNSDispatcher apns-client reconnected with status [${client.isConnected}]")
-              if (!client.isConnected) {
-                ConnektLogger(LogFile.PROCESSORS).warn(s"APNSDispatcher apns-client reconnect error", client.getReconnectionFuture.cause())
-                APNSDispatcher.removeClient(userContext.appName)
-                ConnektLogger(LogFile.PROCESSORS).info(s"APNSDispatcher apns-client destroyed ${userContext.appName}, since reconnect failed.")
-              }
-              //client.sendNotification(request).asScala //TODO: Observe number of errors and then enable retry if required.
-              FastFuture.failed(nce)
+
             case timeout: TimeoutException =>
               ConnektLogger(LogFile.PROCESSORS).info(s"APNSDispatcher reponse didn't arrive within timeout period $responseTimeout seconds")
 
@@ -139,8 +132,9 @@ class APNSDispatcher(parallelism: Int)(implicit ec: ExecutionContextExecutor) {
                 * """ attack and may prevent your provider from sending push notifications to your applications.
                 * """
                 */
-              APNSDispatcher.removeClient(userContext.appName)
-              ConnektLogger(LogFile.PROCESSORS).info(s"APNSDispatcher apns-client destroyed ${userContext.appName}, since response didn't arrive in $responseTimeout seconds.")
+              //Disabling this now since internal pool of connections is maintained
+              //APNSDispatcher.removeClient(userContext.appName)
+              //ConnektLogger(LogFile.PROCESSORS).info(s"APNSDispatcher apns-client destroyed ${userContext.appName}, since response didn't arrive in $responseTimeout seconds.")
               FastFuture.failed(timeout)
           })(ec)
           .onComplete(responseTry ⇒ result.success(responseTry -> userContext))(ec)
