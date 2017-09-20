@@ -131,7 +131,7 @@ class WNSResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends
         Some(PNCallbackEvent(requestId, client, deviceId, InternalStatus.ProviderSendError, MobilePlatform.WINDOWS, appName, contextId, e.getMessage, eventTS))
     }
 
-    maybePNCallbackEvent.toList.persist
+    maybePNCallbackEvent.toList.enqueue
     maybePNCallbackEvent
   }
 }

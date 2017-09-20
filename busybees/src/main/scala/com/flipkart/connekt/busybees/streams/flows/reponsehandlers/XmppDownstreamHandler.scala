@@ -82,7 +82,7 @@ class XmppDownstreamHandler(implicit m: Materializer, ec: ExecutionContext) exte
       requestTracker.appName,
       responseStatus)
     val events = List(PNCallbackEvent(messageId, requestTracker.clientId, deviceId, responseStatus, MobilePlatform.ANDROID, appName, requestTracker.contextId, responseMessage, eventTS))
-    events.persist
+    events.enqueue
     events
   })(m.executionContext)
 }
