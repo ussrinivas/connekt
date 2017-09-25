@@ -21,7 +21,7 @@ import com.flipkart.connekt.commons.connections.ConnectionProvider
 import com.flipkart.connekt.commons.core.BaseApp
 import com.flipkart.connekt.commons.dao.DaoFactory
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
-import com.flipkart.connekt.commons.services.ConnektConfig
+import com.flipkart.connekt.commons.services.{ConnektConfig, EventsDaoContainer}
 import com.flipkart.connekt.commons.sync.SyncManager
 import com.flipkart.connekt.commons.utils.ConfigUtils
 import com.flipkart.connekt.firefly.dispatcher.HttpDispatcher
@@ -60,6 +60,14 @@ object FireflyBoot extends BaseApp {
       DaoFactory.initMysqlTableDaoFactory(mysqlConf)
 
       ServiceFactory.initStencilService(DaoFactory.getStencilDao)
+
+
+      //Callbacks write
+      val hConfig = ConnektConfig.getConfig("connections.hbase")
+      DaoFactory.initHTableDaoFactory(hConfig.get)
+      val eventsDao = EventsDaoContainer(pnEventsDao = DaoFactory.getPNCallbackDao, emailEventsDao = DaoFactory.getEmailCallbackDao, smsEventsDao = DaoFactory.getSmsCallbackDao, pullEventsDao = DaoFactory.getPullCallbackDao)
+      ServiceFactory.initCallbackService(eventsDao, null, null)
+
 
       val kafkaConnConf = ConnektConfig.getConfig("connections.kafka.consumerConnProps").getOrElse(ConfigFactory.empty())
 

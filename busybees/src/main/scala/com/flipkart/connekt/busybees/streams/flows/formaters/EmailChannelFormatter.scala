@@ -46,7 +46,7 @@ class EmailChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecu
       if (emailInfo.to.nonEmpty && ttl > 0) {
 
         val emailReceivers = emailInfo.to ++ cc ++ bcc
-        val excludedAddress = emailReceivers.filter(_.address.isDefined).filterNot { e => ExclusionService.lookup(message.channel, message.appName, e.address).getOrElse(false) }
+        val excludedAddress = emailReceivers.filter(_.address.isDefined).filterNot { e => ExclusionService.lookup(message.channel, message.appName, e.address).getOrElse(true) }
         excludedAddress.map(ex => EmailCallbackEvent(message.id, message.clientId, ex.address, InternalStatus.ExcludedRequest , emailInfo.appName, Channel.EMAIL, message.contextId.orEmpty)).persist
         ServiceFactory.getReportingService.recordChannelStatsDelta(message.clientId, message.contextId, message.meta.get("stencilId").map(_.toString), Channel.EMAIL, message.appName, InternalStatus.ExcludedRequest, excludedAddress.size)
 

@@ -17,6 +17,7 @@ import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl.{BidiFlow, Flow, GraphDSL}
 import akka.stream.{BidiShape, FlowShape}
+import com.codahale.metrics.{Histogram, SlidingTimeWindowReservoir, Timer}
 import com.flipkart.connekt.busybees.models.RequestTracker
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.metrics.Instrumented
@@ -25,9 +26,16 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 import scala.collection.JavaConverters._
 import scala.util.Try
 
-object TimedFlowOps {
+object TimedFlowOps extends Instrumented {
 
-  implicit class TimedFlow[I, O, T <: RequestTracker, M](dispatchFlow: Flow[(I, T), (Try[O], T), M]) extends Instrumented {
+  private val _timer = new ConcurrentHashMap[String,Timer]().asScala
+  private def slidingTimer(name:String):Timer =  _timer.getOrElseUpdate(name, {
+    val slidingTimer = new Timer(new SlidingTimeWindowReservoir(6, TimeUnit.MINUTES))
+    registry.register(name, slidingTimer)
+    slidingTimer
+  })
+
+  implicit class TimedFlow[I, O, T <: RequestTracker, M](dispatchFlow: Flow[(I, T), (Try[O], T), M])  {
 
     val startTimes = new ConcurrentHashMap[T, Long]().asScala
 
@@ -46,7 +54,7 @@ object TimedFlowOps {
             val duration = System.currentTimeMillis() - start
             ConnektLogger(LogFile.PROCESSORS).trace(s"TimedFlowOps/$apiName MessageId: ${httpRequestTracker.messageId} took : $duration ms")
             duration
-          }).foreach(registry.timer(getMetricName(apiName + Option(httpRequestTracker.provider).map("." + _).orEmpty)).update(_, TimeUnit.MILLISECONDS))
+          }).foreach(slidingTimer(getMetricName(apiName + Option(httpRequestTracker.provider).map("." + _).orEmpty)).update(_, TimeUnit.MILLISECONDS))
 
           (response, httpRequestTracker)
       })

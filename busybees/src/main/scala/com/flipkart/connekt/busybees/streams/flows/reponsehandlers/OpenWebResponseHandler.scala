@@ -99,7 +99,7 @@ class OpenWebResponseHandler(implicit m: Materializer, ec: ExecutionContext) ext
         ConnektLogger(LogFile.PROCESSORS).error(s"OpenWebResponseHandler  send failure for: $messageId", e2)
     }
 
-    events.persist
+    events.enqueue
     events.toList
   })(m.executionContext)
 }

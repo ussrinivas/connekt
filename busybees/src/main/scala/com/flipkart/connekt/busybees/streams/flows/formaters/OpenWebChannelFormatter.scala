@@ -104,7 +104,7 @@ class OpenWebChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExe
                       message.contextId.orEmpty, token, OpenWebStandardPayload(data.encodedData), headers.toMap, message.meta))
                   case Failure(e) =>
                     ConnektLogger(LogFile.PROCESSORS).error(s"OpenWebChannelFormatter error for ${message.id}", e)
-                    PNCallbackEvent(message.id, message.clientId, device.deviceId, InternalStatus.EncryptionError, MobilePlatform.OPENWEB, device.appName, message.contextId.orEmpty, e.getMessage).persist
+                    PNCallbackEvent(message.id, message.clientId, device.deviceId, InternalStatus.EncryptionError, MobilePlatform.OPENWEB, device.appName, message.contextId.orEmpty, e.getMessage).enqueue
                     List.empty[OpenWebStandardPayloadEnvelope]
                 }
               } else {
@@ -112,7 +112,7 @@ class OpenWebChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExe
                   token, OpenWebStandardPayload(Array.empty), headers.toMap, message.meta))
               }
             } else {
-              PNCallbackEvent(message.id, message.clientId, device.deviceId, InternalStatus.InvalidToken, MobilePlatform.OPENWEB, device.appName, message.contextId.orEmpty, "OpenWeb without or empty/invalid token not allowed").persist
+              PNCallbackEvent(message.id, message.clientId, device.deviceId, InternalStatus.InvalidToken, MobilePlatform.OPENWEB, device.appName, message.contextId.orEmpty, "OpenWeb without or empty/invalid token not allowed").enqueue
               List.empty[OpenWebStandardPayloadEnvelope]
             }
           })
@@ -124,7 +124,7 @@ class OpenWebChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExe
       } else {
         ConnektLogger(LogFile.PROCESSORS).warn(s"OpenWebChannelFormatter dropping ttl-expired message: ${message.id}")
         ServiceFactory.getReportingService.recordPushStatsDelta(message.clientId, message.contextId, message.meta.get("stencilId").map(_.toString), Option(message.platform), message.appName, InternalStatus.TTLExpired, devicesInfo.size)
-        devicesInfo.map(d => PNCallbackEvent(message.id, message.clientId, d.deviceId, InternalStatus.TTLExpired, MobilePlatform.OPENWEB, d.appName, message.contextId.orEmpty)).persist
+        devicesInfo.map(d => PNCallbackEvent(message.id, message.clientId, d.deviceId, InternalStatus.TTLExpired, MobilePlatform.OPENWEB, d.appName, message.contextId.orEmpty)).enqueue
         List.empty[OpenWebStandardPayloadEnvelope]
       }
     }

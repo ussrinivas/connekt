@@ -12,7 +12,7 @@
       <PatternLayout pattern="%d %p %c{1} [%t] %m%n"/>
     </Console>
 
-    <RollingRandomAccessFile name="DEFAULT" fileName="${defaultLogFile}" filePattern="${defaultLogFile}.%i"
+    <RollingRandomAccessFile name="DEFAULT" fileName="${defaultLogFile}" filePattern="${defaultLogFile}.%i.gz"
                              immediateFlush="false" bufferSize="1048576">
       <PatternLayout>
         <Pattern>%n%d %p %c{1} [%t] %m%n</Pattern>
@@ -23,7 +23,7 @@
       <DefaultRolloverStrategy max="4"/>
     </RollingRandomAccessFile>
 
-    <RollingRandomAccessFile name="SERVICE" fileName="${serviceLogFile}" filePattern="${serviceLogFile}.%i" immediateFlush="true">
+    <RollingRandomAccessFile name="SERVICE" fileName="${serviceLogFile}" filePattern="${serviceLogFile}.%i.gz" immediateFlush="true">
       <PatternLayout>
         <Pattern>%n%d %p %c{1} [%t] %m%n</Pattern>
       </PatternLayout>

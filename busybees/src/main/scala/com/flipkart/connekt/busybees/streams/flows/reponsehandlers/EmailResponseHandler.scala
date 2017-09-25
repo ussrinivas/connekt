@@ -72,7 +72,7 @@ class EmailResponseHandler(parallelism:Int)(implicit m: Materializer, ec: Execut
         ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.EMAIL, appName = requestTracker.appName, event = InternalStatus.ProviderSendError)
         Left((requestTracker.to ++ requestTracker.cc).map(t => EmailCallbackEvent(requestTracker.messageId, requestTracker.clientId, t, InternalStatus.ProviderSendError, requestTracker.appName, requestTracker.contextId, s"EmailResponseHandler-${e.getClass.getSimpleName}-${e.getMessage}")))
     }
-    maybeEmailCallbackEvent.merge.persist
+    maybeEmailCallbackEvent.merge.enqueue
     maybeEmailCallbackEvent
 
   }

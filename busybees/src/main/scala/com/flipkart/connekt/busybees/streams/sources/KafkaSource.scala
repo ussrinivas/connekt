@@ -134,7 +134,7 @@ class KafkaSource[V: ClassTag](kafkaConsumerConf: Config, topic: String, groupId
 
   private def initKafkaConsumer(): Unit = {
     ConnektLogger(LogFile.PROCESSORS).info(s"KafkaSource create kafka consumer")
-
+    System.clearProperty("java.security.auth.login.config")
     kafkaConsumerConnector = createKafkaConsumer(groupId, kafkaConsumerConf)
     iterator = initIterator(kafkaConsumerConnector)
     ConnektLogger(LogFile.PROCESSORS).info(s"KafkaSource init iterator complete")

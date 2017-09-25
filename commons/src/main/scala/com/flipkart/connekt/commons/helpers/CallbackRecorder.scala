@@ -21,12 +21,14 @@ import com.flipkart.connekt.commons.services.ConnektConfig
 
 object CallbackRecorder extends Instrumented {
 
+  private lazy val CALLBACK_QUEUE_NAME = ConnektConfig.get("firefly.kafka.topic").getOrElse("ckt_callback_events_%s")
+
   implicit def callbackRecorder(event: CallbackEvent): ListCallbackRecorder = new ListCallbackRecorder(List(event))
 
   implicit class ListCallbackRecorder(val events: Iterable[CallbackEvent]) {
 
     def persist = Try_ {
-
+      enqueue.get
       events.foreach(e => {
         meter(s"event.${e.eventType}").mark()
       })
@@ -40,6 +42,26 @@ object CallbackRecorder extends Instrumented {
             ServiceFactory.getCallbackService.persistCallbackEvents(Channel.SMS, events.toList).get
           case _:PullCallbackEvent =>
             ServiceFactory.getCallbackService.persistCallbackEvents(Channel.PULL, events.toList).get
+          case _:InboundMessageCallbackEvent =>
+
+        }
+      }
+    }
+
+    def enqueue = Try_ {
+      events.foreach(e => {
+        meter(s"event.${e.eventType}.enqueue").mark()
+      })
+      if (events.nonEmpty) {
+        events.head match {
+          case _:PNCallbackEvent =>
+            ServiceFactory.getCallbackService.enqueueCallbackEvents( events.toList, CALLBACK_QUEUE_NAME.format(Channel.PUSH.toString.toLowerCase)).get
+          case _:EmailCallbackEvent =>
+            ServiceFactory.getCallbackService.enqueueCallbackEvents( events.toList, CALLBACK_QUEUE_NAME.format(Channel.EMAIL.toString.toLowerCase)).get
+          case _:SmsCallbackEvent =>
+            ServiceFactory.getCallbackService.enqueueCallbackEvents( events.toList, CALLBACK_QUEUE_NAME.format(Channel.SMS.toString.toLowerCase)).get
+          case _:PullCallbackEvent =>
+            ServiceFactory.getCallbackService.enqueueCallbackEvents( events.toList, CALLBACK_QUEUE_NAME.format(Channel.PULL.toString.toLowerCase)).get
           case _:InboundMessageCallbackEvent =>
             ServiceFactory.getCallbackService.enqueueCallbackEvents(events.toList, ConnektConfig.get("inbound.messages.topic").getOrElse("inbound_messages"))
         }

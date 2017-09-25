@@ -47,7 +47,7 @@ class SmsChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecuto
       if (ttl > 0) {
         if (smsInfo.receivers.nonEmpty && rD.body.trim.nonEmpty) {
 
-          val (filteredNumbers, excludedNumbers) = smsInfo.receivers.partition { r => ExclusionService.lookup(message.channel, message.appName, r).getOrElse(false) }
+          val (filteredNumbers, excludedNumbers) = smsInfo.receivers.partition { r => ExclusionService.lookup(message.channel, message.appName, r).getOrElse(true) }
           excludedNumbers.map(ex => SmsCallbackEvent(message.id, message.clientId, ex, InternalStatus.ExcludedRequest, smsInfo.appName, Channel.SMS, message.contextId.orEmpty)).persist
           ServiceFactory.getReportingService.recordChannelStatsDelta(message.clientId, message.contextId, message.meta.get("stencilId").map(_.toString), Channel.SMS, message.appName, InternalStatus.ExcludedRequest, excludedNumbers.size)
 

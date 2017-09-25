@@ -117,7 +117,7 @@ class GCMResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends
         ConnektLogger(LogFile.PROCESSORS).error(s"GCMResponseHandler gcm send failure for: $messageId", e2)
     }
 
-    events.persist
+    events.enqueue
     events.toList
   })(m.executionContext)
 }

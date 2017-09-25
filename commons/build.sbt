@@ -53,7 +53,7 @@ libraryDependencies ++= Seq(
     ExclusionRule(organization = "org.slf4j"),
     ExclusionRule(organization = "asm")
   ),
-  "io.netty" % "netty-all" % "4.1.11.Final",
+  "io.netty" % "netty-all" % "4.1.14.Final",
   "org.apache.hbase" % "hbase-common" % "1.2.1" excludeAll(
     ExclusionRule("log4j"),
     ExclusionRule("io.netty"),
@@ -119,7 +119,7 @@ libraryDependencies ++= Seq(
   "javax.mail" % "mail" % "1.5.0-b01",
   "net.htmlparser.jericho" % "jericho-html" % "3.3",
   "org.jsoup" % "jsoup" % "1.8.3",
-  "com.googlecode.libphonenumber" % "libphonenumber" % "8.3.1",
+  "com.googlecode.libphonenumber" % "libphonenumber" % "8.8.2",
   "com.rabbitmq" % "amqp-client" % "4.0.1",
   "net.freeutils" % "jcharset" % "2.0",
   "com.aerospike" % "aerospike-client" % "3.3.3"

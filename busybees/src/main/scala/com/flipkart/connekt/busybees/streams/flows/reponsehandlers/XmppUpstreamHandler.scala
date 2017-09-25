@@ -35,7 +35,7 @@ class XmppUpstreamHandler(implicit m: Materializer, ec: ExecutionContext) extend
         event.appName,
         event.eventType)
     }
-    events.persist
+    events.enqueue
     events
   })(ec)
 }

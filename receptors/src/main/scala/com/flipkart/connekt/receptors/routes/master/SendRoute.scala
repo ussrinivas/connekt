@@ -126,7 +126,6 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                     post {
                       getXHeaders { headers =>
                         entity(as[ConnektRequest]) { r =>
-
                           complete {
                             Future {
                               profile(s"sendUserPush.$appPlatform.$appName") {
@@ -220,7 +219,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                     val recipients = (emailRequestInfo.to.map(_.address) ++ emailRequestInfo.cc.map(_.address) ++ emailRequestInfo.bcc.map(_.address)).filter(_.isDefined)
 
                                     //TODO: do an exclusion check
-                                    val excludedAddress = recipients.filterNot { address => ExclusionService.lookup(request.channel, appName, address).getOrElse(false) }
+                                    val excludedAddress = recipients.filterNot { address => ExclusionService.lookup(request.channel, appName, address).getOrElse(true) }
                                     val failure = ListBuffer[String](excludedAddress.toSeq: _*)
                                     val validRecipients = recipients.diff(excludedAddress)
                                     if (validRecipients.nonEmpty) {
@@ -301,7 +300,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                       })
 
                                       //TODO: do an exclusion check
-                                      val excludedNumbers = validNumbers.filterNot { number => ExclusionService.lookup(request.channel, appName, number).getOrElse(false) }
+                                      val excludedNumbers = validNumbers.filterNot { number => ExclusionService.lookup(request.channel, appName, number).getOrElse(true) }
                                       val nonExcludedNumbers = validNumbers.diff(excludedNumbers)
 
                                       if (nonExcludedNumbers.nonEmpty) {

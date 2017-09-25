@@ -50,7 +50,7 @@ class InboundMessageRoute(implicit am: ActorMaterializer) extends BaseJsonHandle
 
                         val event = stencilService.materialize(stencil, payload).asInstanceOf[InboundMessageCallbackEvent].copy(clientId = user.userId, appName = appName)
                         event.validate()
-                        event.persist
+                        event.enqueue
 
                         ConnektLogger(LogFile.SERVICE).debug(s"Received inbound event {}", supplier(event.toString))
                         complete(GenericResponse(StatusCodes.OK.intValue, null, Response("Event saved successfully.", null)))
