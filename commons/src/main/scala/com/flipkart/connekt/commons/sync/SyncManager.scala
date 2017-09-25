@@ -57,7 +57,7 @@ class SyncManager(zkQuorum: String) {
     Option(getZK.exists(path, false)).map(_ => new String(getZK.getData(path, false, null)).getObj[SyncMessage])
   }
 
-  def addListeners() {
+  private def addListeners() {
     cache.getListenable.addListener(new TreeCacheListener {
       override def childEvent(curatorFramework: CuratorFramework, event: TreeCacheEvent): Unit = {
         event.getType match {
@@ -99,8 +99,7 @@ class SyncManager(zkQuorum: String) {
     val nodePath = BUCKET_NODE_PATH + "/" + message.topic
     val stat = getZK.exists(nodePath, false)
     if (stat == null) {
-      val l = getZK.create(nodePath, message.getJson.getBytes, ZooDefs.Ids.OPEN_ACL_UNSAFE, createMode)
-      l
+      getZK.create(nodePath, message.getJson.getBytes, ZooDefs.Ids.OPEN_ACL_UNSAFE, createMode)
     }
     else {
       getZK.setData(nodePath, message.getJson.getBytes, stat.getVersion)
@@ -155,7 +154,6 @@ class SyncManager(zkQuorum: String) {
         }
       }
     })
-    addListeners()
   }
 
   def removeObserver(observer: AnyRef, ids: List[SyncType]) {

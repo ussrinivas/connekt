@@ -20,21 +20,19 @@ import com.flipkart.connekt.busybees.discovery.DiscoveryManager
 import com.flipkart.connekt.busybees.streams.flows.StageSupervision
 import com.flipkart.connekt.busybees.streams.flows.dispatchers.HttpDispatcher
 import com.flipkart.connekt.busybees.streams.topologies.{EmailTopology, PushTopology, SmsTopology}
-import com.flipkart.connekt.busybees.streams.topologies.PushTopology
-import com.flipkart.connekt.busybees.discovery.{DiscoveryManager, PathCacheZookeeper, ServiceHostsDiscovery}
 import com.flipkart.connekt.commons.connections.ConnectionProvider
 import com.flipkart.connekt.commons.core.BaseApp
+import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.dao.DaoFactory
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.KafkaProducerHelper
 import com.flipkart.connekt.commons.services._
-import com.flipkart.connekt.commons.sync.SyncManager
+import com.flipkart.connekt.commons.sync.{SyncManager, SyncType}
 import com.flipkart.connekt.commons.utils.ConfigUtils
-import com.flipkart.connekt.commons.core.Wrappers._
 import com.typesafe.config.ConfigFactory
 
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
 object BusyBeesBoot extends BaseApp {
 
@@ -117,20 +115,31 @@ object BusyBeesBoot extends BaseApp {
 
       HttpDispatcher.init(ConnektConfig.getConfig("react").get)
 
-      if(Option(System.getProperty("topology.push.enabled")).forall(_.toBoolean)){
-        pushTopology = new PushTopology(kafkaConnConf)
-        pushTopology.run
+      SyncManager.getNodeData(SyncManager.getBucketNodePath + "/" + SyncType.PUSH_TOPOLOGY_UPDATE).map(_.message.head) match {
+        case Some("stop") => ConnektLogger(LogFile.SERVICE).info(s"Push Topology stopped by admin.")
+        case _ =>
+          if (Option(System.getProperty("topology.push.enabled")).forall(_.toBoolean)) {
+            pushTopology = new PushTopology(kafkaConnConf)
+            pushTopology.run
+          }
+      }
+      SyncManager.getNodeData(SyncManager.getBucketNodePath + "/" + SyncType.EMAIL_TOPOLOGY_UPDATE).map(_.message.head) match {
+        case Some("stop") => ConnektLogger(LogFile.SERVICE).info(s"Email Topology stopped by admin.")
+        case _ =>
+          if (Option(System.getProperty("topology.email.enabled")).forall(_.toBoolean)) {
+            emailTopology = new EmailTopology(kafkaConnConf)
+            emailTopology.run
+          }
+      }
+      SyncManager.getNodeData(SyncManager.getBucketNodePath + "/" + SyncType.SMS_TOPOLOGY_UPDATE).map(_.message.head) match {
+        case Some("stop") => ConnektLogger(LogFile.SERVICE).info(s"Sms Topology stopped by admin.")
+        case _ =>
+          if (Option(System.getProperty("topology.sms.enabled")).forall(_.toBoolean)) {
+            smsTopology = new SmsTopology(kafkaConnConf)
+            smsTopology.run
+          }
       }
 
-      if(Option(System.getProperty("topology.email.enabled")).forall(_.toBoolean)) {
-        emailTopology = new EmailTopology(kafkaConnConf)
-        emailTopology.run
-      }
-
-      if(Option(System.getProperty("topology.sms.enabled")).forall(_.toBoolean)) {
-        smsTopology = new SmsTopology(kafkaConnConf)
-        smsTopology.run
-      }
 
       ConnektLogger(LogFile.SERVICE).info("Started `Busybees` app")
     }
@@ -141,7 +150,7 @@ object BusyBeesBoot extends BaseApp {
     if (initialized.get()) {
       implicit val ec = system.dispatcher
       DiscoveryManager.instance.shutdown()
-      val shutdownFutures = Option(pushTopology).map( _.shutdown()) :: Option(smsTopology).map( _.shutdown()) :: Option(emailTopology).map( _.shutdown()) :: Nil
+      val shutdownFutures = Option(pushTopology).map(_.shutdown()) :: Option(smsTopology).map(_.shutdown()) :: Option(emailTopology).map(_.shutdown()) :: Nil
       Try_#(message = "Topology Shutdown Didn't Complete")(Await.ready(Future.sequence(shutdownFutures.flatten), 20.seconds))
       DaoFactory.shutdownHTableDaoFactory()
       ConnektLogger.shutdown()
