@@ -21,7 +21,7 @@ JAVA_OPTS="$JAVA_OPTS -Djava.net.preferIPv4Stack=true"
 JAVA_OPTS="$JAVA_OPTS -XX:+UseG1GC"
 
 ## Memory settings
-JAVA_OPTS="$JAVA_OPTS -Xms16g -Xmx16g"
+JAVA_OPTS="$JAVA_OPTS -Xms8g -Xmx24g"
 
 #Flight Recording
 JAVA_OPTS="$JAVA_OPTS -XX:+UnlockCommercialFeatures -XX:+FlightRecorder"
