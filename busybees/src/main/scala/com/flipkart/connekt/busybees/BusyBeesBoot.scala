@@ -115,31 +115,18 @@ object BusyBeesBoot extends BaseApp {
 
       HttpDispatcher.init(ConnektConfig.getConfig("react").get)
 
-      SyncManager.getNodeData(SyncManager.getBucketNodePath + "/" + SyncType.PUSH_TOPOLOGY_UPDATE).map(_.message.head) match {
-        case Some("stop") => ConnektLogger(LogFile.SERVICE).info(s"Push Topology stopped by admin.")
-        case _ =>
-          if (Option(System.getProperty("topology.push.enabled")).forall(_.toBoolean)) {
-            pushTopology = new PushTopology(kafkaConnConf)
-            pushTopology.run
-          }
+      if (Option(System.getProperty("topology.push.enabled")).forall(_.toBoolean)) {
+        pushTopology = new PushTopology(kafkaConnConf)
+        pushTopology.run
       }
-      SyncManager.getNodeData(SyncManager.getBucketNodePath + "/" + SyncType.EMAIL_TOPOLOGY_UPDATE).map(_.message.head) match {
-        case Some("stop") => ConnektLogger(LogFile.SERVICE).info(s"Email Topology stopped by admin.")
-        case _ =>
-          if (Option(System.getProperty("topology.email.enabled")).forall(_.toBoolean)) {
-            emailTopology = new EmailTopology(kafkaConnConf)
-            emailTopology.run
-          }
+      if (Option(System.getProperty("topology.email.enabled")).forall(_.toBoolean)) {
+        emailTopology = new EmailTopology(kafkaConnConf)
+        emailTopology.run
       }
-      SyncManager.getNodeData(SyncManager.getBucketNodePath + "/" + SyncType.SMS_TOPOLOGY_UPDATE).map(_.message.head) match {
-        case Some("stop") => ConnektLogger(LogFile.SERVICE).info(s"Sms Topology stopped by admin.")
-        case _ =>
-          if (Option(System.getProperty("topology.sms.enabled")).forall(_.toBoolean)) {
-            smsTopology = new SmsTopology(kafkaConnConf)
-            smsTopology.run
-          }
+      if (Option(System.getProperty("topology.sms.enabled")).forall(_.toBoolean)) {
+        smsTopology = new SmsTopology(kafkaConnConf)
+        smsTopology.run
       }
-
 
       ConnektLogger(LogFile.SERVICE).info("Started `Busybees` app")
     }
@@ -150,7 +137,7 @@ object BusyBeesBoot extends BaseApp {
     if (initialized.get()) {
       implicit val ec = system.dispatcher
       DiscoveryManager.instance.shutdown()
-      val shutdownFutures = Option(pushTopology).map(_.shutdown()) :: Option(smsTopology).map(_.shutdown()) :: Option(emailTopology).map(_.shutdown()) :: Nil
+      val shutdownFutures = Option(pushTopology).map(_.shutdownAll()) :: Option(smsTopology).map(_.shutdownAll()) :: Option(emailTopology).map(_.shutdownAll()) :: Nil
       Try_#(message = "Topology Shutdown Didn't Complete")(Await.ready(Future.sequence(shutdownFutures.flatten), 20.seconds))
       DaoFactory.shutdownHTableDaoFactory()
       ConnektLogger.shutdown()

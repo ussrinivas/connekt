@@ -29,6 +29,8 @@ import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
+case class GroupWiseConfig(topologyEnabled: AtomicBoolean, killSwitch: SharedKillSwitch)
+
 trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate {
 
   type CheckPointGroup = String
@@ -46,14 +48,16 @@ trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate {
   implicit val mat = BusyBeesBoot.mat
   val ioMat = BusyBeesBoot.ioMat
   val ioDispatcher = system.dispatchers.lookup("akka.actor.io-dispatcher")
-  val topologyEnabled = new AtomicBoolean(true)
 
   SyncManager.get().addObserver(this, List(SyncType.CLIENT_QUEUE_CREATE))
   SyncManager.get().addObserver(this, List(SyncType.EMAIL_TOPOLOGY_UPDATE))
-  SyncManager.get().addObserver(this, List(SyncType.PUSH_TOPOLOGY_UPDATE))
+  SyncManager.get().addObserver(this, List(SyncType.ANDROID_TOPOLOGY_UPDATE))
+  SyncManager.get().addObserver(this, List(SyncType.IOS_TOPOLOGY_UPDATE))
+  SyncManager.get().addObserver(this, List(SyncType.OPENWEB_TOPOLOGY_UPDATE))
   SyncManager.get().addObserver(this, List(SyncType.SMS_TOPOLOGY_UPDATE))
 
-  private var killSwitch: SharedKillSwitch = _
+  private var killSwitches: Map[String, GroupWiseConfig] = Map.empty
+
   private var shutdownComplete: Future[Done] = _
 
   override def onUpdate(_type: SyncType, args: List[AnyRef]): Any = {
@@ -64,36 +68,38 @@ trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate {
           restart
         }
       }
-      case SyncType.PUSH_TOPOLOGY_UPDATE | SyncType.SMS_TOPOLOGY_UPDATE | SyncType.EMAIL_TOPOLOGY_UPDATE => Try_ {
-        if (args.last.toString.equals(channelName)) {
-          args.head.toString match {
-            case "start" =>
-              if (topologyEnabled.get()) {
-                ConnektLogger(LogFile.SERVICE).info(s"${args.last.toString.toUpperCase} channel topology is already up.")
-              } else {
-                ConnektLogger(LogFile.SERVICE).info(s"${args.last.toString.toUpperCase} channel topology restarting.")
-                run(mat)
-                topologyEnabled.set(true)
-              }
-            case "stop" =>
-              if (topologyEnabled.get()) {
-                ConnektLogger(LogFile.SERVICE).info(s"${args.last.toString.toUpperCase} channel topology shutting down.")
-                killSwitch.shutdown()
-                topologyEnabled.set(false)
-              } else {
-                ConnektLogger(LogFile.SERVICE).info(s"${args.last.toString.toUpperCase} channel topology is already stopped.")
-              }
-          }
+      case SyncType.ANDROID_TOPOLOGY_UPDATE | SyncType.IOS_TOPOLOGY_UPDATE | SyncType.OPENWEB_TOPOLOGY_UPDATE |
+           SyncType.SMS_TOPOLOGY_UPDATE | SyncType.EMAIL_TOPOLOGY_UPDATE | SyncType.WINDOW_TOPOLOGY_UPDATE => Try_ {
+        val topologyName = args.last.toString
+        args.head.toString match {
+          case "start" if killSwitches.get(topologyName).isDefined || killSwitches.isEmpty =>
+            if (killSwitches.nonEmpty && killSwitches(topologyName).topologyEnabled.get()) {
+              ConnektLogger(LogFile.SERVICE).info(s"${topologyName.toUpperCase} channel topology is already up.")
+            } else {
+              ConnektLogger(LogFile.SERVICE).info(s"${topologyName.toUpperCase} channel topology restarting.")
+              run(mat)
+              killSwitches(topologyName).topologyEnabled.set(true)
+            }
+          case "stop" if killSwitches.get(topologyName).isDefined || killSwitches.isEmpty =>
+            if (killSwitches.nonEmpty && killSwitches(topologyName).topologyEnabled.get()) {
+              ConnektLogger(LogFile.SERVICE).info(s"${topologyName.toUpperCase} channel topology shutting down.")
+              killSwitches(topologyName).killSwitch.shutdown
+              killSwitches(topologyName).topologyEnabled.set(false)
+            } else {
+              ConnektLogger(LogFile.SERVICE).info(s"${topologyName.toUpperCase} channel topology is already stopped.")
+            }
+          case _ => None
         }
       }
       case _ =>
     }
   }
 
-  def graphs(): List[RunnableGraph[NotUsed]] = {
+  def graphs: List[RunnableGraph[NotUsed]] = {
     val sourcesMap = sources
-    killSwitch = KillSwitches.shared(UUID.randomUUID().toString)
     transformers.filterKeys(sourcesMap.contains).map { case (group, flow) =>
+      val killSwitch = KillSwitches.shared(UUID.randomUUID().toString)
+      killSwitches += (group -> GroupWiseConfig(new AtomicBoolean(true), killSwitch))
       sourcesMap(group)
         .via(killSwitch.flow)
         .withAttributes(ActorAttributes.dispatcher("akka.actor.default-pinned-dispatcher"))
@@ -108,14 +114,21 @@ trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate {
     }.toList
   }
 
-  def run(implicit mat: Materializer): Unit = {
+  def run(implicit dmat: Materializer): Unit = {
     ConnektLogger(LogFile.PROCESSORS).info(s"Starting Topology " + this.getClass.getSimpleName)
-    graphs().foreach(_.run())
+    graphs.foreach(_.run())
   }
 
-  def shutdown(): Future[Done] = {
+  def shutdown(topology: String): Future[Done] = {
+    ConnektLogger(LogFile.PROCESSORS).info(s"Shutting Down " + topology.toUpperCase)
+    killSwitches(topology).killSwitch.shutdown()
+    shutdownComplete.onSuccess { case _ => ConnektLogger(LogFile.PROCESSORS).info(s"Shutdown Complete" + this.getClass.getSimpleName) }
+    Option(shutdownComplete).getOrElse(Future.successful(Done))
+  }
+
+  def shutdownAll(): Future[Done] = {
     ConnektLogger(LogFile.PROCESSORS).info(s"Shutting Down " + this.getClass.getSimpleName)
-    killSwitch.shutdown()
+    killSwitches.foreach(_._2.killSwitch.shutdown())
     shutdownComplete.onSuccess { case _ => ConnektLogger(LogFile.PROCESSORS).info(s"Shutdown Complete" + this.getClass.getSimpleName) }
     Option(shutdownComplete).getOrElse(Future.successful(Done))
   }
@@ -125,7 +138,7 @@ trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate {
   def restart(implicit mat: Materializer): Unit = {
     //wait for a random time btwn 0 and 2 minutes.
     Thread.sleep(rand.nextInt(120) * 1000)
-    val shutdownComplete = shutdown()
+    val shutdownComplete = shutdownAll()
     Try_(Await.ready(shutdownComplete, 30.seconds))
     run(mat)
   }

@@ -32,9 +32,11 @@ import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFa
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.streams.FirewallRequestTransformer
-import com.flipkart.connekt.commons.sync.SyncDelegate
+import com.flipkart.connekt.commons.sync.{SyncManager, SyncType}
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.typesafe.config.Config
+
+import scala.collection.mutable.ListBuffer
 
 protected object AndroidProtocols extends Enumeration {
   val http, xmpp = Value
@@ -58,7 +60,31 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
   })
 
   override def sources: Map[CheckPointGroup, Source[ConnektRequest, NotUsed]] = {
-    List(MobilePlatform.ANDROID, MobilePlatform.IOS, MobilePlatform.WINDOWS, MobilePlatform.OPENWEB).flatMap {platform =>
+
+    val enabledTopology = ListBuffer[MobilePlatform.MobilePlatform]()
+    SyncManager.getNodeData(SyncManager.getBucketNodePath + "/" + SyncType.ANDROID_TOPOLOGY_UPDATE).map(_.message.head) match {
+      case Some("stop") => ConnektLogger(LogFile.SERVICE).info(s"ANDROID Push Topology stopped by admin.")
+      case _ =>
+        enabledTopology += MobilePlatform.ANDROID
+    }
+    SyncManager.getNodeData(SyncManager.getBucketNodePath + "/" + SyncType.IOS_TOPOLOGY_UPDATE).map(_.message.head) match {
+      case Some("stop") => ConnektLogger(LogFile.SERVICE).info(s"IOS Push Topology stopped by admin.")
+      case _ =>
+        enabledTopology += MobilePlatform.IOS
+    }
+    SyncManager.getNodeData(SyncManager.getBucketNodePath + "/" + SyncType.OPENWEB_TOPOLOGY_UPDATE).map(_.message.head) match {
+      case Some("stop") => ConnektLogger(LogFile.SERVICE).info(s"OPENWEB Push Topology stopped by admin.")
+      case _ =>
+        enabledTopology += MobilePlatform.OPENWEB
+    }
+
+    SyncManager.getNodeData(SyncManager.getBucketNodePath + "/" + SyncType.WINDOW_TOPOLOGY_UPDATE).map(_.message.head) match {
+      case Some("stop") => ConnektLogger(LogFile.SERVICE).info(s"WINDOW Push Topology stopped by admin.")
+      case _ =>
+        enabledTopology += MobilePlatform.OPENWEB
+    }
+
+    enabledTopology.flatMap {platform =>
       ServiceFactory.getMessageService(Channel.PUSH).getTopicNames(Channel.PUSH, Option(platform)).get match {
         case platformTopics if platformTopics.nonEmpty => Option(platform.toString -> createMergedSource(platform, platformTopics))
         case _ => None

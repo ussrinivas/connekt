@@ -31,9 +31,11 @@ import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFa
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.streams.FirewallRequestTransformer
+import com.flipkart.connekt.commons.sync.{SyncManager, SyncType}
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.typesafe.config.Config
 
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContextExecutor
 
 class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCallbackEvent] {
@@ -56,7 +58,15 @@ class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCa
   })
 
   override def sources: Map[CheckPointGroup, Source[ConnektRequest, NotUsed]] = {
-    List(Channel.EMAIL).flatMap {value =>
+
+    val enabledTopology = ListBuffer[Channel.Channel]()
+    SyncManager.getNodeData(SyncManager.getBucketNodePath + "/" + SyncType.EMAIL_TOPOLOGY_UPDATE).map(_.message.head) match {
+      case Some("stop") => ConnektLogger(LogFile.SERVICE).info(s"EMAIL Topology stopped by admin.")
+      case _ =>
+        enabledTopology += Channel.EMAIL
+    }
+
+    enabledTopology.flatMap {value =>
       ServiceFactory.getMessageService(Channel.EMAIL).getTopicNames(Channel.EMAIL, None).get match {
         case platformTopics if platformTopics.nonEmpty => Option(value.toString -> createMergedSource(value, platformTopics))
         case _ => None

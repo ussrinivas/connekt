@@ -31,10 +31,11 @@ import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFa
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.streams.FirewallRequestTransformer
-import com.flipkart.connekt.commons.sync.SyncDelegate
+import com.flipkart.connekt.commons.sync.{SyncManager, SyncType}
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.typesafe.config.Config
 
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContextExecutor
 
 class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallbackEvent] {
@@ -56,7 +57,14 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
 
   override def sources: Map[CheckPointGroup, Source[ConnektRequest, NotUsed]] = {
 
-    List(Channel.SMS).flatMap {value =>
+    val enabledTopology = ListBuffer[Channel.Channel]()
+    SyncManager.getNodeData(SyncManager.getBucketNodePath + "/" + SyncType.SMS_TOPOLOGY_UPDATE).map(_.message.head) match {
+      case Some("stop") => ConnektLogger(LogFile.SERVICE).info(s"SMS Topology stopped by admin.")
+      case _ =>
+        enabledTopology += Channel.SMS
+    }
+
+    enabledTopology.flatMap {value =>
       ServiceFactory.getMessageService(Channel.SMS).getTopicNames(Channel.SMS, None).get match {
         case platformTopics if platformTopics.nonEmpty => Option(value.toString -> createMergedSource(value, platformTopics))
         case _ => None
