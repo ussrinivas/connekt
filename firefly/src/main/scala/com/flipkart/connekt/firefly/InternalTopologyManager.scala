@@ -23,7 +23,7 @@ import com.typesafe.config.Config
 /**
   * Created by grishma.s on 13/10/17.
   */
-class InternalTopologyManager(kafkaConsumerConnConf: Config, eventRelayRetryLimit: Int)(implicit am: ActorMaterializer, sys: ActorSystem) extends SyncDelegate {
+class InternalTopologyManager(kafkaConsumerConnConf: Config)(implicit am: ActorMaterializer, sys: ActorSystem) extends SyncDelegate {
 
 //  SyncManager.get().addObserver(this, List(SyncType.INTERNAL_CLIENT_TOPOLOGY))
 
@@ -54,10 +54,10 @@ class InternalTopologyManager(kafkaConsumerConnConf: Config, eventRelayRetryLimi
 object InternalTopologyManager {
   var instance: InternalTopologyManager = _
 
-  def apply(kafkaConsumerConnConf: Config, eventRelayRetryLimit: Int)(implicit am: ActorMaterializer, sys: ActorSystem): InternalTopologyManager = {
+  def apply(kafkaConsumerConnConf: Config)(implicit am: ActorMaterializer, sys: ActorSystem): InternalTopologyManager = {
     if (null == instance)
       this.synchronized {
-        instance = new InternalTopologyManager(kafkaConsumerConnConf, eventRelayRetryLimit)(am, sys)
+        instance = new InternalTopologyManager(kafkaConsumerConnConf)(am, sys)
         instance.restoreState()
       }
     instance

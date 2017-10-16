@@ -38,7 +38,7 @@ class InternalTopology(kafkaConsumerConnConf: Config, topicName: String, kafkaGr
 
     var streamCompleted:Future[Done] = null
     val killSwitch = KillSwitches.shared(UUID.randomUUID().toString)
-    val smsKafkaThrottle = ConnektConfig.getOrElse("sms.kafka.throttle.rps", 10)
+    val smsKafkaThrottle = ConnektConfig.getOrElse("sms.kafka.throttle.rps", 100)
 
     val kafkaCallbackSource = new KafkaSource[CallbackEvent](kafkaConsumerConnConf, topicName, kafkaGroupName)
     val source = Source.fromGraph(kafkaCallbackSource)

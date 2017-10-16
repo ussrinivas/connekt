@@ -28,13 +28,13 @@ class LatencyMetrics extends Instrumented {
 //  TODO: Temp hack, clean this shit.
   def sink = Sink.foreach[CallbackEvent](event => {
 
-    val smsHbaseLookup = ConnektConfig.getBoolean("sms.callback.hbase.lookup").getOrElse(false)
+    def smsHbaseLookup = ConnektConfig.getBoolean("sms.callback.hbase.lookup").getOrElse(false)
 
     event match {
       case sce:SmsCallbackEvent =>
 
         val providerName = sce.cargo.getObj[Map[String, String]].getOrElse("provider", "")
-        meter(s"provider.$providerName.event.${sce.eventType}.enqueue").mark()
+        meter(s"provider.$providerName.event.${sce.eventType}").mark()
 
         if(sce.eventType.equalsIgnoreCase("sms_delivered") && smsHbaseLookup) {
 
