@@ -33,7 +33,7 @@ class LatencyMetrics extends Instrumented {
     event match {
       case sce:SmsCallbackEvent =>
 
-        val providerName = sce.cargo.getObj[Map[String, String]].getOrElse("provider", "")
+        val providerName = sce.cargo.getObj[Map[String, String]].getOrElse("provider", "na")
         meter(s"provider.$providerName.event.${sce.eventType}").mark()
 
         if(sce.eventType.equalsIgnoreCase("sms_delivered") && smsHbaseLookup) {

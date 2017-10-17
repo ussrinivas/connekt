@@ -38,16 +38,16 @@ class InternalTopology(kafkaConsumerConnConf: Config, topicName: String, kafkaGr
 
     var streamCompleted:Future[Done] = null
     val killSwitch = KillSwitches.shared(UUID.randomUUID().toString)
-    val smsKafkaThrottle = ConnektConfig.getOrElse("sms.kafka.throttle.rps", 100)
+    val latencyMetricsKafkaThrottle = ConnektConfig.getOrElse("latencyMetrics.kafka.throttle.rps", 100)
 
     val kafkaCallbackSource = new KafkaSource[CallbackEvent](kafkaConsumerConnConf, topicName, kafkaGroupName)
     val source = Source.fromGraph(kafkaCallbackSource)
       .via(killSwitch.flow)
       .watchTermination(){ case (_, completed) => streamCompleted = completed}
-      .throttle(smsKafkaThrottle, 1.second, smsKafkaThrottle, ThrottleMode.Shaping)
+      .throttle(latencyMetricsKafkaThrottle, 1.second, latencyMetricsKafkaThrottle, ThrottleMode.Shaping)
       .runWith(new LatencyMetrics().sink)
 
-    ConnektLogger(LogFile.SERVICE).info(s"Started internal latency metric topology of topic ckt_callback_events_sms")
+    ConnektLogger(LogFile.SERVICE).info(s"Started internal latency metric topology of topic $topicName")
     (streamCompleted , killSwitch)
 
   }
