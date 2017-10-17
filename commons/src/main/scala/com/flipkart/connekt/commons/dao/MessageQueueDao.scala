@@ -40,9 +40,9 @@ class MessageQueueDao(private val setName: String, private implicit val client: 
   private val binName: String = "queue"
 
   @Timed("enqueueMessage")
-  def enqueueMessage(appName: String, contactIdentifier: String, messageId: String, expiryTs: Long)(implicit ec: ExecutionContext): Future[Int] = {
+  def enqueueMessage(appName: String, contactIdentifier: String, messageId: String, expiryTs: Long, read: Option[Boolean] = None)(implicit ec: ExecutionContext): Future[Int] = {
     val key = new Key(namespace, setName, s"$appName$contactIdentifier")
-    val data = Map(messageId -> MessageMetaData(System.currentTimeMillis(), expiryTs, Some(false)).encoded)
+    val data = Map(messageId -> MessageMetaData(System.currentTimeMillis(), expiryTs, read).encoded)
     addMapRow(key, binName, data, rowTTL).map { _record =>
       _record.getInt(binName)
     }
