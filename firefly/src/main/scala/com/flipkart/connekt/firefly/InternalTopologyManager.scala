@@ -15,9 +15,10 @@ package com.flipkart.connekt.firefly
 import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, KillSwitch}
 import com.flipkart.connekt.commons.entities.Channel
+import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.sync.SyncType.SyncType
-import com.flipkart.connekt.commons.sync.SyncDelegate
+import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
 import com.typesafe.config.Config
 
 /**
@@ -25,14 +26,12 @@ import com.typesafe.config.Config
   */
 class InternalTopologyManager(kafkaConsumerConnConf: Config)(implicit am: ActorMaterializer, sys: ActorSystem) extends SyncDelegate {
 
-//  SyncManager.get().addObserver(this, List(SyncType.INTERNAL_CLIENT_TOPOLOGY))
-
   private val triggers = scala.collection.mutable.Map[String, KillSwitch]()
 
   private lazy val CALLBACK_QUEUE_NAME = ConnektConfig.get("firefly.latency.metric.kafka.topic").getOrElse("ckt_callback_events_%s")
   private val LATENCY_METRIC_NAME = "LatencyMetrics"
 
-  private val kafkaGroupNames = List(
+  private val kafkaGroupNames: List[Map[String, String]] = List(
     Map("name" -> Channel.SMS.toString.toUpperCase.format(LATENCY_METRIC_NAME),
       "topic" -> CALLBACK_QUEUE_NAME.format(Channel.SMS.toString.toLowerCase))
   )
@@ -43,11 +42,24 @@ class InternalTopologyManager(kafkaConsumerConnConf: Config)(implicit am: ActorM
     streamComplete.onComplete( _ =>  triggers -= kafkaGroupName)(am.executionContext)
   }
 
+  def stopAllTopologies() = {
+    triggers.foreach {
+      case (kafkaGroupName, killSwitch) =>
+        ConnektLogger(LogFile.SERVICE).info(s"Stopping internal topology $kafkaGroupName on firefly shutdown")
+        killSwitch.shutdown()
+    }
+  }
+
   override def onUpdate(syncType: SyncType, args: List[AnyRef]): Any = {}
 
   def restoreState(): Unit ={
-    if(kafkaGroupNames.nonEmpty)
-      kafkaGroupNames.foreach(kafkaGroupName => startTopology(kafkaGroupName.get("topic").toString, kafkaGroupName.get("name").toString))
+    if(kafkaGroupNames.nonEmpty) {
+      kafkaGroupNames.foreach(kafkaGroupName => {
+        val topicName: String = kafkaGroupName("topic")
+        val name: String = kafkaGroupName("name")
+        startTopology(topicName, name)
+      })
+    }
   }
 }
 

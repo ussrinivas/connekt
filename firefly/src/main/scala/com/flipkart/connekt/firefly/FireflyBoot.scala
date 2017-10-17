@@ -21,7 +21,7 @@ import com.flipkart.connekt.commons.connections.ConnectionProvider
 import com.flipkart.connekt.commons.core.BaseApp
 import com.flipkart.connekt.commons.dao.DaoFactory
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
-import com.flipkart.connekt.commons.services.{ConnektConfig, EventsDaoContainer}
+import com.flipkart.connekt.commons.services.{ConnektConfig, EventsDaoContainer, RequestDaoContainer}
 import com.flipkart.connekt.commons.sync.SyncManager
 import com.flipkart.connekt.commons.utils.ConfigUtils
 import com.flipkart.connekt.firefly.dispatcher.HttpDispatcher
@@ -71,6 +71,12 @@ object FireflyBoot extends BaseApp {
 
       val kafkaConnConf = ConnektConfig.getConfig("connections.kafka.consumerConnProps").getOrElse(ConfigFactory.empty())
 
+      val requestDao = RequestDaoContainer(smsRequestDao = DaoFactory.getSmsRequestDao, pnRequestDao = DaoFactory.getPNRequestDao, emailRequestDao = DaoFactory.getEmailRequestDao, pullRequestDao = DaoFactory.getPullRequestDao)
+      ServiceFactory.initCallbackService(eventsDao, requestDao, null)
+
+      DaoFactory.setUpConnectionProvider(new ConnectionProvider())
+      ServiceFactory.initSMSMessageService(DaoFactory.getSmsRequestDao, DaoFactory.getUserConfigurationDao, null, kafkaConnConf, null)
+
       HttpDispatcher.apply(ConnektConfig.getConfig("react").get)
 
       ClientTopologyManager(kafkaConnConf, ConnektConfig.getInt("firefly.retry.limit").get)
@@ -87,6 +93,7 @@ object FireflyBoot extends BaseApp {
       DaoFactory.shutdownHTableDaoFactory()
       Option(ClientTopologyManager.instance).foreach(_.stopAllTopologies())
       ConnektLogger.shutdown()
+      Option(InternalTopologyManager.instance).foreach(_.stopAllTopologies())
     }
   }
 
