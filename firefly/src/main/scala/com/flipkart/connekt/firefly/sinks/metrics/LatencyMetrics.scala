@@ -21,14 +21,11 @@ import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.utils.StringUtils._
 
 
-/**
-  * Created by grishma.s on 11/10/17.
-  */
 class LatencyMetrics extends Instrumented {
 
-  def sink = Sink.foreach[CallbackEvent](event => {
+  def smsHbaseLookup = ConnektConfig.getBoolean("sms.callback.hbase.lookup").getOrElse(false)
 
-    def smsHbaseLookup = ConnektConfig.getBoolean("sms.callback.hbase.lookup").getOrElse(false)
+  def sink = Sink.foreach[CallbackEvent](event => {
 
     event match {
       case sce:SmsCallbackEvent =>
@@ -45,13 +42,11 @@ class LatencyMetrics extends Instrumented {
             if(eventDetails.exists(_.eventType.equalsIgnoreCase("sms_received"))) {
               val receivedEvent = eventDetails.filter(_.eventType.equalsIgnoreCase("sms_received")).head
               val recTS = receivedEvent.asInstanceOf[SmsCallbackEvent].timestamp
-              val delivTS = sce.timestamp
-              val lagTS = delivTS - recTS
+              val lagTS = sce.timestamp - recTS
               registry.histogram(getMetricName(s"SMS.latency.$providerName")).update(lagTS)
             }
           } catch {
             case e: NullPointerException =>
-              ConnektLogger(LogFile.DAO).error(s"No received event found in hbase:", e)
           }
         }
       case _ =>

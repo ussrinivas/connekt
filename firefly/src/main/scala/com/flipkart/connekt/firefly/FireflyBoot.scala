@@ -74,7 +74,6 @@ object FireflyBoot extends BaseApp {
       val requestDao = RequestDaoContainer(smsRequestDao = DaoFactory.getSmsRequestDao, pnRequestDao = DaoFactory.getPNRequestDao, emailRequestDao = DaoFactory.getEmailRequestDao, pullRequestDao = DaoFactory.getPullRequestDao)
       ServiceFactory.initCallbackService(eventsDao, requestDao, null)
 
-      DaoFactory.setUpConnectionProvider(new ConnectionProvider())
       ServiceFactory.initSMSMessageService(DaoFactory.getSmsRequestDao, DaoFactory.getUserConfigurationDao, null, kafkaConnConf, null)
 
       HttpDispatcher.apply(ConnektConfig.getConfig("react").get)

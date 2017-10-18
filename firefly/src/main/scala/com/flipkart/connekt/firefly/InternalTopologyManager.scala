@@ -21,19 +21,17 @@ import com.flipkart.connekt.commons.sync.SyncType.SyncType
 import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
 import com.typesafe.config.Config
 
-/**
-  * Created by grishma.s on 13/10/17.
-  */
+
 class InternalTopologyManager(kafkaConsumerConnConf: Config)(implicit am: ActorMaterializer, sys: ActorSystem) extends SyncDelegate {
 
   private val triggers = scala.collection.mutable.Map[String, KillSwitch]()
 
-  private lazy val CALLBACK_QUEUE_NAME = ConnektConfig.get("firefly.latency.metric.kafka.topic").getOrElse("ckt_callback_events_%s")
+  private lazy val CALLBACK_QUEUE_NAME = ConnektConfig.get("firefly.latency.metric.kafka.topic").getOrElse("ckt_callback_events_")
   private val LATENCY_METRIC_NAME = "LatencyMetrics"
 
   private val kafkaGroupNames: List[Map[String, String]] = List(
     Map("name" -> Channel.SMS.toString.toUpperCase.format(LATENCY_METRIC_NAME),
-      "topic" -> CALLBACK_QUEUE_NAME.format(Channel.SMS.toString.toLowerCase))
+      "topic" -> CALLBACK_QUEUE_NAME.concat(Channel.SMS.toString.toLowerCase))
   )
 
   private def startTopology(topicName: String, kafkaGroupName: String): Unit = {

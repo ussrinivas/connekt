@@ -28,9 +28,7 @@ import com.flipkart.connekt.firefly.sinks.metrics.LatencyMetrics
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
-/**
-  * Created by grishma.s on 12/10/17.
-  */
+
 class InternalTopology(kafkaConsumerConnConf: Config, topicName: String, kafkaGroupName: String)(implicit am: ActorMaterializer, sys: ActorSystem) {
   private implicit val ec = am.executionContext
 
