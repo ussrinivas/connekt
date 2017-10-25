@@ -37,7 +37,7 @@ class InboundMessageRoute(implicit am: ActorMaterializer) extends BaseJsonHandle
             path("inbound" / "parse" / Segment / Segment) {
               (appName: String, providerName: String) =>
                 authorize(user, "CREATE_INBOUND_EVENTS", s"CREATE_INBOUND_EVENTS_$appName") {
-                  post {
+                  (post | get) {
                     parameterMap { urlParams =>
                       entity(as[String](messageUnmarshallerFromEntityUnmarshaller(stringUnmarshaller))) { stringBody =>
 
