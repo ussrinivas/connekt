@@ -39,7 +39,7 @@ object demo {
     .build()
 
   builder.setSpout("kafka_spout", new KafkaSpout(spoutConf), 1)
-  builder.setBolt("androidFilter", new AndroidFilterBolt,1).shuffleGrouping("kafka-spout")
+  builder.setBolt("androidFilter", new AndroidFilterBolt,1).shuffleGrouping("kafka_spout")
 
   val conf = new Config()
   conf.setDebug(true)
