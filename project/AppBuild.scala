@@ -34,7 +34,8 @@ object AppBuild extends Build  {
       "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
       "jBoss" at "http://repository.jboss.org/nexus/content/groups/public",
       "Akka Snapshot Repository" at "http://repo.typesafe.com/typesafe/snapshots/",
-      "RoundEights" at "http://maven.spikemark.net/roundeights"
+      "RoundEights" at "http://maven.spikemark.net/roundeights",
+      "clojars" at "http://clojars.org/repo/"
     ),
     ivyScala := ivyScala.value map {
       _.copy(overrideScalaVersion = true)
