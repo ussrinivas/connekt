@@ -26,7 +26,9 @@ new Type(value = classOf[PNRequestData], name = "PN"),
 new Type(value = classOf[GCardRequestData], name = "GCard"),
 new Type(value = classOf[EmailRequestData], name="EMAIL"),
 new Type(value = classOf[SmsRequestData], name="SMS"),
-new Type(value = classOf[PullRequestData], name="PULL")
+new Type(value = classOf[PullRequestData], name="PULL"),
+new Type(value = classOf[WATextRequestData], name="WA-Text"),
+new Type(value = classOf[WaHSMRequestData], name="WA-HSM")
 ))
 abstract class ChannelRequestData{
   def validate(appName: String)(implicit stencilService: TStencilService)

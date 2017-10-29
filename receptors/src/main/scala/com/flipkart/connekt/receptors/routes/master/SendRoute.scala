@@ -337,6 +337,25 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                   }
                 }
             }
+          }  ~ pathPrefix("send" / "message") {
+            path(Segment) {
+              (appName: String) => {
+                  post {
+                    getXHeaders { headers =>
+                      entity(as[ConnektRequest]) { r =>
+                        complete {
+                          Future {
+                            profile(s"wa.send.request.$appName") {
+                              println("I have reached till here" + appName + r.channelInfo);
+                              GenericResponse(StatusCodes.OK.intValue, null, Response("Yepiee Noodle Kha0.", null)).respond
+                            }
+                          }(ioDispatcher)
+                        }
+                      }
+                    }
+                }
+              }
+            }
           } ~ pathPrefix("send" / "pull") {
             path(Segment) {
               (appName: String) => {
@@ -385,3 +404,37 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
         }
     }
 }
+
+/*
+       1)POST Request:
+         Phone Number: Required
+         Text Message: Required
+         preview first url: Optional
+
+       Validation:
+         Valid Number
+         contains the url if preview is true
+
+       Store the request in hbase
+
+       check if the contact is available
+       Yes -> Send the request to the kafka, request as a JSON
+       No -> Do sync call
+       update the hbase
+
+       Check
+
+       Response:
+       Return the
+        */
+/*
+Busybees
+Will get the request
+Will check if the customer is available on the whatsapp by querying hbase, couchbase
+-> Yes ->
+  Check 1st time communication,
+  Yes -> Send HSM and Message in the same partition of the keys
+  No -> Send message
+-> No -> Push the message in different topic for checking the availability-> other part of the code will do the work on it
+         and reque this message or do not ack this message
+ */

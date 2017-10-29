@@ -25,7 +25,8 @@ import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
   new Type(value = classOf[EmailRequestInfo], name = "EMAIL"),
   new Type(value = classOf[SmsRequestInfo], name = "SMS"),
   new Type(value = classOf[PullRequestInfo], name = "PULL"),
-  new Type(value = classOf[CardsRequestInfo], name = "CARD")
+  new Type(value = classOf[CardsRequestInfo], name = "CARD"),
+  new Type(value = classOf[WaRequestInfo], name = "WA")
 ))
 abstract class ChannelRequestInfo{
   def appName: String
