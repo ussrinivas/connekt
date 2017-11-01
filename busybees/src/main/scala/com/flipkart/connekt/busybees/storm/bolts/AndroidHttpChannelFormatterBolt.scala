@@ -1,11 +1,22 @@
+/*
+ *         -╥⌐⌐⌐⌐            -⌐⌐⌐⌐-
+ *      ≡╢░░░░⌐\░░░φ     ╓╝░░░░⌐░░░░╪╕
+ *     ╣╬░░`    `░░░╢┘ φ▒╣╬╝╜     ░░╢╣Q
+ *    ║╣╬░⌐        ` ╤▒▒▒Å`        ║╢╬╣
+ *    ╚╣╬░⌐        ╔▒▒▒▒`«╕        ╢╢╣▒
+ *     ╫╬░░╖    .░ ╙╨╨  ╣╣╬░φ    ╓φ░╢╢Å
+ *      ╙╢░░░░⌐"░░░╜     ╙Å░░░░⌐░░░░╝`
+ *        ``˚¬ ⌐              ˚˚⌐´
+ *
+ *      Copyright © 2016 Flipkart.com
+ */
 package com.flipkart.connekt.busybees.storm.bolts
-
-import java.util.Random
 
 import com.flipkart.connekt.commons.entities.DeviceDetails
 import com.flipkart.connekt.commons.iomodels.{ConnektRequest, GCMHttpPNPayload, GCMPayloadEnvelope, PNRequestInfo}
 import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.utils.StringUtils._
+
 import scala.concurrent.duration._
 
 /**
@@ -15,9 +26,9 @@ class AndroidHttpChannelFormatterBolt extends AndroidChannelFormatterBolt {
   private lazy val xmppClients = ConnektConfig.getList[String]("android.protocol.xmpp-clients")
 
 
-  override def createPayload(connektRequest:ConnektRequest,
-                             devicesInfo:Seq[DeviceDetails],
-                             appDataWithId:Any):List[GCMPayloadEnvelope] = {
+  override def createPayload(connektRequest: ConnektRequest,
+                             devicesInfo: Seq[DeviceDetails],
+                             appDataWithId: Any): List[GCMPayloadEnvelope] = {
 
     val pnInfo = connektRequest.channelInfo.asInstanceOf[PNRequestInfo]
     val timeToLive = connektRequest.expiryTs.map(expiry => (expiry - System.currentTimeMillis) / 1000).getOrElse(6.hour.toSeconds)

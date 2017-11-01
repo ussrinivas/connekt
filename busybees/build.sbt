@@ -3,9 +3,12 @@ name := "busybees"
 version := "0.1"
 
 libraryDependencies ++= Seq(
-  "org.apache.storm" % "storm-core" % "1.1.1",
+  "org.apache.storm" % "storm-core" % "1.1.1"  excludeAll(
+    ExclusionRule(organization = "org.apache.logging.log4j"),
+    ExclusionRule(organization = "ring-cors"),
+    ExclusionRule(organization = "org.slf4j")
+  ),
   "org.apache.storm" % "storm-kafka-client" % "1.1.1",
-
   "org.igniterealtime.smack" % "smack-java7" % "4.1.8",
   "org.igniterealtime.smack" % "smack-tcp" % "4.1.8",
   "org.igniterealtime.smack" % "smack-core" % "4.1.8",

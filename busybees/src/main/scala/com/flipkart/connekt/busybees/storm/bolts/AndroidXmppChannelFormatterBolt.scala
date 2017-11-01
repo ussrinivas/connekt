@@ -1,9 +1,22 @@
+/*
+ *         -╥⌐⌐⌐⌐            -⌐⌐⌐⌐-
+ *      ≡╢░░░░⌐\░░░φ     ╓╝░░░░⌐░░░░╪╕
+ *     ╣╬░░`    `░░░╢┘ φ▒╣╬╝╜     ░░╢╣Q
+ *    ║╣╬░⌐        ` ╤▒▒▒Å`        ║╢╬╣
+ *    ╚╣╬░⌐        ╔▒▒▒▒`«╕        ╢╢╣▒
+ *     ╫╬░░╖    .░ ╙╨╨  ╣╣╬░φ    ╓φ░╢╢Å
+ *      ╙╢░░░░⌐"░░░╜     ╙Å░░░░⌐░░░░╝`
+ *        ``˚¬ ⌐              ˚˚⌐´
+ *
+ *      Copyright © 2016 Flipkart.com
+ */
 package com.flipkart.connekt.busybees.storm.bolts
 
 import com.flipkart.connekt.commons.entities.DeviceDetails
 import com.flipkart.connekt.commons.helpers.XmppMessageIdHelper
 import com.flipkart.connekt.commons.iomodels.{ConnektRequest, GCMPayloadEnvelope, GCMXmppPNPayload, PNRequestInfo}
 import com.flipkart.connekt.commons.utils.StringUtils._
+
 import scala.concurrent.duration._
 
 /**
@@ -25,4 +38,5 @@ class AndroidXmppChannelFormatterBolt extends AndroidChannelFormatterBolt {
       GCMPayloadEnvelope(message.id, message.clientId, Seq(device.deviceId), pnInfo.appName, message.contextId.orEmpty, payload, message.meta)
     }.toList
   }
+
 }

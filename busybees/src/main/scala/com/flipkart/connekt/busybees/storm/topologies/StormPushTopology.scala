@@ -12,8 +12,9 @@
  */
 package com.flipkart.connekt.busybees.storm.topologies
 
+import com.flipkart.connekt.busybees.BusyBeesBoot
 import com.flipkart.connekt.busybees.BusyBeesBoot.{apiVersion, configServiceHost, configServicePort}
-import com.flipkart.connekt.busybees.storm.bolts.{AndroidFilterBolt, AndroidHttpChannelFormatterBolt, AndroidXmppChannelFormatterBolt, ChannelConnectionChooserBolt}
+import com.flipkart.connekt.busybees.storm.bolts._
 import com.flipkart.connekt.busybees.streams.flows.formaters.AndroidXmppChannelFormatter
 import com.flipkart.connekt.commons.connections.ConnectionProvider
 import com.flipkart.connekt.commons.dao.DaoFactory
@@ -26,21 +27,20 @@ import org.apache.storm.topology.TopologyBuilder
 /**
   * Created by saurabh.mimani on 27/10/17.
   */
-object demo {
-
+object StormPushTopology {
 
   def main(args: Array[String]): Unit = {
     setup()
     val env = "local"
     val builder = new TopologyBuilder
 
-    val bootStrapServers = "localhost:9092"
-    val topic = "test"
-    val consumerGroupId = "1"
+    val bootStrapServers = "10.32.230.105:9092,10.33.249.164:9092,10.33.205.205:9092"
+    val topic = "push_8e494f43126ade96ce7320ad8ccfc709"
+    val consumerGroupId = "ckt_android"
     val spoutConf = KafkaSpoutConfig.builder(bootStrapServers, topic)
       .setGroupId(consumerGroupId)
       .setOffsetCommitPeriodMs(10000)
-      .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.UNCOMMITTED_LATEST)
+      .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.UNCOMMITTED_EARLIEST)
       .setMaxUncommittedOffsets(1000000)
       .build()
 
@@ -50,6 +50,12 @@ object demo {
 
     builder.setBolt("xmppFormatterBolt", new AndroidXmppChannelFormatterBolt, 1).shuffleGrouping("ConnectionChooserBolt", "xmpp")
     builder.setBolt("httpFormatterBolt", new AndroidHttpChannelFormatterBolt, 1).shuffleGrouping("ConnectionChooserBolt", "http")
+    builder.setBolt("simplifyRequestBolt", new SimplifyRequestBolt, 1).shuffleGrouping("httpFormatterBolt")
+
+    builder.setBolt("gcmHttpDispatcherPrepareBolt", new GCMHttpDispatcherPrepareBolt, 1).shuffleGrouping("simplifyRequestBolt")
+    builder.setBolt("firewallRequestTransformerBolt", new FirewallRequestTransformerBolt, 1).shuffleGrouping("gcmHttpDispatcherPrepareBolt")
+    builder.setBolt("httpDispatcherBolt", new HttpDispatcherBolt, 1).shuffleGrouping("firewallRequestTransformerBolt")
+    builder.setBolt("gcmResponseHandlerBolt", new GCMResponseHandlerBolt, 1).shuffleGrouping("httpDispatcherBolt")
 
 
     val conf = new Config()
@@ -70,13 +76,6 @@ object demo {
   }
 
   def setup(): Unit = {
-    val applicationConfigFile = ConfigUtils.getSystemProperty("busybees.appConfigurationFile").getOrElse("busybees-config.json")
-    ConnektConfig(configServiceHost, configServicePort, apiVersion)(Seq("fk-connekt-root", "fk-connekt-".concat(ConfigUtils.getConfEnvironment), "fk-connekt-busybees", "fk-connekt-busybees-akka-nm"))(applicationConfigFile)
-
-//    DaoFactory.setUpConnectionProvider(new ConnectionProvider)
-//    val hConfig = ConnektConfig.getConfig("connections.hbase")
-//    DaoFactory.initHTableDaoFactory(hConfig.get)
-//    DeviceDetailsService.bootstrap()
-
+    BusyBeesBoot.start()
   }
 }

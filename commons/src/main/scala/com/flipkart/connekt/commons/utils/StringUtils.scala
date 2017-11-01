@@ -18,8 +18,9 @@ import java.math.BigInteger
 import java.security.SecureRandom
 import java.util.UUID
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpEntity
-import akka.stream.Materializer
+import akka.stream.{ActorMaterializer, Materializer}
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper, SerializationFeature}
@@ -164,6 +165,15 @@ object StringUtils {
     def getString(implicit mat: Materializer): String = {
       import akka.http.scaladsl.unmarshalling._
       implicit val ec = mat.executionContext
+      val futureString = Unmarshal(entity).to[String]
+      Await.result(futureString, 60.seconds)
+    }
+
+    def getStringWithoutMat: String = {
+      import akka.http.scaladsl.unmarshalling.Unmarshal
+      implicit val system = ActorSystem()
+      import system.dispatcher
+      implicit val materializer = ActorMaterializer()
       val futureString = Unmarshal(entity).to[String]
       Await.result(futureString, 60.seconds)
     }
