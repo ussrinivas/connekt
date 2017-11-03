@@ -19,7 +19,7 @@ import com.flipkart.connekt.busybees.storm.models.HttpRequestAndTracker
 import com.flipkart.connekt.busybees.streams.errors.ConnektPNStageException
 import com.flipkart.connekt.commons.entities.MobilePlatform
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
-import com.flipkart.connekt.commons.iomodels.GCMPayloadEnvelope
+import com.flipkart.connekt.commons.iomodels.{FCMXmppRequest, GCMPayloadEnvelope, GCMXmppPNPayload}
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.services.{ConnektConfig, KeyChainManager}
 import com.flipkart.connekt.commons.utils.StringUtils._
@@ -27,7 +27,7 @@ import org.apache.storm.topology.base.BaseBasicBolt
 import org.apache.storm.topology.{BasicOutputCollector, OutputFieldsDeclarer}
 import org.apache.storm.tuple.{Fields, Tuple, TupleImpl, Values}
 
-class GCMHttpDispatcherPrepareBolt extends BaseBasicBolt {
+class GCMXmppDispatcherPrepareBolt extends BaseBasicBolt {
 
   private val sendUri = Uri(ConnektConfig.getString("fcm.send.uri").getOrElse("https://fcm.googleapis.com/fcm/send"))
 
@@ -37,20 +37,20 @@ class GCMHttpDispatcherPrepareBolt extends BaseBasicBolt {
       ConnektLogger(LogFile.PROCESSORS).debug("GCMDispatcherPrepare received message: {}", supplier(message.messageId))
       ConnektLogger(LogFile.PROCESSORS).trace("GCMDispatcherPrepare received message: {}", supplier(message))
 
-      val requestEntity = HttpEntity(ContentTypes.`application/json`, message.gcmPayload.getJson)
-      val requestHeaders = scala.collection.immutable.Seq[HttpHeader](RawHeader("Authorization", "key=" + KeyChainManager.getGoogleCredential(message.appName).get.apiKey))
-      val httpRequest = HttpRequest(HttpMethods.POST, sendUri, requestHeaders, requestEntity)
-      val requestTracker = GCMRequestTracker(message.messageId, message.clientId, message.deviceId, message.appName, message.contextId, message.meta)
-      collector.emit(new Values(HttpRequestAndTracker(httpRequest, requestTracker)))
+      KeyChainManager.getGoogleCredential(message.appName).map { credential =>
+        val xmppRequest:FCMXmppRequest = FCMXmppRequest(message.gcmPayload.asInstanceOf[GCMXmppPNPayload], credential)
+        val requestTracker = GCMRequestTracker(message.messageId, message.clientId, message.deviceId, message.appName, message.contextId, message.meta)
+        collector.emit(new Values(xmppRequest, requestTracker))
+      }
     } catch {
       case e: Throwable =>
-        ConnektLogger(LogFile.PROCESSORS).error(s"GCMDispatcherPrepare failed with ${e.getMessage}", e)
-        throw new ConnektPNStageException(message.messageId, message.clientId, message.deviceId.toSet, InternalStatus.StageError, message.appName, MobilePlatform.ANDROID, message.contextId, message.meta, s"GCMDispatcherPrepare-${e.getMessage}", e)
+        ConnektLogger(LogFile.PROCESSORS).error(s"GCMXmppDispatcherPrepare failed with ${e.getMessage}", e)
+        throw new ConnektPNStageException(message.messageId, message.clientId, message.deviceId.toSet, InternalStatus.StageError, message.appName, MobilePlatform.ANDROID, message.contextId, message.meta, s"GCMXmppDispatcherPrepare-${e.getMessage}", e)
     }
   }
 
   override def declareOutputFields(declarer: OutputFieldsDeclarer): Unit = {
-    declarer.declare(new Fields("gcmHttpDispatcherPreparedRequest"))
+    declarer.declare(new Fields("gcmXmppRequest", "gcmXmppRequestTracker"))
   }
 
 }

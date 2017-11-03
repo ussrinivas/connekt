@@ -14,6 +14,8 @@ package com.flipkart.connekt.commons.iomodels
 
 import com.fasterxml.jackson.annotation.JsonProperty
 
-case class XmppUpstreamAck (@JsonProperty("message_id") messageId: String,
-  @JsonProperty("message_type") messageType: String,
-  @JsonProperty(required = true) to: String)
+case class XmppUpstreamAck (
+                             @JsonProperty("message_id") messageId: String,
+                             @JsonProperty("message_type") messageType: String,
+                             @JsonProperty(required = true) to: String
+                           )

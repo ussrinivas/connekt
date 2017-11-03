@@ -22,7 +22,7 @@ import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 
 import scala.collection.mutable
 
-class XmppConnectionRouter (var connectionPoolSize:Int, googleCredential: GoogleCredential, appId:String,stageLogicRef :ActorRef) extends Actor with ActorLogging {
+class XmppConnectionRouter (var connectionPoolSize:Int, googleCredential: GoogleCredential, appId:String, stageLogicRef :ActorRef) extends Actor with ActorLogging {
 
   val requests:mutable.Queue[SendXmppOutStreamRequest] = collection.mutable.Queue[SendXmppOutStreamRequest]()
   val freeXmppActors = collection.mutable.LinkedHashSet[ActorRef]()

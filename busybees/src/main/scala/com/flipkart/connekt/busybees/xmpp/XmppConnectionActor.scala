@@ -36,7 +36,7 @@ import org.jivesoftware.smack.provider.{ExtensionElementProvider, ProviderManage
 import org.jivesoftware.smack.roster.Roster
 import org.jivesoftware.smack.tcp.{XMPPTCPConnection, XMPPTCPConnectionConfiguration}
 import org.jivesoftware.smack.util.stringencoder.java7.{Java7Base64Encoder, Java7Base64UrlSafeEncoder}
-import org.jivesoftware.smack.{ConnectionConfiguration, ReconnectionManager}
+import org.jivesoftware.smack.{ConnectionConfiguration, ReconnectionManager, StanzaListener}
 import org.jivesoftware.smackx.ping.PingManager
 import org.xmlpull.v1.XmlPullParser
 
@@ -374,7 +374,7 @@ private[xmpp] class XmppConnectionActor(googleCredential: GoogleCredential, appI
     connection
   }
 
-  private def makeConnection(connection:XMPPTCPConnection): Unit ={
+  private def makeConnection(connection:XMPPTCPConnection): Unit = {
     try {
       connection.connect()
       connection.login(googleCredential.projectId + "@gcm.googleapis.com", googleCredential.apiKey)

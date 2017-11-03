@@ -16,6 +16,7 @@ import com.flipkart.connekt.busybees.BusyBeesBoot
 import com.flipkart.connekt.busybees.BusyBeesBoot.{apiVersion, configServiceHost, configServicePort}
 import com.flipkart.connekt.busybees.storm.bolts._
 import com.flipkart.connekt.busybees.streams.flows.formaters.AndroidXmppChannelFormatter
+import com.flipkart.connekt.busybees.xmpp.XmppDispatcherBolt
 import com.flipkart.connekt.commons.connections.ConnectionProvider
 import com.flipkart.connekt.commons.dao.DaoFactory
 import com.flipkart.connekt.commons.services.{ConnektConfig, DeviceDetailsService}
@@ -50,12 +51,15 @@ object StormPushTopology {
 
     builder.setBolt("xmppFormatterBolt", new AndroidXmppChannelFormatterBolt, 1).shuffleGrouping("ConnectionChooserBolt", "xmpp")
     builder.setBolt("httpFormatterBolt", new AndroidHttpChannelFormatterBolt, 1).shuffleGrouping("ConnectionChooserBolt", "http")
-    builder.setBolt("simplifyRequestBolt", new SimplifyRequestBolt, 1).shuffleGrouping("httpFormatterBolt")
 
+    builder.setBolt("simplifyRequestBolt", new SimplifyRequestBolt, 1).shuffleGrouping("httpFormatterBolt")
     builder.setBolt("gcmHttpDispatcherPrepareBolt", new GCMHttpDispatcherPrepareBolt, 1).shuffleGrouping("simplifyRequestBolt")
     builder.setBolt("firewallRequestTransformerBolt", new FirewallRequestTransformerBolt, 1).shuffleGrouping("gcmHttpDispatcherPrepareBolt")
     builder.setBolt("httpDispatcherBolt", new HttpDispatcherBolt, 1).shuffleGrouping("firewallRequestTransformerBolt")
     builder.setBolt("gcmResponseHandlerBolt", new GCMResponseHandlerBolt, 1).shuffleGrouping("httpDispatcherBolt")
+
+    builder.setBolt("simplifyRequestBolt", new SimplifyRequestBolt, 1).shuffleGrouping("xmppFormatterBolt")
+    builder.setBolt("xmppDispatcherBolt", new XmppDispatcherBolt, 1).shuffleGrouping("simplifyRequestBolt")
 
 
     val conf = new Config()

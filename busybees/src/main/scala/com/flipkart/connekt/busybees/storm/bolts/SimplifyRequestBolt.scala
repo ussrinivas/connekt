@@ -11,5 +11,6 @@ class SimplifyRequestBolt extends BaseBasicBolt {
     messages.foreach(message => collector.emit(new Values(message)))
   }
 
-  override def declareOutputFields(declarer: OutputFieldsDeclarer): Unit =  declarer.declare(new Fields("simplifyRequest"))
+  override def declareOutputFields(declarer: OutputFieldsDeclarer): Unit =
+    declarer.declare(new Fields("simplifyRequest"))
 }

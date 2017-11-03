@@ -15,7 +15,8 @@ package com.flipkart.connekt.commons.iomodels
 import com.fasterxml.jackson.annotation.JsonProperty
 
 case class XmppControl(
-                       @JsonProperty("control_type") controlType: String) extends XmppDownstreamResponse {
+                        @JsonProperty("control_type") controlType: String
+                      ) extends XmppDownstreamResponse {
   override def responseType(): String = "control"
 }
 
