@@ -26,12 +26,12 @@ class InternalTopologyManager(kafkaConsumerConnConf: Config)(implicit am: ActorM
 
   private val triggers = scala.collection.mutable.Map[String, KillSwitch]()
 
-  private lazy val CALLBACK_QUEUE_NAME = ConnektConfig.get("firefly.latency.metric.kafka.topic").getOrElse("ckt_callback_events_")
+  private lazy val CALLBACK_QUEUE_NAME = ConnektConfig.get("firefly.latency.metric.kafka.topic").getOrElse("ckt_callback_events_%s")
   private val LATENCY_METRIC_NAME = "LatencyMetrics"
 
   private val kafkaGroupNames: List[Map[String, String]] = List(
-    Map("name" -> Channel.SMS.toString.toUpperCase.format(LATENCY_METRIC_NAME),
-      "topic" -> CALLBACK_QUEUE_NAME.concat(Channel.SMS.toString.toLowerCase))
+    Map("name" -> Channel.SMS.toString.toUpperCase.concat(LATENCY_METRIC_NAME),
+      "topic" -> CALLBACK_QUEUE_NAME.format(Channel.SMS.toString.toLowerCase))
   )
 
   private def startTopology(topicName: String, kafkaGroupName: String): Unit = {
@@ -51,17 +51,15 @@ class InternalTopologyManager(kafkaConsumerConnConf: Config)(implicit am: ActorM
   override def onUpdate(syncType: SyncType, args: List[AnyRef]): Any = {}
 
   def restoreState(): Unit ={
-    if(kafkaGroupNames.nonEmpty) {
-      kafkaGroupNames.foreach(kafkaGroupName => {
-        val topicName: String = kafkaGroupName("topic")
-        val name: String = kafkaGroupName("name")
-        startTopology(topicName, name)
-      })
-    }
+    kafkaGroupNames.foreach(kafkaGroupName => {
+      val topicName: String = kafkaGroupName("topic")
+      val name: String = kafkaGroupName("name")
+      startTopology(topicName, name)
+    })
   }
 }
 
-object InternalTopologyManager {
+private object InternalTopologyManager {
   var instance: InternalTopologyManager = _
 
   def apply(kafkaConsumerConnConf: Config)(implicit am: ActorMaterializer, sys: ActorSystem): InternalTopologyManager = {
