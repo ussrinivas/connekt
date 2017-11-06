@@ -23,17 +23,16 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 
 class LatencyMetrics extends Instrumented {
 
-  def smsHbaseLookup = ConnektConfig.getBoolean("sms.callback.hbase.lookup").getOrElse(false)
+  def publishSMSLatency = ConnektConfig.getBoolean("publish.sms.latency").getOrElse(false)
 
   def sink = Sink.foreach[CallbackEvent](event => {
-
     event match {
       case sce:SmsCallbackEvent =>
 
         val providerName = sce.cargo.getObj[Map[String, String]].getOrElse("provider", "na")
         meter(s"provider.$providerName.event.${sce.eventType}").mark()
 
-        if(sce.eventType.equalsIgnoreCase("sms_delivered") && smsHbaseLookup) {
+        if(sce.eventType.equalsIgnoreCase("sms_delivered") && publishSMSLatency) {
 
           try {
             val smsEventDetails = ServiceFactory.getCallbackService.fetchCallbackEventByMId(event.messageId.toString, Channel.SMS)
