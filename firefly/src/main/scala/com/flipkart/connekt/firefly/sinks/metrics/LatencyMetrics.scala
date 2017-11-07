@@ -33,7 +33,7 @@ class LatencyMetrics extends Instrumented {
 
   private val _timer = new ConcurrentHashMap[String,Timer]().asScala
   private def slidingTimer(name:String):Timer =  _timer.getOrElseUpdate(name, {
-    val slidingTimer = new Timer(new SlidingTimeWindowReservoir(5, TimeUnit.MINUTES))
+    val slidingTimer = new Timer(new SlidingTimeWindowReservoir(2, TimeUnit.MINUTES))
     registry.register(name, slidingTimer)
     slidingTimer
   })
