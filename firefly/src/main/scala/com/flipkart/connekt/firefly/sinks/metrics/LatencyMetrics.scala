@@ -29,7 +29,7 @@ import scala.concurrent.Future
 
 class LatencyMetrics extends Instrumented {
 
-  private def publishSMSLatency: Boolean = ConnektConfig.getBoolean("publish.sms.latency").getOrElse(true)
+  private def publishSMSLatency: Boolean = ConnektConfig.getBoolean("publish.sms.latency").getOrElse(false)
 
   private val _timer = new ConcurrentHashMap[String,Timer]().asScala
   private def slidingTimer(name:String):Timer =  _timer.getOrElseUpdate(name, {
@@ -45,12 +45,13 @@ class LatencyMetrics extends Instrumented {
 
       if (sce.eventType.equalsIgnoreCase("sms_delivered") && publishSMSLatency) {
         val smsEventDetails = ServiceFactory.getCallbackService.fetchCallbackEventByMId(event.messageId.toString, Channel.SMS)
-        val eventDetails = smsEventDetails.get(sce.asInstanceOf[SmsCallbackEvent].receiver)
-        Option(eventDetails).foreach(eventDetail => {
+        val eventDetails = smsEventDetails.get.get(sce.asInstanceOf[SmsCallbackEvent].receiver)
+        val deliveredTS = sce.timestamp
+        eventDetails.foreach(eventDetail => {
           if (eventDetail.exists(_.eventType.equalsIgnoreCase("sms_received"))) {
             val receivedEvent = eventDetail.filter(_.eventType.equalsIgnoreCase("sms_received")).head
             val recTS = receivedEvent.asInstanceOf[SmsCallbackEvent].timestamp
-            val lagTS = sce.timestamp - recTS
+            val lagTS = deliveredTS - recTS
             slidingTimer(getMetricName(s"SMS.latency.$providerName")).update(lagTS, TimeUnit.MILLISECONDS)
           }
         })
