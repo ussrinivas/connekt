@@ -67,4 +67,18 @@ class LatencyMetricsTopologyTest extends TopologyUTSpec with Instrumented {
     Source.single(smsCallback).runWith(latency.sink)
     Thread.sleep(20000)
   }
+  "HbaseLookupTopology Test" should "cargo excep" in {
+    val smsCallback = SmsCallbackEvent(messageId = "6f55f6bc-8737-4b26-b40c-eb4078ade202",
+      eventType = "sms_delivered",
+      receiver = "+919842399355",
+      clientId = "affordability",
+      appName = "flipkart",
+      contextId = "",
+      cargo = "RenderFlow - Java.lang",
+      timestamp = 1502733655449L,
+      eventId = "iaUAuOefuD")
+
+    Source.single(smsCallback).runWith(latency.sink)
+    Thread.sleep(20000)
+  }
 }

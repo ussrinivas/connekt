@@ -40,7 +40,7 @@ class LatencyMetrics extends Instrumented {
 
   def sink: Sink[CallbackEvent, Future[Done]] = Sink.foreach[CallbackEvent] {
     case event@(sce: SmsCallbackEvent) =>
-      val providerName :String = Option(sce.cargo).filter(_.nonEmpty).map(_.getObj[Map[String, String]].getOrElse("provider","na")).getOrElse("na")
+      val providerName :String = Option(sce.cargo).filter(cargo => cargo.nonEmpty && cargo.startsWith("{")).map(_.getObj[Map[String, String]].getOrElse("provider","na")).getOrElse("na")
       meter(s"provider.$providerName.event.${sce.eventType}").mark()
 
       if (sce.eventType.equalsIgnoreCase("sms_delivered") && publishSMSLatency) {
