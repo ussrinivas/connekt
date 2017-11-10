@@ -105,4 +105,15 @@ class CallbackService(eventsDao: EventsDaoContainer, requestDao: RequestDaoConta
       eventsDao(channel).fetchEventMapFromList(eventList.get.map(_._1))
     }
   }
+
+  def fetchCallbackEventByMIDWithTimeRange(messageId: String, channel: Channel.Value, minTimestamp: Long, maxTimestamp: Long): Try[Map[String, List[CallbackEvent]]] = {
+    Try {
+      requestDao(channel).fetchRequestInfo(messageId) match {
+        case Some(events) =>
+          eventsDao(channel).fetchCallbackEvents(messageId, events, Some(Tuple2(minTimestamp, maxTimestamp)))
+        case None =>
+          Map()
+      }
+    }
+  }
 }

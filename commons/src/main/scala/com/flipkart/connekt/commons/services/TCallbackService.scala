@@ -33,4 +33,6 @@ trait TCallbackService extends TService {
 
   def deleteCallBackEvent(requestId: String, forContact: String, channel: Channel.Value): Try[List[CallbackEvent]]
 
+  def fetchCallbackEventByMIDWithTimeRange(requestId: String, channel: Channel.Value, minTimestamp: Long, maxTimestamp: Long): Try[Map[String, List[CallbackEvent]]]
+
 }
