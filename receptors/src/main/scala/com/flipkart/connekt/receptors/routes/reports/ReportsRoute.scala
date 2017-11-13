@@ -65,7 +65,7 @@ class ReportsRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
               (channel: Channel, messageId: String) =>
                 get {
                   meteredResource("reportsMessageEvents") {
-                    val events = ServiceFactory.getCallbackService.fetchCallbackEventByMId(messageId, channel).get
+                    val events = ServiceFactory.getCallbackService.fetchCallbackEventByMId(messageId, channel, None).get
                     complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Events for $messageId fetched.", events)))
                   }
                 }

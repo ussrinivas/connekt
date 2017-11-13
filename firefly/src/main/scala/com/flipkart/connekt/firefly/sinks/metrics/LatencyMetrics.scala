@@ -46,8 +46,8 @@ class LatencyMetrics extends Instrumented {
       if (sce.eventType.equalsIgnoreCase("sms_delivered") && publishSMSLatency) {
         val minTimestamp: Long = sce.timestamp - 86400000L
         val maxTimestamp: Long = sce.timestamp + 120000L
-        val smsEventDetails = ServiceFactory.getCallbackService.fetchCallbackEventByMIDWithTimeRange(event.messageId.toString, Channel.SMS, minTimestamp, maxTimestamp)
-        if (smsEventDetails.isSuccess) {
+        val smsEventDetails = ServiceFactory.getCallbackService.fetchCallbackEventByMId(event.messageId.toString, Channel.SMS, Some(Tuple2(minTimestamp, maxTimestamp)))
+        if (smsEventDetails.isSuccess && smsEventDetails.get.nonEmpty) {
           val eventDetails = smsEventDetails.get.get(sce.asInstanceOf[SmsCallbackEvent].receiver)
           val deliveredTS = sce.timestamp
           eventDetails.foreach(eventDetail => {
