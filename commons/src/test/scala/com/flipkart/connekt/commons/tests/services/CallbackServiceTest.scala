@@ -83,7 +83,7 @@ class CallbackServiceTest extends CommonsBaseTest {
 
   "Callback Service" should "fetch by message id" in {
     val callbackService = ServiceFactory.getCallbackService
-    val result = callbackService.fetchCallbackEventByMId(callBackEvent.messageId, Channel.PUSH, None)
+    val result = callbackService.fetchCallbackEventByMId(callBackEvent.messageId, Channel.PUSH)
     result.isSuccess shouldEqual true
     result.get.size should be > 0
   }
