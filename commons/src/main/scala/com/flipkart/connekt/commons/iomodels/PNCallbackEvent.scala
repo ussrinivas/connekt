@@ -26,7 +26,8 @@ case class PNCallbackEvent(messageId: String,
                            contextId: String,
                            cargo: String = null,
                            timestamp: Long = System.currentTimeMillis(),
-                           eventId: String = RandomStringUtils.randomAlphabetic(10)) extends CallbackEvent with PublishSupport {
+                           eventId: String = RandomStringUtils.randomAlphabetic(10)
+                          ) extends CallbackEvent with PublishSupport {
 
   def validate() = {
     require(contextId == null || contextId.hasOnlyAllowedChars, s"`contextId` field can only contain [A-Za-z0-9_\\.\\-\\:\\|] allowed chars, `messageId`: $messageId, `contextId`: $contextId")

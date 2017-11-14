@@ -12,15 +12,14 @@
  */
 package com.flipkart.connekt.busybees.models
 
-import com.flipkart.connekt.commons.iomodels.SmsPayloadEnvelope
+import com.flipkart.connekt.commons.iomodels.WaPayload
 
-case class SmsRequestTracker(
-                              override val messageId: String,
-                              clientId: String,
-                              receivers: Set[String],
-                              override val provider: String,
-                              appName: String,
-                              contextId: String,
-                              request: SmsPayloadEnvelope,
-                              meta: Map[String, Any]
+case class WaRequestTracker(
+                             override val messageId: String,
+                             clientId: String,
+                             contactNo: String,
+                             appName: String,
+                             contextId: String,
+                             request: WaPayload,
+                             meta: Map[String, Any]
                             ) extends RequestTracker
