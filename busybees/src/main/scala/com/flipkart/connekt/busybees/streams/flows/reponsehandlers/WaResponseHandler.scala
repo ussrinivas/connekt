@@ -42,7 +42,7 @@ class WaResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends 
 
     val messageId = requestTracker.messageId
     val appName = requestTracker.appName
-    val contactNo = requestTracker.contactNo
+    val contactNo = requestTracker.destination
 
     val events = ListBuffer[WaCallbackEvent]()
     val eventTS = System.currentTimeMillis()

@@ -17,7 +17,7 @@ import com.flipkart.connekt.commons.iomodels.WaPayload
 case class WaRequestTracker(
                              override val messageId: String,
                              clientId: String,
-                             contactNo: String,
+                             destination: String,
                              appName: String,
                              contextId: String,
                              request: WaPayload,

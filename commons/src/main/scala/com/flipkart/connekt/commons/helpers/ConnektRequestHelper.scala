@@ -26,7 +26,7 @@ object ConnektRequestHelper {
       case pn: PNRequestInfo => pn.deviceIds
       case email: EmailRequestInfo => email.to.map(_.address) ++ Option(email.cc).getOrElse(Set.empty).map(_.address) ++ Option(email.bcc).getOrElse(Set.empty).map(_.address)
       case sms: SmsRequestInfo => sms.receivers
-      case wa: WaRequestInfo => wa.contactNos
+      case wa: WaRequestInfo => wa.destinations
       case _ => null
     }
 

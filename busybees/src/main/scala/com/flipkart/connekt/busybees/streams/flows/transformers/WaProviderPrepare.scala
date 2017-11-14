@@ -41,7 +41,7 @@ class WaProviderPrepare extends MapFlowStage[SmsPayloadEnvelope, (HttpRequest, W
       val tracker = WaRequestTracker(
         messageId = connektRequest.id,
         clientId = connektRequest.clientId,
-        contactNo = connektRequest.channelInfo.asInstanceOf[WaRequestInfo].contactNos.head,
+        destination = connektRequest.channelInfo.asInstanceOf[WaRequestInfo].destinations.head,
         appName = connektRequest.appName,
         contextId = connektRequest.contextId.getOrElse(""),
         request = {},
