@@ -18,7 +18,7 @@ import akka.Done
 import akka.stream.scaladsl.Sink
 import com.codahale.metrics.{SlidingTimeWindowReservoir, Timer}
 import com.flipkart.connekt.commons.entities.Channel
-import com.flipkart.connekt.commons.factories.ServiceFactory
+import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.services.ConnektConfig
@@ -29,7 +29,7 @@ import scala.concurrent.Future
 
 class LatencyMetrics extends Instrumented {
 
-  private def publishSMSLatency: Boolean = ConnektConfig.getBoolean("publish.sms.latency").getOrElse(true)
+  private def publishSMSLatency: Boolean = ConnektConfig.getBoolean("publish.sms.latency").getOrElse(false)
 
   private val _timer = new ConcurrentHashMap[String,Timer]().asScala
   private def slidingTimer(name:String):Timer =  _timer.getOrElseUpdate(name, {
@@ -40,20 +40,29 @@ class LatencyMetrics extends Instrumented {
 
   def sink: Sink[CallbackEvent, Future[Done]] = Sink.foreach[CallbackEvent] {
     case event@(sce: SmsCallbackEvent) =>
-      val providerName = sce.cargo.getObj[Map[String, String]].getOrElse("provider", "na")
+      val providerName :String = Option(sce.cargo).filter(cargo => cargo.nonEmpty && cargo.startsWith("{")).map(_.getObj[Map[String, String]].getOrElse("provider","na")).getOrElse("na")
       meter(s"provider.$providerName.event.${sce.eventType}").mark()
 
       if (sce.eventType.equalsIgnoreCase("sms_delivered") && publishSMSLatency) {
-        val smsEventDetails = ServiceFactory.getCallbackService.fetchCallbackEventByMId(event.messageId.toString, Channel.SMS)
-        val eventDetails = smsEventDetails.get(sce.asInstanceOf[SmsCallbackEvent].receiver)
-        Option(eventDetails).foreach(eventDetail => {
-          if (eventDetail.exists(_.eventType.equalsIgnoreCase("sms_received"))) {
-            val receivedEvent = eventDetail.filter(_.eventType.equalsIgnoreCase("sms_received")).head
-            val recTS = receivedEvent.asInstanceOf[SmsCallbackEvent].timestamp
-            val lagTS = sce.timestamp - recTS
-            slidingTimer(getMetricName(s"SMS.latency.$providerName")).update(lagTS, TimeUnit.MILLISECONDS)
-          }
-        })
+        val minTimestamp: Long = sce.timestamp - 86400000L
+        val maxTimestamp: Long = sce.timestamp + 120000L
+        val smsEventDetails = ServiceFactory.getCallbackService.fetchCallbackEventByMId(event.messageId.toString, Channel.SMS, Some(Tuple2(minTimestamp, maxTimestamp)))
+        if (smsEventDetails.isSuccess && smsEventDetails.get.nonEmpty) {
+          val eventDetails = smsEventDetails.get.get(sce.asInstanceOf[SmsCallbackEvent].receiver)
+          val deliveredTS = sce.timestamp
+          eventDetails.foreach(eventDetail => {
+            if (eventDetail.exists(_.eventType.equalsIgnoreCase("sms_received"))) {
+              val receivedEvent = eventDetail.filter(_.eventType.equalsIgnoreCase("sms_received")).head
+
+              val receivedProviderName = if (providerName.equalsIgnoreCase("na")) receivedEvent.asInstanceOf[SmsCallbackEvent].cargo.getObj[Map[String, String]].getOrElse("provider", "na") else providerName
+
+              val recTS = receivedEvent.asInstanceOf[SmsCallbackEvent].timestamp
+              val lagTS = deliveredTS - recTS
+              slidingTimer(getMetricName(s"SMS.latency.$receivedProviderName")).update(lagTS, TimeUnit.MILLISECONDS)
+              ConnektLogger(LogFile.SERVICE).trace(s"Metrics.LatencyMetrics for ${event.messageId.toString} is ingested into cosmos")
+            }
+          })
+        }
       }
     case _ =>
   }
