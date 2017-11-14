@@ -16,7 +16,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 
 case class WaRequestInfo(
               @JsonProperty(required = false) appName: String,
-              @JsonProperty(required = true) contactNos: Set[String]
+              @JsonProperty(required = true) destinations: Set[String]
             ) extends ChannelRequestInfo {
 
   def this() {
