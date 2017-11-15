@@ -46,18 +46,17 @@ class WACheckContactDao(tableName: String, hTableFactory: THTableFactory) extend
     Option(hTableMutator).foreach(_.close())
   }
 
-  private def getRowKey(appName: String, destination: String) = destination.sha256.hash.hex + "_" + appName.toLowerCase
+  private def getRowKey(destination: String) = destination.sha256.hash.hex
 
   val columnFamily: String = "d"
 
   @Timed("add")
   def add(checkContactEntity: WACheckContactEntity): Try[Unit] = Try_#(s"Adding WACheckContactEntity failed for ${checkContactEntity.destination}") {
-    val rowKey = getRowKey(checkContactEntity.appName, checkContactEntity.destination)
+    val rowKey = getRowKey(checkContactEntity.destination)
     val entity = mutable.Map[String, Array[Byte]](
       "destination" -> checkContactEntity.destination.getUtf8Bytes,
-      "waUserName" -> checkContactEntity.appName.getUtf8Bytes,
+      "waUserName" -> checkContactEntity.waUserName.getUtf8Bytes,
       "waExists" -> checkContactEntity.waExists.getUtf8Bytes,
-      "appName" -> checkContactEntity.appName.getUtf8Bytes,
       "waLastCheckContactTS" -> checkContactEntity.waLastCheckContactTS.getBytes
     )
     checkContactEntity.lastContacted.foreach(entity += "lastContacted" -> _.getBytes)
@@ -67,9 +66,9 @@ class WACheckContactDao(tableName: String, hTableFactory: THTableFactory) extend
   }
 
   @Timed("get")
-  def get(appname: String, destination: String): Try[Option[WACheckContactEntity]] = Try_#(s"WACheckContactEntity get failed for destination : $destination") {
+  def get(destination: String): Try[Option[WACheckContactEntity]] = Try_#(s"WACheckContactEntity get failed for destination : $destination") {
     implicit val hTableInterface = hTableConnFactory.getTableInterface(hTableName)
-    val rowKeys = getRowKey(appname, destination)
+    val rowKeys = getRowKey(destination)
     val rawData = fetchRow(rowKeys, List(columnFamily))
     val reqProps: Option[HbaseDao.ColumnData] = rawData.get(columnFamily)
     hTableConnFactory.releaseTableInterface(hTableInterface)
@@ -79,7 +78,6 @@ class WACheckContactDao(tableName: String, hTableFactory: THTableFactory) extend
         fields.get("waUserName").map(v => v.getString).orNull,
         fields.get("waExists").map(v => v.getString).orNull,
         Option(fields.getL("lastContacted")).map(_.asInstanceOf[Long]),
-        fields.get("appName").map(v => v.getString).orNull,
         fields.getL("waLastCheckContactTS").asInstanceOf[Long]
       )
     })
@@ -87,9 +85,9 @@ class WACheckContactDao(tableName: String, hTableFactory: THTableFactory) extend
   }
 
   @Timed("gets")
-  def gets(appname: String, destinations: Set[String]): Try[List[WACheckContactEntity]] = Try_#(s"WACheckContactEntity gets failed for destinations : $destinations") {
+  def gets(destinations: Set[String]): Try[List[WACheckContactEntity]] = Try_#(s"WACheckContactEntity gets failed for destinations : $destinations") {
     implicit val hTableInterface = hTableConnFactory.getTableInterface(hTableName)
-    val rowKeys = destinations.map(getRowKey(appname, _)).toList
+    val rowKeys = destinations.map(getRowKey).toList
     val rawDataList = fetchMultiRows(rowKeys, List(columnFamily))
     hTableConnFactory.releaseTableInterface(hTableInterface)
     rawDataList.values.flatMap(rowData => {
@@ -100,7 +98,6 @@ class WACheckContactDao(tableName: String, hTableFactory: THTableFactory) extend
           fields.get("waUserName").map(v => v.getString).orNull,
           fields.get("waExists").map(v => v.getString).orNull,
           Option(fields.getL("lastContacted")).map(_.asInstanceOf[Long]),
-          fields.get("appName").map(v => v.getString).orNull,
           fields.getL("waLastCheckContactTS").asInstanceOf[Long]
         )
       })

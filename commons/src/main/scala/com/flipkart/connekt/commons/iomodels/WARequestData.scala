@@ -10,10 +10,13 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.commons.entities
+package com.flipkart.connekt.commons.iomodels
 
-case class WACheckContactEntity(destination: String,
-                                waUserName: String,
-                                waExists: String,
-                                lastContacted: Option[Long],
-                                waLastCheckContactTS: Long = System.currentTimeMillis)
+import com.flipkart.connekt.commons.services.TStencilService
+
+case class WARequestData(message: Option[String] = None, attachment: Option[Attachment] = None) extends ChannelRequestData {
+  def validate(appName: String)(implicit stencilService: TStencilService): Unit = {
+    require(!(message.isDefined && attachment.isDefined))
+    require(!(message.isEmpty && attachment.isEmpty))
+  }
+}

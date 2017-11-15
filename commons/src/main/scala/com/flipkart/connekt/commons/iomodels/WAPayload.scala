@@ -24,7 +24,7 @@ import com.fasterxml.jackson.annotation.{JsonProperty, JsonSubTypes, JsonTypeInf
   new Type(value = classOf[HSMWaPayload], name = "HSM"),
   new Type(value = classOf[PDFWaPayload], name = "PDF")
 ))
-abstract class WaPayload (
+abstract class WAPayload(
                        @JsonProperty(required = true) to: String
                      )
 

@@ -14,7 +14,7 @@ package com.flipkart.connekt.commons.iomodels
 
 import com.fasterxml.jackson.annotation.JsonProperty
 
-case class WaRequestInfo(
+case class WARequestInfo(
               @JsonProperty(required = false) appName: String,
               @JsonProperty(required = true) destinations: Set[String]
             ) extends ChannelRequestInfo {

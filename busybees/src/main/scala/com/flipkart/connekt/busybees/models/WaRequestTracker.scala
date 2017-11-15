@@ -12,7 +12,7 @@
  */
 package com.flipkart.connekt.busybees.models
 
-import com.flipkart.connekt.commons.iomodels.WaPayload
+import com.flipkart.connekt.commons.iomodels.WAPayload
 
 case class WaRequestTracker(
                              override val messageId: String,
@@ -20,6 +20,6 @@ case class WaRequestTracker(
                              destination: String,
                              appName: String,
                              contextId: String,
-                             request: WaPayload,
+                             request: WAPayload,
                              meta: Map[String, Any]
                             ) extends RequestTracker

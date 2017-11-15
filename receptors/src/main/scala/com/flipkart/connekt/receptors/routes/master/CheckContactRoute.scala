@@ -36,38 +36,37 @@ class CheckContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
     authenticate {
       user =>
         pathPrefix("v1") {
-          pathPrefix("wa" / "checkcontact" / Segment) {
-            (appName: String) =>
-              pathEndOrSingleSlash {
-                post {
-                  meteredResource("checkcontact") {
-                    authorize(user, "CHECK_CONTACT", s"CHECK_CONTACT_$appName") {
-                      entity(as[ObjectNode]) { obj =>
-                        val destinations = obj.get("destinations").asInstanceOf[ArrayNode].elements().asScala.map(_.asText).toSet
-                        complete {
-                          GenericResponse(StatusCodes.OK.intValue, null, Response(s"WACheckContactService for destinations ${destinations.mkString(",")}", WACheckContactService.gets(appName, destinations).get))
-                        }
+          pathPrefix("wa" / "checkcontact") {
+            pathEndOrSingleSlash {
+              post {
+                meteredResource("checkcontact") {
+                  authorize(user, "CHECK_CONTACT") {
+                    entity(as[ObjectNode]) { obj =>
+                      val destinations = obj.get("destinations").asInstanceOf[ArrayNode].elements().asScala.map(_.asText).toSet
+                      complete {
+                        GenericResponse(StatusCodes.OK.intValue, null, Response(s"WACheckContactService for destinations ${destinations.mkString(",")}", WACheckContactService.gets(destinations).get))
                       }
                     }
                   }
                 }
-              } ~ pathPrefix(Segment) {
-                (destination: String) =>
-                  pathEndOrSingleSlash {
-                    get {
-                      meteredResource("checkcontact") {
-                        authorize(user, "CHECK_CONTACT", s"CHECK_CONTACT_$appName") {
-                          complete {
-                            WACheckContactService.get(appName, destination).get match {
-                              case Some(wa) => GenericResponse(StatusCodes.OK.intValue, null, Response(s"WACheckContactService for destination $destination", wa))
-                              case None => GenericResponse(StatusCodes.NotFound.intValue, null, Response(s"No mapping found for destination $destination", null))
-                            }
+              }
+            } ~ pathPrefix(Segment) {
+              (destination: String) =>
+                pathEndOrSingleSlash {
+                  get {
+                    meteredResource("checkcontact") {
+                      authorize(user, "CHECK_CONTACT") {
+                        complete {
+                          WACheckContactService.get(destination).get match {
+                            case Some(wa) => GenericResponse(StatusCodes.OK.intValue, null, Response(s"WACheckContactService for destination $destination", wa))
+                            case None => GenericResponse(StatusCodes.NotFound.intValue, null, Response(s"No mapping found for destination $destination", null))
                           }
                         }
                       }
                     }
                   }
-              }
+                }
+            }
           }
         }
     }

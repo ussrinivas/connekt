@@ -45,6 +45,7 @@ object DaoFactory {
     daoMap += DaoType.WA_CHECK_CONTACT -> WACheckContactDao("fk-connekt-wa-check-contact", hTableFactory)
     daoMap += DaoType.PN_REQUEST_INFO -> PNRequestDao(tableName = "fk-connekt-pn-info", hTableFactory = hTableFactory)
     daoMap += DaoType.SMS_REQUEST_INFO -> SmsRequestDao(tableName = "fk-connekt-sms-info", hTableFactory = hTableFactory)
+    daoMap += DaoType.WA_REQUEST_INFO -> WARequestDao(tableName = "fk-connekt-wa-info", hTableFactory = hTableFactory)
     daoMap += DaoType.PULL_REQUEST_INFO -> PullRequestDao(tableName = "fk-connekt-pull-info", hTableFactory = hTableFactory)
     daoMap += DaoType.EMAIL_REQUEST_INFO -> new EmailRequestDao(tableName = "fk-connekt-email-info-v2", hTableFactory = hTableFactory)
     daoMap += DaoType.CALLBACK_PN -> PNCallbackDao("fk-connekt-events", hTableFactory)
@@ -120,6 +121,8 @@ object DaoFactory {
 
   def getWACheckContactDao: WACheckContactDao = daoMap(DaoType.WA_CHECK_CONTACT).asInstanceOf[WACheckContactDao]
 
+  def getWARequestDao: WARequestDao = daoMap(DaoType.WA_REQUEST_INFO).asInstanceOf[WARequestDao]
+
   def getPNRequestDao: PNRequestDao = daoMap(DaoType.PN_REQUEST_INFO).asInstanceOf[PNRequestDao]
 
   def getSmsRequestDao: SmsRequestDao = daoMap(DaoType.SMS_REQUEST_INFO).asInstanceOf[SmsRequestDao]
@@ -158,6 +161,7 @@ object DaoType extends Enumeration {
   REQUEST_META,
   EXCLUSION_DETAILS,
   WA_CHECK_CONTACT,
+  WA_REQUEST_INFO,
   PN_REQUEST_INFO,
   EMAIL_REQUEST_INFO,
   SMS_REQUEST_INFO,

@@ -24,17 +24,17 @@ object WACheckContactService extends Instrumented {
   private lazy val dao = DaoFactory.getWACheckContactDao
 
   @Timed("add")
-  def add(checkContactEntity: WACheckContactEntity): Try[Unit] = profile(s"add.${checkContactEntity.appName}") {
+  def add(checkContactEntity: WACheckContactEntity): Try[Unit] = profile("add") {
     dao.add(checkContactEntity)
   }
 
   @Timed("get")
-  def get(appName: String, destination: String): Try[Option[WACheckContactEntity]] = profile(s"get.$appName") {
-    dao.get(appName, destination)
+  def get(destination: String): Try[Option[WACheckContactEntity]] = profile("get") {
+    dao.get(destination)
   }
 
   @Timed("gets")
-  def gets(appName: String, destinations: Set[String]): Try[List[WACheckContactEntity]] = profile(s"gets.$appName") {
-    dao.gets(appName, destinations)
+  def gets(destinations: Set[String]): Try[List[WACheckContactEntity]] = profile("gets") {
+    dao.gets(destinations)
   }
 }

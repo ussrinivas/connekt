@@ -23,7 +23,7 @@ import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
-import com.flipkart.connekt.commons.iomodels.{ConnektRequest, SmsPayloadEnvelope, WaRequestInfo}
+import com.flipkart.connekt.commons.iomodels.{ConnektRequest, SmsPayloadEnvelope, WARequestInfo}
 import com.flipkart.connekt.commons.services.KeyChainManager
 import com.flipkart.connekt.commons.utils.StringUtils.{JSONUnMarshallFunctions, _}
 
