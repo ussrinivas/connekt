@@ -58,7 +58,7 @@ class LatencyMetrics extends Instrumented {
 
               val recTS = receivedEvent.asInstanceOf[SmsCallbackEvent].timestamp
               val lagTS = deliveredTS - recTS
-              slidingTimer(getMetricName(s"SMS.latency.$receivedProviderName")).update(lagTS, TimeUnit.MILLISECONDS)
+              slidingTimer(getMetricName(s"SMS.latency.${receivedEvent.appName}.$receivedProviderName")).update(lagTS, TimeUnit.MILLISECONDS)
               ConnektLogger(LogFile.SERVICE).trace(s"Metrics.LatencyMetrics for ${event.messageId.toString} is ingested into cosmos")
             }
           })
