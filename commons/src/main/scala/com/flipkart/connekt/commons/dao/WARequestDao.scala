@@ -39,14 +39,16 @@ class WARequestDao(tableName: String, hTableFactory: THTableFactory) extends Req
       val waRequestData = d.asInstanceOf[WARequestData]
       val m = scala.collection.mutable.Map[String, Array[Byte]]()
       waRequestData.message.foreach(m += "message" -> _.getUtf8Bytes)
-      Option(waRequestData.attachment).foreach(m += "attachment" -> _.getJson.getUtf8Bytes)
+      waRequestData.attachment.foreach(m += "attachment" -> _.getJson.getUtf8Bytes)
+      m += "waType" -> waRequestData.waType.toString.getUtf8Bytes
       m.toMap
     }).orNull
   }
 
   override protected def getChannelRequestData(reqDataProps: Map[String, Array[Byte]]): ChannelRequestData = {
     WARequestData(
-      Option(reqDataProps.getS("message")),
+      WAType.valueOf(reqDataProps.getS("waType")),
+      reqDataProps.get("message").map(_.asInstanceOf[String]),
       reqDataProps.get("attachment").map(_.asInstanceOf[Attachment])
     )
   }
