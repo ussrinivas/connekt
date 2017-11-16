@@ -19,6 +19,7 @@ import com.couchbase.client.java.Bucket
 import com.flipkart.connekt.commons.connections.TConnectionProvider
 import com.flipkart.connekt.commons.factories.{HTableFactory, MySQLFactory, THTableFactory, TMySQLFactory}
 import com.typesafe.config.Config
+
 import scala.concurrent.duration._
 
 object DaoFactory {
@@ -43,6 +44,7 @@ object DaoFactory {
     daoMap += DaoType.DEVICE_DETAILS -> DeviceDetailsDao("connekt-registry", hTableFactory)
     daoMap += DaoType.EXCLUSION_DETAILS -> ExclusionDao("fk-connekt-exclusions", hTableFactory)
     daoMap += DaoType.WA_CHECK_CONTACT -> WACheckContactDao("fk-connekt-wa-check-contact", hTableFactory)
+    daoMap += DaoType.WA_MESSAGEID_MAPPING -> WAMessageIdMappingDao("fk-connekt-wa-message-mapping", hTableFactory)
     daoMap += DaoType.PN_REQUEST_INFO -> PNRequestDao(tableName = "fk-connekt-pn-info", hTableFactory = hTableFactory)
     daoMap += DaoType.SMS_REQUEST_INFO -> SmsRequestDao(tableName = "fk-connekt-sms-info", hTableFactory = hTableFactory)
     daoMap += DaoType.WA_REQUEST_INFO -> WARequestDao(tableName = "fk-connekt-wa-info", hTableFactory = hTableFactory)
@@ -123,6 +125,8 @@ object DaoFactory {
 
   def getWARequestDao: WARequestDao = daoMap(DaoType.WA_REQUEST_INFO).asInstanceOf[WARequestDao]
 
+  def getWaMessageIdMappingDao: WAMessageIdMappingDao = daoMap(DaoType.WA_MESSAGEID_MAPPING).asInstanceOf[WAMessageIdMappingDao]
+
   def getPNRequestDao: PNRequestDao = daoMap(DaoType.PN_REQUEST_INFO).asInstanceOf[PNRequestDao]
 
   def getSmsRequestDao: SmsRequestDao = daoMap(DaoType.SMS_REQUEST_INFO).asInstanceOf[SmsRequestDao]
@@ -162,6 +166,7 @@ object DaoType extends Enumeration {
   EXCLUSION_DETAILS,
   WA_CHECK_CONTACT,
   WA_REQUEST_INFO,
+  WA_MESSAGEID_MAPPING,
   PN_REQUEST_INFO,
   EMAIL_REQUEST_INFO,
   SMS_REQUEST_INFO,

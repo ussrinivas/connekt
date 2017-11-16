@@ -17,17 +17,17 @@ import com.flipkart.connekt.commons.utils.DateTimeUtils
 import com.flipkart.connekt.commons.utils.StringUtils.{StringHandyFunctions, _}
 import org.apache.commons.lang.RandomStringUtils
 
-case class WaCallbackEvent(
-                                  messageId: String,
-                                  eventType: String,
-                                  receiver: String,
-                                  clientId: String,
-                                  appName: String,
-                                  contextId: String,
-                                  cargo: String = null,
-                                  timestamp: Long = System.currentTimeMillis(),
-                                  eventId: String = RandomStringUtils.randomAlphabetic(10)
-                                ) extends CallbackEvent with PublishSupport {
+case class WACallbackEvent(
+                            messageId: String,
+                            eventType: String,
+                            receiver: String,
+                            clientId: String,
+                            appName: String,
+                            contextId: String,
+                            cargo: String = null,
+                            timestamp: Long = System.currentTimeMillis(),
+                            eventId: String = RandomStringUtils.randomAlphabetic(10)
+                          ) extends CallbackEvent with PublishSupport {
 
   def this(messageId: String, eventType: String, receiver: String, clientId: String, appName: String, contextId: String, cargo: String) {
     this(messageId = messageId, clientId = clientId, receiver = receiver, eventType = eventType, appName = appName, contextId = contextId,

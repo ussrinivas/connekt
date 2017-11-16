@@ -21,7 +21,7 @@ import akka.stream.scaladsl.{GraphDSL, Merge, Source}
 import com.flipkart.connekt.busybees.models.SmsRequestTracker
 import com.flipkart.connekt.busybees.streams.flows.profilers.TimedFlowOps._
 import com.flipkart.connekt.busybees.streams.ConnektTopology
-import com.flipkart.connekt.busybees.streams.flows.dispatchers.HttpDispatcher
+import com.flipkart.connekt.busybees.streams.flows.dispatchers.{HttpDispatcher, WAMediaDispatcher}
 import com.flipkart.connekt.busybees.streams.flows.formaters.SmsChannelFormatter
 import com.flipkart.connekt.busybees.streams.flows.{ChooseProvider, FlowMetrics, RenderFlow, SMSTrackingFlow}
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers.{SmsResponseHandler, WaResponseHandler}
@@ -111,6 +111,7 @@ object WaTopology {
     val render = b.add(new RenderFlow().flow)
     val trackSmsParallelism = ConnektConfig.getInt("topology.sms.tracking.parallelism").get
     val tracking = b.add(new SMSTrackingFlow(trackSmsParallelism)(ioDispatcher).flow)
+    val waMediaDispatcher = b.add(new WAMediaDispatcher().flow)
     val waPrepare = b.add(new WaProviderPrepare().flow)
 
     val waHttpPoolFlow = b.add(HttpDispatcher.waPoolClientFlow.timedAs("waRTT"))

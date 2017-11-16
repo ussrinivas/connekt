@@ -10,13 +10,9 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.busybees.models
+package com.flipkart.connekt.commons.entities
 
-case class WaRequestTracker(
-                             override val messageId: String,
-                             clientId: String,
-                             destination: String,
-                             appName: String,
-                             contextId: String,
-                             meta: Map[String, Any]
-                            ) extends RequestTracker
+case class WAMessageIdMappingEntity(
+                                     waMessageId: String,
+                                     connektMessageId: String
+                                    )

@@ -15,15 +15,15 @@ package com.flipkart.connekt.busybees.streams.flows.transformers
 import java.util
 
 import akka.http.scaladsl.model.HttpRequest
-import akka.http.scaladsl.model.headers.RawHeader
+import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.busybees.models.{SmsRequestTracker, WaRequestTracker}
 import com.flipkart.connekt.busybees.streams.errors.ConnektStageException
 import com.flipkart.connekt.busybees.streams.flows.MapFlowStage
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
-import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
-import com.flipkart.connekt.commons.iomodels.{ConnektRequest, SmsPayloadEnvelope, WARequestInfo}
+import com.flipkart.connekt.commons.iomodels.MessageStatus.{InternalStatus, WaResponseStatus}
+import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.services.KeyChainManager
 import com.flipkart.connekt.commons.utils.StringUtils.{JSONUnMarshallFunctions, _}
 
@@ -44,10 +44,10 @@ class WaProviderPrepare extends MapFlowStage[SmsPayloadEnvelope, (HttpRequest, W
         destination = connektRequest.channelInfo.asInstanceOf[WaRequestInfo].destinations.head,
         appName = connektRequest.appName,
         contextId = connektRequest.contextId.getOrElse(""),
-        request = {},
-        meta = {}
+        meta = connektRequest.meta
       )
 
+      val waPayload = WaPayloadService.makePayload(connektRequest)
       val providerStencil = stencilService.getStencilsByName(s"wa-${connektRequest.appName}").find(_.component.equalsIgnoreCase("prepare")).get
 
       val result = stencilService.materialize(providerStencil, Map("data" -> connektRequest, "credentials" -> credentials, "tracker" -> tracker).getJsonNode)
@@ -77,3 +77,27 @@ class WaProviderPrepare extends MapFlowStage[SmsPayloadEnvelope, (HttpRequest, W
   }
 
 }
+
+object WaMessageIdMappingService{
+  lazy implicit val stencilService = ServiceFactory.getStencilService
+  def makePayload(connektRequest: ConnektRequest): WaPayload = {
+    val waRequestData = connektRequest.channelData.asInstanceOf[WARequestData]
+    waRequestData.type match {
+      case "hsm" =>
+        val providerStencil = stencilService.getStencilsByName(connektRequest.stencilId.get).headOption match {
+          case None =>
+            ServiceFactory.getReportingService.recordChannelStatsDelta(connektRequest.clientId, connektRequest.contextId, connektRequest.stencilId, Channel.WA, connektRequest.appName, WaResponseStatus.StencilNotFound)
+            val event = WACallbackEvent(connektRequest.id, WaResponseStatus.StencilNotFound, connektRequest.destinations.head, connektRequest.clientId, connektRequest.appName, connektRequest.contextId.get, WaResponseStatus.StencilNotFound, System.currentTimeMillis())
+            event.enqueue
+          case Some(stencil) =>
+            stencilService.materialize(stencil, Map("connektRequest" -> connektRequest).getJsonNode).asInstanceOf[WaPayload]
+        }
+      case "PDF" =>
+        PDFWaPayload(
+          DocumentData(waRequestData.fileName, waRequestData.caption),
+          connektRequest.channelInfo.asInstanceOf[WaRequestInfo].destinations.head
+        )
+    }
+  }
+}
+
