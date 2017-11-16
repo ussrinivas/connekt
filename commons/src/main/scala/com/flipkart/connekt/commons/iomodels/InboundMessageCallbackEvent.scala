@@ -12,6 +12,8 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
+import java.util.Optional
+
 import com.flipkart.concord.publisher.TPublishRequest
 import com.flipkart.connekt.commons.entities.bigfoot.PublishSupport
 import com.flipkart.connekt.commons.utils.StringUtils._
@@ -23,15 +25,17 @@ case class InboundMessageCallbackEvent(clientId: String,
                                        appName: String,
                                        contextId: String,
                                        message: String,
+                                       providerMessageId: Option[String],
+                                       messageMeta: Option[String],
                                        cargo: String = null,
                                        timestamp: Long = System.currentTimeMillis(),
                                        eventId: String = RandomStringUtils.randomAlphabetic(10)
                                       ) extends CallbackEvent with PublishSupport {
 
   //java-constructor
-  def this(sender: String, eventType: String, contextId: String, message: String, cargo: String) {
-    this(clientId = null,sender = sender, eventType = eventType, appName = null, contextId = contextId,
-      message = message, cargo = cargo)
+  def this(sender: String, eventType: String, contextId: String, message: String, providerMessageId: Optional[String], messageMeta: Optional[String], cargo: String) {
+    this(clientId = null, sender = sender, eventType = eventType, appName = null, contextId = contextId,
+      message = message, providerMessageId = Option(providerMessageId.orElse(null)), messageMeta = Option(messageMeta.orElse(null)), cargo = cargo)
   }
 
   def validate() = {
@@ -39,6 +43,7 @@ case class InboundMessageCallbackEvent(clientId: String,
     require(contextId == null || contextId.length <= 20, s"`contextId` can be max 20 characters `contextId`: $contextId")
     require(eventType.isDefined, s"`eventType` field cannot be empty or null, `eventId`: $eventId")
   }
+
   override def contactId: String = s"${appName.toLowerCase}$sender"
 
   override def namespace: String = throw new NotImplementedError(s"`namespace` undefined for InboundMessageCallbackEvent")

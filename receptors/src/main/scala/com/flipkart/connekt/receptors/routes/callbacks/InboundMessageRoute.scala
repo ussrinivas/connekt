@@ -40,18 +40,14 @@ class InboundMessageRoute(implicit am: ActorMaterializer) extends BaseJsonHandle
                   (post | get) {
                     parameterMap { urlParams =>
                       entity(as[String](messageUnmarshallerFromEntityUnmarshaller(stringUnmarshaller))) { stringBody =>
-
                         val payload: ObjectNode = stringBody match {
                           case x if x.isEmpty => Map("get" -> urlParams).getJsonNode
                           case y => Map("post" -> y.getObj[BaseJsonNode]).getJsonNode
                         }
-
                         val stencil = stencilService.getStencilsByName(s"ckt-$channel-$providerName").find(_.component.equalsIgnoreCase("inbound")).get
-
                         val event = stencilService.materialize(stencil, payload).asInstanceOf[InboundMessageCallbackEvent].copy(clientId = user.userId, appName = appName)
                         event.validate()
                         event.enqueue
-
                         ConnektLogger(LogFile.SERVICE).debug(s"Received inbound event {}", supplier(event.toString))
                         complete(GenericResponse(StatusCodes.OK.intValue, null, Response("Event saved successfully.", null)))
                       }

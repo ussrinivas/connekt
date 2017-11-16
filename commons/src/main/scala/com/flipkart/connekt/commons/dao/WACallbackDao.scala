@@ -15,21 +15,19 @@ package com.flipkart.connekt.commons.dao
 import com.flipkart.connekt.commons.dao.HbaseDao._
 import com.flipkart.connekt.commons.factories.THTableFactory
 import com.flipkart.connekt.commons.iomodels._
-import com.flipkart.connekt.util.misc.StringUtils.JSONMarshallFunctions
 
 class WACallbackDao(tableName: String, hTableFactory: THTableFactory) extends CallbackDao(tableName: String, hTableFactory: THTableFactory) {
   override def channelEventPropsMap(channelCallbackEvent: CallbackEvent): Map[String, Array[Byte]] = {
     val waCallbackEvent = channelCallbackEvent.asInstanceOf[WACallbackEvent]
     Map[String, Array[Byte]](
       "messageId" -> waCallbackEvent.messageId.getUtf8Bytes,
-      "waMessageId" -> waCallbackEvent.waMessageId.getUtf8Bytes,
+      "waMessageId" -> waCallbackEvent.providerMessageId.getUtf8Bytes,
       "eventType" -> waCallbackEvent.eventType.getUtf8Bytes,
-      "customerNumber" -> waCallbackEvent.customerNumber.getUtf8Bytes,
+      "destination" -> waCallbackEvent.destination.getUtf8Bytes,
       "eventId" -> waCallbackEvent.eventId.getUtf8Bytes,
       "clientId" -> waCallbackEvent.clientId.getUtf8Bytes,
       "contextId" -> waCallbackEvent.contextId.getUtf8Bytes,
       "appName" -> waCallbackEvent.appName.getUtf8Bytes,
-      "info" -> waCallbackEvent.info.getBytes,
       "cargo" -> waCallbackEvent.cargo.getUtf8Bytes,
       "timestamp" -> waCallbackEvent.timestamp.getBytes
     )
@@ -38,14 +36,13 @@ class WACallbackDao(tableName: String, hTableFactory: THTableFactory) extends Ca
   override def mapToChannelEvent(channelEventPropsMap: Map[String, Array[Byte]]): CallbackEvent = {
     WACallbackEvent(
       messageId = channelEventPropsMap.getS("messageId"),
-      waMessageId = channelEventPropsMap.getS("waMessageId"),
+      providerMessageId = channelEventPropsMap.getS("waMessageId"),
       eventType = channelEventPropsMap.getS("eventType"),
-      customerNumber = channelEventPropsMap.getS("customerNumber"),
+      destination = channelEventPropsMap.getS("destination"),
       eventId = channelEventPropsMap.getS("eventId"),
       clientId = channelEventPropsMap.getS("clientId"),
       contextId = channelEventPropsMap.getS("contextId"),
       appName = channelEventPropsMap.getS("appName"),
-      info = channelEventPropsMap.getKV("info").asInstanceOf[WACallback],
       cargo = channelEventPropsMap.getS("cargo"),
       timestamp = channelEventPropsMap.getL("timestamp").asInstanceOf[Long]
     )
@@ -59,9 +56,9 @@ class WACallbackDao(tableName: String, hTableFactory: THTableFactory) extends Ca
   override def fetchCallbackEvents(requestId: String, event: ChannelRequestInfo, fetchRange: Option[(Long, Long)]): Map[String, List[CallbackEvent]] = {
     val waRequestInfo = event.asInstanceOf[WARequestInfo]
     waRequestInfo.destinations.toList.map(waRequestInfo.appName + _)
-                                  .flatMap(fetchCallbackEvents(requestId, _, fetchRange))
-                                  .asInstanceOf[List[(WACallbackEvent, Long)]]
-                                  .map(_._1)
-                                  .groupBy(_.contactId)
+      .flatMap(fetchCallbackEvents(requestId, _, fetchRange))
+      .asInstanceOf[List[(WACallbackEvent, Long)]]
+      .map(_._1)
+      .groupBy(_.contactId)
   }
 }
