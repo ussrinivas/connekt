@@ -14,12 +14,18 @@ package com.flipkart.connekt.commons.iomodels
 
 import com.flipkart.connekt.commons.services.TStencilService
 
+
 case class WARequestData(
+                          waType: WAType,
                           message: Option[String] = None,
                           attachment: Option[Attachment] = None
                         ) extends ChannelRequestData {
   def validate(appName: String)(implicit stencilService: TStencilService): Unit = {
-    require(!(message.isDefined && attachment.isDefined))
-    require(!(message.isEmpty && attachment.isEmpty))
+    require {
+      if (waType.equals(WAType.text))
+        message.isDefined
+      else
+        attachment.isDefined
+    }
   }
 }

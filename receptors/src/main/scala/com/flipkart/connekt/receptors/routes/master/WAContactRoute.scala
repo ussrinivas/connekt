@@ -25,7 +25,7 @@ import com.flipkart.connekt.receptors.wire.ResponseUtils._
 
 import scala.collection.JavaConverters._
 
-class CheckContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
+class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
   private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
 
