@@ -82,11 +82,11 @@ class CallbackService(eventsDao: EventsDaoContainer, requestDao: RequestDaoConta
     * @return Map ( DeviceId -> List[Events] )
     */
   @Timed("fetchCallbackEventByMId")
-  def fetchCallbackEventByMId(messageId: String, channel: Channel.Value): Try[Map[String, List[CallbackEvent]]] = {
+  def fetchCallbackEventByMId(messageId: String, channel: Channel.Value, timeStampRange: Option[(Long, Long)] = None): Try[Map[String, List[CallbackEvent]]] = {
     Try {
       requestDao(channel).fetchRequestInfo(messageId) match {
         case Some(events) =>
-          eventsDao(channel).fetchCallbackEvents(messageId, events, None)
+          eventsDao(channel).fetchCallbackEvents(messageId, events, timeStampRange)
         case None =>
           Map()
       }
@@ -107,4 +107,5 @@ class CallbackService(eventsDao: EventsDaoContainer, requestDao: RequestDaoConta
       eventsDao(channel).fetchEventMapFromList(eventList.get.map(_._1))
     }
   }
+
 }
