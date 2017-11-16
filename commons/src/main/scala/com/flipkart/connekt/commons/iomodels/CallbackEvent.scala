@@ -27,6 +27,7 @@ import com.flipkart.connekt.commons.entities.bigfoot.PublishSupport
   new Type(value = classOf[EmailCallbackEvent], name = "EMAIL"),
   new Type(value = classOf[DeviceCallbackEvent], name = "DEVICE"),
   new Type(value = classOf[SmsCallbackEvent], name = "SMS"),
+  new Type(value = classOf[WACallbackEvent], name = "WA"),
   new Type(value = classOf[InboundMessageCallbackEvent], name = "INB")
 ))
 abstract class CallbackEvent {

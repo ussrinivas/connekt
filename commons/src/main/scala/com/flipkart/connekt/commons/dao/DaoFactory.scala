@@ -53,6 +53,7 @@ object DaoFactory {
     daoMap += DaoType.CALLBACK_PN -> PNCallbackDao("fk-connekt-events", hTableFactory)
     daoMap += DaoType.CALLBACK_EMAIL -> new EmailCallbackDao("fk-connekt-email-events", hTableFactory)
     daoMap += DaoType.CALLBACK_SMS -> new SmsCallbackDao("fk-connekt-sms-events", hTableFactory)
+    daoMap += DaoType.CALLBACK_WA -> new WACallbackDao("fk-connekt-wa-events", hTableFactory)
     daoMap += DaoType.CALLBACK_PULL -> new PullCallbackDao("fk-connekt-pull-events", hTableFactory)
   }
 
@@ -139,6 +140,8 @@ object DaoFactory {
 
   def getSmsCallbackDao: SmsCallbackDao = daoMap(DaoType.CALLBACK_SMS).asInstanceOf[SmsCallbackDao]
 
+  def getWACallbackDao: WACallbackDao = daoMap(DaoType.CALLBACK_WA).asInstanceOf[WACallbackDao]
+
   def getPullCallbackDao: PullCallbackDao = daoMap(DaoType.CALLBACK_PULL).asInstanceOf[PullCallbackDao]
 
   def getEmailRequestDao: EmailRequestDao = daoMap(DaoType.EMAIL_REQUEST_INFO).asInstanceOf[EmailRequestDao]
@@ -172,6 +175,7 @@ object DaoType extends Enumeration {
   SMS_REQUEST_INFO,
   CALLBACK_EMAIL,
   CALLBACK_SMS,
+  CALLBACK_WA,
   CALLBACK_PN,
   PRIVILEGE,
   USER_INFO,

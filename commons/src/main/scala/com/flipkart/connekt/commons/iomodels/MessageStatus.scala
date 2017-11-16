@@ -12,8 +12,6 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
-import com.flipkart.connekt.commons.iomodels.MessageStatus.GCMResponseStatus.Value
-
 object MessageStatus {
 
   object GCMResponseStatus extends Enumeration {
@@ -83,15 +81,14 @@ object MessageStatus {
     val AuthError = Value("sms_auth_error")
   }
 
-  object WaResponseStatus extends Enumeration {
-    type WaResponseStatus = Value
+  object WAResponseStatus extends Enumeration {
+    type WAResponseStatus = Value
 
     val Received = Value("wa_received")
-    val Received_HTTP = Value("wa_received_http")
     val Error = Value("wa_error")
-    val StencilNotFound = Value("wa_stencil_not_found")
     val InternalError = Value("wa_server_error")
     val AuthError = Value("wa_auth_error")
+    val Delivered = Value("wa_delivered")
   }
 
 

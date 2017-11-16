@@ -32,6 +32,8 @@ class HbaseSink {
         ServiceFactory.getCallbackService.persistCallbackEvents(Channel.SMS, List(event)).get
       case _:PullCallbackEvent =>
         ServiceFactory.getCallbackService.persistCallbackEvents(Channel.PULL,List(event)).get
+      case _:WACallbackEvent =>
+        ServiceFactory.getCallbackService.persistCallbackEvents(Channel.WA,List(event)).get
       case _ =>
     }
     ConnektLogger(LogFile.SERVICE).trace(s"HbaseSink event saved {}", supplier(event))
