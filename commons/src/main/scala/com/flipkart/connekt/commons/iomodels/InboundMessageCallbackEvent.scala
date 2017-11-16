@@ -19,6 +19,10 @@ import com.flipkart.connekt.commons.entities.bigfoot.PublishSupport
 import com.flipkart.connekt.commons.utils.StringUtils._
 import org.apache.commons.lang.RandomStringUtils
 
+import scala.collection.JavaConverters._
+
+case class Media(file: String, url: String, sha256: String, status: String, mimeType: String)
+
 case class InboundMessageCallbackEvent(clientId: String,
                                        sender: String,
                                        eventType: String,
@@ -27,15 +31,16 @@ case class InboundMessageCallbackEvent(clientId: String,
                                        message: String,
                                        providerMessageId: Option[String],
                                        messageMeta: Option[String],
+                                       media: List[Media],
                                        cargo: String = null,
                                        timestamp: Long = System.currentTimeMillis(),
                                        eventId: String = RandomStringUtils.randomAlphabetic(10)
                                       ) extends CallbackEvent with PublishSupport {
 
   //java-constructor
-  def this(sender: String, eventType: String, contextId: String, message: String, providerMessageId: Optional[String], messageMeta: Optional[String], cargo: String) {
+  def this(sender: String, eventType: String, contextId: String, message: String, providerMessageId: Optional[String], messageMeta: Optional[String], media: java.util.List[Media], cargo: String) {
     this(clientId = null, sender = sender, eventType = eventType, appName = null, contextId = contextId,
-      message = message, providerMessageId = Option(providerMessageId.orElse(null)), messageMeta = Option(messageMeta.orElse(null)), cargo = cargo)
+      message = message, providerMessageId = Option(providerMessageId.orElse(null)), messageMeta = Option(messageMeta.orElse(null)), media = media.asScala.toList, cargo = cargo)
   }
 
   def validate() = {
