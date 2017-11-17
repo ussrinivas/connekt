@@ -47,7 +47,7 @@ class AdminRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
               } ~ pathPrefix("wa" / "warmup") {
                 get {
                   WACheckContactService.refreshWAContacts
-                  complete(GenericResponse(StatusCodes.Created.intValue, null, Response(s"Wa Contact warm-up started", null)))
+                  complete(GenericResponse(StatusCodes.Created.intValue, null, Response("Wa Contact warm-up started", null)))
                 }
               }
             }

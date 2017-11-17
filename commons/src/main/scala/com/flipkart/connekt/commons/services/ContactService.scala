@@ -12,7 +12,6 @@
  */
 package com.flipkart.connekt.commons.services
 
-import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.helpers.KafkaProducerHelper
 import com.flipkart.connekt.commons.iomodels.Contact
 import com.flipkart.connekt.commons.metrics.Instrumented
@@ -24,8 +23,7 @@ class ContactService(queueProducerHelper: KafkaProducerHelper) extends TService 
 
   def enqueueContactEvents(contact: Contact): Unit = {
     val reqWithId = generateUUID
-    queueProducerHelper.writeMessages(WA_CONTACT_QUEUE, (reqWithId, contact.toString))
-//    ConnektLogger(LogFile.SERVICE).debug(s"Saved request $reqWithId to $contact")
+    queueProducerHelper.writeMessages(WA_CONTACT_QUEUE, (reqWithId, contact.getJson))
   }
 
 }
