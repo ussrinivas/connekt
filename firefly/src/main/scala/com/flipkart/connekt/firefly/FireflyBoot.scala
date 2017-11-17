@@ -92,6 +92,7 @@ object FireflyBoot extends BaseApp {
       Option(ClientTopologyManager.instance).foreach(_.stopAllTopologies())
       ConnektLogger.shutdown()
       Option(InternalTopologyManager.instance).foreach(_.stopAllTopologies())
+      Option(WAContactTopologyManager.instance).foreach(_.stopAllTopologies())
     }
   }
 

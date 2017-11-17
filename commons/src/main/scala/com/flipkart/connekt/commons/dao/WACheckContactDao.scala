@@ -39,7 +39,6 @@ class WACheckContactDao(tableName: String, hTableFactory: THTableFactory) extend
   private val flusher = executor.scheduleAtFixedRate(new Runnable {
     override def run(): Unit = Try_ {
       Option(hTableMutator).foreach(_.flush())
-      Option(hTableMutator).foreach(_.flush())
     }
   }, 60, 60, TimeUnit.SECONDS)
 

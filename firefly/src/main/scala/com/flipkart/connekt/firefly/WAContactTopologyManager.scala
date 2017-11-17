@@ -14,30 +14,28 @@ package com.flipkart.connekt.firefly
 
 import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, KillSwitch}
-import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.services.ConnektConfig
+import com.flipkart.connekt.commons.sync.SyncDelegate
 import com.flipkart.connekt.commons.sync.SyncType.SyncType
-import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
 import com.typesafe.config.Config
 
 
-class InternalTopologyManager(kafkaConsumerConnConf: Config)(implicit am: ActorMaterializer, sys: ActorSystem) extends SyncDelegate {
+class WAContactTopologyManager(kafkaConsumerConnConf: Config)(implicit am: ActorMaterializer, sys: ActorSystem) extends SyncDelegate {
 
   private val triggers = scala.collection.mutable.Map[String, KillSwitch]()
 
-  private lazy val CALLBACK_QUEUE_NAME = ConnektConfig.get("firefly.latency.metric.kafka.topic").getOrElse("ckt_callback_events_%s")
-  private val LATENCY_METRIC_NAME = "LatencyMetrics"
+  private lazy val WA_TOPIC = ConnektConfig.get("firefly.wa.contact.kafka.topic").getOrElse("WA_CONTACT")
+  private val CONSUMER_NAME = "WA_CONTACT_CONSUMER"
 
   private val kafkaGroupNames: List[Map[String, String]] = List(
-    Map("name" -> Channel.SMS.toString.toUpperCase.concat(LATENCY_METRIC_NAME),
-      "topic" -> CALLBACK_QUEUE_NAME.format(Channel.SMS.toString.toLowerCase))
+    Map("name" -> CONSUMER_NAME, "topic" -> WA_TOPIC)
   )
 
   private def startTopology(topicName: String, kafkaGroupName: String): Unit = {
-    val (streamComplete, killSwitch) = new InternalTopology(kafkaConsumerConnConf, topicName, kafkaGroupName).start()
+    val (streamComplete, killSwitch) = new WAContactTopology(kafkaConsumerConnConf, topicName, kafkaGroupName).start()
     triggers += kafkaGroupName -> killSwitch
-    streamComplete.onComplete( _ =>  triggers -= kafkaGroupName)(am.executionContext)
+    streamComplete.onComplete(_ => triggers -= kafkaGroupName)(am.executionContext)
   }
 
   def stopAllTopologies() = {
@@ -50,7 +48,7 @@ class InternalTopologyManager(kafkaConsumerConnConf: Config)(implicit am: ActorM
 
   override def onUpdate(syncType: SyncType, args: List[AnyRef]): Any = {}
 
-  def restoreState(): Unit ={
+  def restoreState(): Unit = {
     kafkaGroupNames.foreach(kafkaGroupName => {
       val topicName: String = kafkaGroupName("topic")
       val name: String = kafkaGroupName("name")
@@ -59,7 +57,7 @@ class InternalTopologyManager(kafkaConsumerConnConf: Config)(implicit am: ActorM
   }
 }
 
-private object InternalTopologyManager {
+private object WAContactTopologyManager {
   var instance: WAContactTopologyManager = _
 
   def apply(kafkaConsumerConnConf: Config)(implicit am: ActorMaterializer, sys: ActorSystem): WAContactTopologyManager = {

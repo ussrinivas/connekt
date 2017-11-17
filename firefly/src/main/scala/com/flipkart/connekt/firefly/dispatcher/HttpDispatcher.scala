@@ -26,7 +26,7 @@ class HttpDispatcher(actorSystemConf: Config) {
   implicit val httpMat: ActorMaterializer = ActorMaterializer()
   implicit val ec: ExecutionContextExecutor = httpSystem.dispatcher
 
-  val callbackHttpPoolFlow = Http().superPool[HttpRequestTracker]()(httpMat)
+  val httpPoolFlow = Http().superPool[HttpRequestTracker]()(httpMat)
 }
 
 object HttpDispatcher {
@@ -39,6 +39,6 @@ object HttpDispatcher {
     }
   }
 
-  def httpFlow = dispatcher.map(_.callbackHttpPoolFlow).get
+  def httpFlow = dispatcher.map(_.httpPoolFlow).get
 
 }
