@@ -12,15 +12,17 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
+import java.util.Optional
+
 import com.flipkart.connekt.commons.entities.bigfoot.PublishSupport
 import com.flipkart.connekt.commons.utils.DateTimeUtils
 import com.flipkart.connekt.commons.utils.StringUtils.StringHandyFunctions
 import org.apache.commons.lang.RandomStringUtils
 
 case class WACallbackEvent(messageId: String,
-                           providerMessageId: String,
+                           providerMessageId: Option[String],
                            destination: String,
-                           eventType: String = "",
+                           eventType: String,
                            clientId: String,
                            appName: String,
                            contextId: String,
@@ -30,7 +32,7 @@ case class WACallbackEvent(messageId: String,
                           ) extends CallbackEvent with PublishSupport {
 
   def this(messageId: String,
-           providerMessageId: String,
+           providerMessageId: Optional[String],
            destination: String,
            eventType: String,
            clientId: String,
@@ -52,12 +54,13 @@ case class WACallbackEvent(messageId: String,
   def validate() = {
     require(contextId == null || contextId.hasOnlyAllowedChars, s"`contextId` field can only contain [A-Za-z0-9_\\.\\-\\:\\|] allowed chars, `messageId`: $messageId, `contextId`: $contextId")
     require(contextId == null || contextId.length <= 20, s"`contextId` can be max 20 characters, `messageId`: $messageId, `contextId`: $contextId")
+    require(eventType.isDefined, s"`eventType` field cannot be empty or null, `messageId`: $messageId")
   }
 
   override def contactId: String = s"${appName.toLowerCase}$destination"
 
   override def toPublishFormat: fkint.mp.connekt.WACallbackEvent = {
-    fkint.mp.connekt.WACallbackEvent(messageId = messageId, providerMessageId = providerMessageId, eventType = eventType,
+    fkint.mp.connekt.WACallbackEvent(messageId = messageId, providerMessageId = providerMessageId.getOrElse(""), eventType = eventType,
       clientId = clientId, destination = destination, appName = appName, contextId = contextId,
       cargo = cargo, timestamp = DateTimeUtils.getStandardFormatted(timestamp))
   }
