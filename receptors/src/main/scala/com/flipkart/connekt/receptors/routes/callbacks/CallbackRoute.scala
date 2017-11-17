@@ -165,7 +165,7 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with
                               val contextId = "random-cnid"
                               val e = event.copy(
                                 messageId = Option(messageId).orEmpty,
-                                providerMessageId = Option(event.providerMessageId).orEmpty,
+                                providerMessageId = event.providerMessageId,
                                 clientId = Option(clientId).getOrElse(user.userId),
                                 appName = appName,
                                 contextId = Option(contextId).orEmpty,
