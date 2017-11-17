@@ -18,12 +18,14 @@ import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.dao.HbaseDao.{longHandyFunctions, mapKVHandyFunctions}
 import com.flipkart.connekt.commons.entities.WACheckContactEntity
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, THTableFactory}
+import com.flipkart.connekt.commons.iomodels.Contact
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.metrics.Timed
 import com.roundeights.hasher.Implicits.stringToHasher
-import org.apache.hadoop.hbase.client.BufferedMutator
+import org.apache.hadoop.hbase.client.{BufferedMutator, Scan}
 
+import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.util.Try
 
@@ -104,8 +106,24 @@ class WACheckContactDao(tableName: String, hTableFactory: THTableFactory) extend
       wE
     }).toList
   }
+
+  @Timed("getAll")
+  def getAll:Iterator[Contact] = {
+    implicit val hTableInterface = hTableConnFactory.getTableInterface(hTableName)
+    try {
+      val scan = new Scan()
+      scan.addColumn(columnFamily.getBytes, "destination".getBytes)
+      val resultScanner = hTableInterface.getScanner(scan)
+      resultScanner.iterator().toIterator.map(r =>
+        Contact(r.value.getString)
+      )
+    }
+  }
+
 }
 
 object WACheckContactDao {
   def apply(tableName: String, hTableFactory: THTableFactory) = new WACheckContactDao(tableName, hTableFactory)
 }
+
+

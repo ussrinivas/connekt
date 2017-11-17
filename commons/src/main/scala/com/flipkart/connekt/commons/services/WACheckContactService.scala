@@ -14,6 +14,7 @@ package com.flipkart.connekt.commons.services
 
 import com.flipkart.connekt.commons.dao.DaoFactory
 import com.flipkart.connekt.commons.entities.WACheckContactEntity
+import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.metrics.Timed
 
@@ -22,6 +23,7 @@ import scala.util.Try
 object WACheckContactService extends Instrumented {
 
   private lazy val dao = DaoFactory.getWACheckContactDao
+  private final val WA_CONTACT_BATCH = 1000
 
   @Timed("add")
   def add(checkContactEntity: WACheckContactEntity): Try[Unit] = profile("add") {
@@ -37,4 +39,24 @@ object WACheckContactService extends Instrumented {
   def gets(destinations: Set[String]): Try[List[WACheckContactEntity]] = profile("gets") {
     dao.gets(destinations)
   }
+
+  @Timed("refreshAll")
+  def refreshWAContacts = profile("refreshAll") {
+    val task = new Runnable {
+      override def run() = {
+        try {
+          dao.getAll.grouped(WA_CONTACT_BATCH).foreach(seq => {
+            val ref = ServiceFactory.getContactService
+            seq.map(contact => ref.enqueueContactEvents(contact))
+          })
+        } catch {
+          case e: Exception =>
+            ConnektLogger(LogFile.SERVICE).error(s"Contact warm-up failure", e)
+        }
+      }
+    }
+
+    new Thread(task).start()
+  }
+
 }
