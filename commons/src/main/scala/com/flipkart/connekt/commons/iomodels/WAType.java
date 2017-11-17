@@ -6,7 +6,8 @@ public enum WAType {
   text("text"),
   image("image"),
   document("document"),
-  audio("audio");
+  audio("audio"),
+  hsm("hsm");
 
   private final String value;
 

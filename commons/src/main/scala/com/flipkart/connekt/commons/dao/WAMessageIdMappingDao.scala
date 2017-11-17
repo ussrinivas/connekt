@@ -51,15 +51,18 @@ class WAMessageIdMappingDao(tableName: String, hTableFactory: THTableFactory) ex
 
 
   @Timed("add")
-  def add(waMessageIdMappingEntity: WAMessageIdMappingEntity): Try[Unit] = Try_#(s"Adding waMessageIdMappingEntity failed for ${waMessageIdMappingEntity.waMessageId} -> ${waMessageIdMappingEntity.connektMessageId}") {
-    val rowKey = getRowKey(waMessageIdMappingEntity.waMessageId)
+  def add(waMessageIdMappingEntity: WAMessageIdMappingEntity): Try[Unit] = Try_#(s"Adding waMessageIdMappingEntity failed for ${waMessageIdMappingEntity.providerMessageId} -> ${waMessageIdMappingEntity.connektMessageId}") {
+    val rowKey = getRowKey(waMessageIdMappingEntity.providerMessageId)
     val entity = mutable.Map[String, Array[Byte]](
-      "waMessageId" -> waMessageIdMappingEntity.waMessageId.getUtf8Bytes,
-      "connektMessageId" -> waMessageIdMappingEntity.connektMessageId.getUtf8Bytes
+      "providerMessageId" -> waMessageIdMappingEntity.providerMessageId.getUtf8Bytes,
+      "connektMessageId" -> waMessageIdMappingEntity.connektMessageId.getUtf8Bytes,
+      "clientId" -> waMessageIdMappingEntity.clientId.getUtf8Bytes,
+      "appName" -> waMessageIdMappingEntity.appName.getUtf8Bytes,
+      "contextId" -> waMessageIdMappingEntity.contextId.getUtf8Bytes
     )
     val rD = Map[String, Map[String, Array[Byte]]](columnFamily -> entity.toMap)
     asyncAddRow(rowKey, rD)(hTableMutator)
-    ConnektLogger(LogFile.DAO).info(s"WAEntry added for waMessageId ${waMessageIdMappingEntity.waMessageId} with connektMessageId ${waMessageIdMappingEntity.connektMessageId}")
+    ConnektLogger(LogFile.DAO).info(s"WAEntry added for waMessageId ${waMessageIdMappingEntity.providerMessageId} with connektMessageId ${waMessageIdMappingEntity.connektMessageId}")
   }
 
   @Timed("get")
@@ -71,8 +74,11 @@ class WAMessageIdMappingDao(tableName: String, hTableFactory: THTableFactory) ex
     hTableConnFactory.releaseTableInterface(hTableInterface)
     val waMessageIdMappingEntity = reqProps.map(fields => {
       WAMessageIdMappingEntity(
-        fields.get("waMessageId").map(v => v.getString).orNull,
-        fields.get("connektMessageId").map(v => v.getString).orNull
+        fields.get("providerMessageId").map(v => v.getString).orNull,
+        fields.get("connektMessageId").map(v => v.getString).orNull,
+        fields.get("clientId").map(v => v.getString).orNull,
+        fields.get("appName").map(v => v.getString).orNull,
+        fields.get("contextId").map(v => v.getString).orNull
       )
     })
     waMessageIdMappingEntity

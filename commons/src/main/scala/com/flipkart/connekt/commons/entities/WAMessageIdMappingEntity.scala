@@ -14,7 +14,7 @@ package com.flipkart.connekt.commons.entities
 
 
 case class WAMessageIdMappingEntity(
-                                     waMessageId: String,
+                                     providerMessageId: String,
                                      connektMessageId: String,
                                      clientId: String,
                                      appName: String,

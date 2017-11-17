@@ -14,7 +14,6 @@ package com.flipkart.connekt.commons.iomodels
 
 import com.flipkart.connekt.commons.services.TStencilService
 
-
 case class WARequestData(
                           waType: WAType,
                           message: Option[String] = None,

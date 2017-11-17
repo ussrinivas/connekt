@@ -32,7 +32,7 @@ class HttpDispatcher(actorSystemConf: Config) {
 
   private val smsPoolClientFlow = Http().superPool[SmsRequestTracker]()(httpMat)
 
-  private val waPoolClientFlow = Http().superPool[WaRequestTracker]()(httpMat)
+  private val waPoolClientFlow = Http().superPool[WARequestTracker]()(httpMat)
 
   private val openWebPoolClientFlow = Http().superPool[OpenWebRequestTracker]()(httpMat)
 

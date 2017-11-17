@@ -19,9 +19,8 @@ import com.flipkart.connekt.commons.iomodels._
 class WACallbackDao(tableName: String, hTableFactory: THTableFactory) extends CallbackDao(tableName: String, hTableFactory: THTableFactory) {
   override def channelEventPropsMap(channelCallbackEvent: CallbackEvent): Map[String, Array[Byte]] = {
     val waCallbackEvent = channelCallbackEvent.asInstanceOf[WACallbackEvent]
-    Map[String, Array[Byte]](
+    val m = scala.collection.mutable.Map[String, Array[Byte]](
       "messageId" -> waCallbackEvent.messageId.getUtf8Bytes,
-      "waMessageId" -> waCallbackEvent.providerMessageId.getUtf8Bytes,
       "eventType" -> waCallbackEvent.eventType.getUtf8Bytes,
       "destination" -> waCallbackEvent.destination.getUtf8Bytes,
       "eventId" -> waCallbackEvent.eventId.getUtf8Bytes,
@@ -31,12 +30,14 @@ class WACallbackDao(tableName: String, hTableFactory: THTableFactory) extends Ca
       "cargo" -> waCallbackEvent.cargo.getUtf8Bytes,
       "timestamp" -> waCallbackEvent.timestamp.getBytes
     )
+    waCallbackEvent.providerMessageId.foreach(m += "providerMessageId" -> _.getUtf8Bytes)
+    m.toMap
   }
 
   override def mapToChannelEvent(channelEventPropsMap: Map[String, Array[Byte]]): CallbackEvent = {
     WACallbackEvent(
       messageId = channelEventPropsMap.getS("messageId"),
-      providerMessageId = channelEventPropsMap.getS("waMessageId"),
+      providerMessageId = Option(channelEventPropsMap.getS("providerMessageId")),
       eventType = channelEventPropsMap.getS("eventType"),
       destination = channelEventPropsMap.getS("destination"),
       eventId = channelEventPropsMap.getS("eventId"),

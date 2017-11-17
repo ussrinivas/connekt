@@ -17,20 +17,21 @@ import com.flipkart.connekt.commons.utils.DateTimeUtils
 import com.flipkart.connekt.commons.utils.StringUtils.StringHandyFunctions
 import org.apache.commons.lang.RandomStringUtils
 
-case class WACallbackEvent(messageId: String,
-                           providerMessageId: String,
-                           destination: String,
-                           eventType: String = "",
-                           clientId: String,
-                           appName: String,
-                           contextId: String,
-                           cargo: String,
-                           timestamp: Long = System.currentTimeMillis(),
-                           eventId: String = RandomStringUtils.randomAlphabetic(10)
+case class WACallbackEvent(
+                            messageId: String,
+                            providerMessageId: Option[String],
+                            destination: String,
+                            eventType: String = "",
+                            clientId: String,
+                            appName: String,
+                            contextId: String,
+                            cargo: String,
+                            timestamp: Long = System.currentTimeMillis(),
+                            eventId: String = RandomStringUtils.randomAlphabetic(10)
                           ) extends CallbackEvent with PublishSupport {
 
   def this(messageId: String,
-           providerMessageId: String,
+           providerMessageId: Some[String],
            destination: String,
            eventType: String,
            clientId: String,
@@ -57,9 +58,17 @@ case class WACallbackEvent(messageId: String,
   override def contactId: String = s"${appName.toLowerCase}$destination"
 
   override def toPublishFormat: fkint.mp.connekt.WACallbackEvent = {
-    fkint.mp.connekt.WACallbackEvent(messageId = messageId, providerMessageId = providerMessageId, eventType = eventType,
-      clientId = clientId, destination = destination, appName = appName, contextId = contextId,
-      cargo = cargo, timestamp = DateTimeUtils.getStandardFormatted(timestamp))
+    fkint.mp.connekt.WACallbackEvent(
+      messageId = messageId,
+      providerMessageId = providerMessageId.getOrElse(""),
+      eventType = eventType,
+      clientId = clientId,
+      destination = destination,
+      appName = appName,
+      contextId = contextId,
+      cargo = cargo,
+      timestamp = DateTimeUtils.getStandardFormatted(timestamp)
+    )
   }
 
   override def namespace: String = "fkint/mp/connekt/WACallbackEvent"

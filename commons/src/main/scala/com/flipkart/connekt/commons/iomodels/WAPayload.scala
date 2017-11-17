@@ -24,14 +24,14 @@ import com.fasterxml.jackson.annotation.{JsonProperty, JsonSubTypes, JsonTypeInf
   new Type(value = classOf[HSMWaPayload], name = "HSM"),
   new Type(value = classOf[PDFWaPayload], name = "PDF")
 ))
-abstract class WaPayload {
+abstract class WAPayload {
   def to: String
 }
 
 case class HSMWaPayload(
                          @JsonProperty(required = true) hsm: HsmData,
                          @JsonProperty(required = true) to: String
-                       ) extends WaPayload
+                       ) extends WAPayload
 
 case class HsmData(
                     @JsonProperty(required = true) namespace: String,
@@ -44,7 +44,7 @@ case class HsmData(
 case class PDFWaPayload (
                           @JsonProperty(required = true) document: DocumentData,
                           @JsonProperty(required = true) to: String
-                        ) extends WaPayload
+                        ) extends WAPayload
 
 case class DocumentData (
                           @JsonProperty(required = true) filename: String,
