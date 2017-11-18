@@ -80,6 +80,7 @@ object FireflyBoot extends BaseApp {
       ClientTopologyManager(kafkaConnConf, ConnektConfig.getInt("firefly.retry.limit").get)
 
       InternalTopologyManager(kafkaConnConf)
+      WAContactTopologyManager(kafkaConnConf)
 
       ConnektLogger(LogFile.SERVICE).info("Started `Firefly` app")
     }
