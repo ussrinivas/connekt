@@ -12,10 +12,10 @@
  */
 package com.flipkart.connekt.firefly.flows
 
-import akka.NotUsed
 import akka.http.scaladsl.model._
 import akka.stream.Materializer
-import akka.stream.scaladsl.Flow
+import akka.stream.javadsl.Sink
+import akka.stream.scaladsl.{Flow, Keep}
 import com.flipkart.connekt.commons.dao.DaoFactory
 import com.flipkart.connekt.commons.entities.WACheckContactEntity
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
@@ -30,7 +30,7 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) {
 
   private lazy val dao = DaoFactory.getWACheckContactDao
 
-  val flow: Flow[(Try[HttpResponse], HttpRequestTracker), NotUsed, NotUsed] = Flow[(Try[HttpResponse], HttpRequestTracker)].map { responseTrackerPair =>
+  val sink = Flow[(Try[HttpResponse], HttpRequestTracker)].map { responseTrackerPair =>
 
     val httpResponse = responseTrackerPair._1
     val requestTracker = responseTrackerPair._2
@@ -58,6 +58,5 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) {
       case Failure(e2) =>
         ConnektLogger(LogFile.PROCESSORS).error(s"GCMResponseHandler gcm send failure for: ${requestTracker.httpRequest}", e2)
     }
-    NotUsed
-  }
+  }.toMat(Sink.ignore)(Keep.right)
 }

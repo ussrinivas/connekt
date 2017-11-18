@@ -34,7 +34,7 @@ class WAContactTopology(kafkaConsumerConnConf: Config, topicName: String, kafkaG
 
   private val httpCachedClient = HttpDispatcher.waPoolClientFlow
   private val dispatcherPerpFlow = new WAHttpDispatcherPrepare().flow
-  private val waCheckContactResponse = new WAResponseHandler().flow
+  private val waCheckContactResponseSink = new WAResponseHandler().sink
   private val waContactSize: Int = ConnektConfig.getInt("wa.check.contact.list.size").getOrElse(1000)
   private val waContactTimeLimit: Int = ConnektConfig.getInt("wa.check.contact.wait.time.limit.sec").getOrElse(30)
 
@@ -52,8 +52,7 @@ class WAContactTopology(kafkaConsumerConnConf: Config, topicName: String, kafkaG
       .throttle(waKafkaThrottle, 1.second, waKafkaThrottle, ThrottleMode.Shaping)
       .via(dispatcherPerpFlow)
       .via(httpCachedClient)
-      .via(waCheckContactResponse)
-      .runWith(Sink.ignore)
+      .runWith(waCheckContactResponseSink)
 
     ConnektLogger(LogFile.SERVICE).info(s"Started internal latency metric topology of topic $topicName")
     (streamCompleted, killSwitch)
