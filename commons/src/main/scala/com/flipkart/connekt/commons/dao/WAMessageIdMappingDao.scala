@@ -15,8 +15,7 @@ package com.flipkart.connekt.commons.dao
 import java.util.concurrent.{ScheduledThreadPoolExecutor, TimeUnit}
 
 import com.flipkart.connekt.commons.core.Wrappers._
-import com.flipkart.connekt.commons.dao.HbaseDao.{longHandyFunctions, mapKVHandyFunctions}
-import com.flipkart.connekt.commons.entities.{WACheckContactEntity, WAMessageIdMappingEntity}
+import com.flipkart.connekt.commons.entities.WAMessageIdMappingEntity
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, THTableFactory}
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.StringUtils._
@@ -88,5 +87,5 @@ class WAMessageIdMappingDao(tableName: String, hTableFactory: THTableFactory) ex
 
 object WAMessageIdMappingDao {
   def apply(tableName: String, hTableFactory: THTableFactory) =
-    new WACheckContactDao(tableName, hTableFactory)
+    new WAMessageIdMappingDao(tableName, hTableFactory)
 }

@@ -132,7 +132,6 @@ object BusyBeesBoot extends BaseApp {
 //        smsTopology = new SmsTopology(kafkaConnConf)
 //        smsTopology.run
 //      }
-
               waTopology = new WATopology(kafkaConnConf)
               waTopology.run
 

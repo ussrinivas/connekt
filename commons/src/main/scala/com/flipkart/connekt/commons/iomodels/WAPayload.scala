@@ -15,6 +15,10 @@ package com.flipkart.connekt.commons.iomodels
 import com.fasterxml.jackson.annotation.JsonSubTypes.Type
 import com.fasterxml.jackson.annotation.{JsonProperty, JsonSubTypes, JsonTypeInfo}
 
+case class WARequest (
+                       @JsonProperty(required = true) payload: WAPayload
+                     )
+
 @JsonTypeInfo(
   use = JsonTypeInfo.Id.NAME,
   include = JsonTypeInfo.As.PROPERTY,
@@ -40,6 +44,11 @@ case class HsmData(
                     @JsonProperty(required = false) fallback_lc: String = "US",
                     @JsonProperty(required = true) localizable_params: List[Map[String, String]]
                   )
+
+case class TxtWaPayload(
+                          @JsonProperty(required = true) body: String,
+                          @JsonProperty(required = true) to: String
+                        ) extends WAPayload
 
 case class PDFWaPayload (
                           @JsonProperty(required = true) document: DocumentData,

@@ -52,7 +52,7 @@ class WaResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends 
             case 200 =>
               val responseBody = stringResponse.getObj[ObjectNode]
               responseBody match {
-                case _ if responseBody.findValue("payload") == null =>
+                case _ if responseBody.findValue("payload").asText() == "null" =>
                   val error = responseBody.get("error")
                   val errorCode = error.findValue("errorcode").asInt()
                   val errorText = error.findValue("errortext").asText()
@@ -80,7 +80,7 @@ class WaResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends 
           case e: Exception =>
             ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.Error)
             events += WACallbackEvent(messageId, None, requestTracker.destination, WAResponseStatus.Error, requestTracker.clientId, appName, requestTracker.contextId, e.getMessage, eventTS)
-            ConnektLogger(LogFile.PROCESSORS).error(s"WaResponseHandler received http failure for: $messageId", e)
+            ConnektLogger(LogFile.PROCESSORS).error(s"WaResponseHandler: failed due to an exception: $messageId", e)
         }
       case Failure(e2) =>
         ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.Error)

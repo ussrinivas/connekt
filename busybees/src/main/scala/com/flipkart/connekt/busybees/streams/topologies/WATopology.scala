@@ -96,8 +96,6 @@ class WATopology(kafkaConsumerConfig: Config) extends ConnektTopology[WACallback
 
 object WATopology {
 
-  private val firewallStencilId: Option[String] = ConnektConfig.getString("sys.firewall.stencil.id")
-
   def waTransformFlow(implicit ioMat:ActorMaterializer, ioDispatcher:  ExecutionContextExecutor): Flow[ConnektRequest, WACallbackEvent, NotUsed] = Flow.fromGraph(GraphDSL.create() { implicit b  =>
 
     /**
@@ -110,13 +108,13 @@ object WATopology {
       */
 
 //    val render = b.add(new RenderFlow().flow)
-    val welcomePartitioner = b.add(Partition[ConnektRequest](2,
+    val mediaPartitioner = b.add(Partition[ConnektRequest](2,
       _.channelData.asInstanceOf[WARequestData].attachment match {
-        case Some(a: Attachment) => 0
+        case Some(_:Attachment) => 0
         case _ => 1
       }))
     val trackSmsParallelism = ConnektConfig.getInt("topology.sms.tracking.parallelism").get
-    val tracking = b.add(new SMSTrackingFlow(trackSmsParallelism)(ioDispatcher).flow)
+//    val tracking = b.add(new SMSTrackingFlow(trackSmsParallelism)(ioDispatcher).flow)
     val waMediaDispatcher = b.add(new WAMediaDispatcher().flow)
     val waHttpPoolMediaFlow = b.add(HttpDispatcher.waPoolClientFlow.timedAs("waMediaRTT"))
     val waMediaResponseHandler = b.add(new WAMediaResponseHandler().flow)
@@ -124,17 +122,14 @@ object WATopology {
     val merge = b.add(Merge[ConnektRequest](2))
     val waHttpPoolFlow = b.add(HttpDispatcher.waPoolClientFlow.timedAs("waRTT"))
 
-    val providerHandlerParallelism = ConnektConfig.getInt("topology.sms.parse.parallelism").get
-//    val smsResponseFormatter = b.add(new SmsProviderResponseFormatter(providerHandlerParallelism)(ioMat,ioDispatcher).flow)
+//    val providerHandlerParallelism = ConnektConfig.getInt("topology.sms.parse.parallelism").get
     val waResponseHandler = b.add(new WaResponseHandler()(ioMat,ioDispatcher).flow)
 
-
-
-    welcomePartitioner.out(0) ~> waMediaDispatcher ~> waHttpPoolMediaFlow ~> waMediaResponseHandler ~> merge
-    welcomePartitioner.out(1) ~>                                                                       merge
+    mediaPartitioner.out(0) ~> waMediaDispatcher ~> waHttpPoolMediaFlow ~> waMediaResponseHandler ~> merge.in(0)
+    mediaPartitioner.out(1) ~>                                                                       merge.in(1)
     merge.out ~> waPrepare ~> waHttpPoolFlow ~> waResponseHandler
 
-    FlowShape(welcomePartitioner.in, waResponseHandler.out)
+    FlowShape(mediaPartitioner.in, waResponseHandler.out)
   })
 
 

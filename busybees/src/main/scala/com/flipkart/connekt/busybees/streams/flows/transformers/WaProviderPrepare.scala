@@ -12,10 +12,8 @@
  */
 package com.flipkart.connekt.busybees.streams.flows.transformers
 
-import java.util
-
-import akka.http.scaladsl.model.HttpRequest
-import com.flipkart.connekt.busybees.models.{SmsRequestTracker, WARequestTracker}
+import akka.http.scaladsl.model._
+import com.flipkart.connekt.busybees.models.WARequestTracker
 import com.flipkart.connekt.busybees.streams.errors.ConnektStageException
 import com.flipkart.connekt.busybees.streams.flows.MapFlowStage
 import com.flipkart.connekt.busybees.streams.flows.formaters.WAPayloadFormatter
@@ -24,10 +22,7 @@ import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels.MessageStatus.{InternalStatus, WAResponseStatus}
 import com.flipkart.connekt.commons.iomodels._
-import com.flipkart.connekt.commons.services.KeyChainManager
 import com.flipkart.connekt.commons.utils.StringUtils.{JSONUnMarshallFunctions, _}
-
-import scala.collection.JavaConverters._
 
 class WaProviderPrepare extends MapFlowStage[ConnektRequest, (HttpRequest, WARequestTracker)] {
 
@@ -36,7 +31,7 @@ class WaProviderPrepare extends MapFlowStage[ConnektRequest, (HttpRequest, WAReq
   override val map: ConnektRequest => List[(HttpRequest, WARequestTracker)] = connektRequest => profile("map") {
 
     try {
-      val credentials = KeyChainManager.getSimpleCredential(s"whatsapp.${connektRequest.appName}").get
+//      val credentials = KeyChainManager.getSimpleCredential(s"whatsapp.${connektRequest.appName}").get
 
       val tracker = WARequestTracker(
         messageId = connektRequest.id,
@@ -48,16 +43,13 @@ class WaProviderPrepare extends MapFlowStage[ConnektRequest, (HttpRequest, WAReq
         meta = connektRequest.meta
       )
 
-      val waPayload = WAPayloadFormatter.makePayload(connektRequest)
-      val providerStencil = stencilService.getStencilsByName(s"wa-${connektRequest.appName}").find(_.component.equalsIgnoreCase("prepare")).get
-
-      val result = stencilService.materialize(providerStencil, Map("data" -> connektRequest, "credentials" -> credentials, "tracker" -> tracker).getJsonNode)
-
-      val httpRequests = result.asInstanceOf[util.LinkedHashMap[HttpRequest, String]].asScala.map { case (request, updatedTracker) =>
-        (request , updatedTracker.getObj[WARequestTracker])
-      }.toList
-
-      httpRequests
+      val waPayloads = WAPayloadFormatter.makePayload(connektRequest)
+      val uri = "https://10.85.185.89:32785/api/rest_send.php"
+      waPayloads.map( waPayload => {
+        val requestEntity = HttpEntity(ContentTypes.`application/json`, waPayload.getJson)
+        def httpRequest = HttpRequest(HttpMethods.POST, uri, scala.collection.immutable.Seq.empty[HttpHeader], requestEntity)
+        (httpRequest -> tracker)
+      })
     }
     catch {
       case e: Exception =>
@@ -78,3 +70,4 @@ class WaProviderPrepare extends MapFlowStage[ConnektRequest, (HttpRequest, WAReq
   }
 
 }
+
