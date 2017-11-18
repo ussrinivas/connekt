@@ -55,7 +55,7 @@ class WAContactTopology(kafkaConsumerConnConf: Config, topicName: String, kafkaG
       .via(waCheckContactResponse)
       .runWith(Sink.ignore)
 
-    ConnektLogger(LogFile.SERVICE).info(s"Started internal latency metric topology of topic $topicName")
+    ConnektLogger(LogFile.SERVICE).info(s"Started WAContactTopology for topic $topicName")
     (streamCompleted, killSwitch)
 
   }
