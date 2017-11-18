@@ -17,8 +17,8 @@ import akka.stream.{ActorMaterializer, KillSwitch}
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.services.ConnektConfig
+import com.flipkart.connekt.commons.sync.SyncDelegate
 import com.flipkart.connekt.commons.sync.SyncType.SyncType
-import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
 import com.typesafe.config.Config
 
 
@@ -60,12 +60,12 @@ class InternalTopologyManager(kafkaConsumerConnConf: Config)(implicit am: ActorM
 }
 
 private object InternalTopologyManager {
-  var instance: WAContactTopologyManager = _
+  var instance: InternalTopologyManager = _
 
-  def apply(kafkaConsumerConnConf: Config)(implicit am: ActorMaterializer, sys: ActorSystem): WAContactTopologyManager = {
+  def apply(kafkaConsumerConnConf: Config)(implicit am: ActorMaterializer, sys: ActorSystem): InternalTopologyManager = {
     if (null == instance)
       this.synchronized {
-        instance = new WAContactTopologyManager(kafkaConsumerConnConf)(am, sys)
+        instance = new InternalTopologyManager(kafkaConsumerConnConf)(am, sys)
         instance.restoreState()
       }
     instance
