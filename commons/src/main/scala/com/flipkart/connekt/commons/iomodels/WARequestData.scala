@@ -20,6 +20,7 @@ case class WARequestData(
                           attachment: Option[Attachment] = None
                         ) extends ChannelRequestData {
   def validate(appName: String)(implicit stencilService: TStencilService): Unit = {
+    require(waType != null)
     require {
       if (waType.equals(WAType.text))
         message.isDefined

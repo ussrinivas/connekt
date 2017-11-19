@@ -32,6 +32,26 @@ case class WACallbackEvent(messageId: String,
                           ) extends CallbackEvent with PublishSupport {
 
   def this(messageId: String,
+           providerMessageId: Optional[String],
+           destination: String,
+           eventType: String,
+           clientId: String,
+           appName: String,
+           contextId: String,
+           cargo: String) {
+
+    this(messageId = messageId,
+      providerMessageId = Option(providerMessageId.orElse(null)),
+      destination = destination,
+      eventType = eventType,
+      clientId = clientId,
+      appName = appName,
+      contextId = contextId,
+      cargo = cargo,
+      timestamp = System.currentTimeMillis())
+  }
+
+  def this(messageId: String,
            providerMessageId: Option[String],
            destination: String,
            eventType: String,

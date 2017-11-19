@@ -56,7 +56,7 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) {
             ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler failed processing http response body for: $r", e)
         }
       case Failure(e2) =>
-        ConnektLogger(LogFile.PROCESSORS).error(s"GCMResponseHandler gcm send failure for: ${requestTracker.httpRequest}", e2)
+        ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler send failure for: ${requestTracker.httpRequest}", e2)
     }
     NotUsed
   }
