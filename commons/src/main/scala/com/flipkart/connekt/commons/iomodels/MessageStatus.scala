@@ -86,7 +86,9 @@ object MessageStatus {
 
     val Received = Value("wa_received")
     val Error = Value("wa_error")
+    val MediaUploadError = Value("wa_media_upload_error")
     val ReceivedHTTP = Value("wa_received_http")
+    val MediaUploaded = Value("wa_media_uploaded")
     val StencilNotFound = Value("wa_stencil_not_found")
     val InternalError = Value("wa_server_error")
     val AuthError = Value("wa_auth_error")

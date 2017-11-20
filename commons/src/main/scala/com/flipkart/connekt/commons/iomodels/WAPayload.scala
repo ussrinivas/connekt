@@ -51,11 +51,16 @@ case class TxtWaPayload(
                         ) extends WAPayload
 
 case class PDFWaPayload (
-                          @JsonProperty(required = true) document: DocumentData,
+                          @JsonProperty(required = true) document: FileData,
                           @JsonProperty(required = true) to: String
                         ) extends WAPayload
 
-case class DocumentData (
+case class ImageWaPayload (
+                          @JsonProperty(required = true) image: FileData,
+                          @JsonProperty(required = true) to: String
+                        ) extends WAPayload
+
+case class FileData(
                           @JsonProperty(required = true) filename: String,
-                          @JsonProperty(required = true) caption: String
+                          @JsonProperty(required = false) caption: String
                         )
