@@ -43,6 +43,11 @@ case class InboundMessageCallbackEvent(clientId: String,
       message = message, providerMessageId = Option(providerMessageId.orElse(null)), messageMeta = Option(messageMeta.orElse(null)), media = media.asScala.toList, cargo = cargo)
   }
 
+  def this(sender: String, eventType: String, contextId: String, message: String, providerMessageId: Option[String], messageMeta: Option[String], media: List[Media], cargo: String) {
+    this(clientId = null, sender = sender, eventType = eventType, appName = null, contextId = contextId,
+      message = message, providerMessageId = providerMessageId, messageMeta = messageMeta, media = media, cargo = cargo)
+  }
+
   def validate() = {
     require(contextId == null || contextId.hasOnlyAllowedChars, s"`contextId` field can only contain [A-Za-z0-9_\\.\\-\\:\\|] allowed chars, `contextId`: $contextId")
     require(contextId == null || contextId.length <= 20, s"`contextId` can be max 20 characters `contextId`: $contextId")

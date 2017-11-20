@@ -48,7 +48,7 @@ class WARequestDao(tableName: String, hTableFactory: THTableFactory) extends Req
   override protected def getChannelRequestData(reqDataProps: Map[String, Array[Byte]]): ChannelRequestData = {
     WARequestData(
       WAType.valueOf(reqDataProps.getS("waType")),
-      reqDataProps.get("message").map(_.asInstanceOf[String]),
+      reqDataProps.get("message").map(new String(_)),
       reqDataProps.get("attachment").map(_.asInstanceOf[Attachment])
     )
   }

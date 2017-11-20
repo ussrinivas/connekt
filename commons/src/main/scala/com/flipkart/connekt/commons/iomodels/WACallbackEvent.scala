@@ -29,7 +29,27 @@ case class WACallbackEvent(messageId: String,
                            cargo: String,
                            timestamp: Long = System.currentTimeMillis(),
                            eventId: String = RandomStringUtils.randomAlphabetic(10)
-                          ) extends CallbackEvent with PublishSupport {
+                          ) extends CallbackEvent with PublishSupport with WAGeneratedEvent{
+
+  def this(messageId: String,
+           providerMessageId: Optional[String],
+           destination: String,
+           eventType: String,
+           clientId: String,
+           appName: String,
+           contextId: String,
+           cargo: String) {
+
+    this(messageId = messageId,
+      providerMessageId = Option(providerMessageId.orElse(null)),
+      destination = destination,
+      eventType = eventType,
+      clientId = clientId,
+      appName = appName,
+      contextId = contextId,
+      cargo = cargo,
+      timestamp = System.currentTimeMillis())
+  }
 
   def this(messageId: String,
            providerMessageId: Option[String],

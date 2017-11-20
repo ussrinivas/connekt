@@ -19,8 +19,8 @@ import akka.stream.scaladsl.Flow
 import com.flipkart.connekt.commons.dao.DaoFactory
 import com.flipkart.connekt.commons.entities.WACheckContactEntity
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
+import com.flipkart.connekt.commons.iomodels.WAResponse
 import com.flipkart.connekt.commons.utils.StringUtils._
-import com.flipkart.connekt.firefly.models.WACheckContactResponse
 import com.flipkart.connekt.firefly.sinks.http.HttpRequestTracker
 
 import scala.concurrent.ExecutionContext
@@ -38,7 +38,7 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) {
     httpResponse match {
       case Success(r) =>
         try {
-          val response = r.entity.getString(m).getObj[WACheckContactResponse]
+          val response = r.entity.getString(m).getObj[WAResponse]
           val results = response.payload.results
           ConnektLogger(LogFile.PROCESSORS).debug(s"WAResponseHandler received http response for: $results")
           ConnektLogger(LogFile.PROCESSORS).trace(s"WAResponseHandler received http response for: $results")
@@ -56,7 +56,7 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) {
             ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler failed processing http response body for: $r", e)
         }
       case Failure(e2) =>
-        ConnektLogger(LogFile.PROCESSORS).error(s"GCMResponseHandler gcm send failure for: ${requestTracker.httpRequest}", e2)
+        ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler send failure for: ${requestTracker.httpRequest}", e2)
     }
     NotUsed
   }

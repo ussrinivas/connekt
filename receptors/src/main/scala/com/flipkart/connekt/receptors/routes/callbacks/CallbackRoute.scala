@@ -156,28 +156,35 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with
                       parameterMap { urlParams =>
                         entity(as[ObjectNode]) { payload =>
                           val stencil = stencilService.getStencilsByName(s"ckt-$channel").find(_.component.equalsIgnoreCase("webhook")).get
-                          val validEvent = channel match {
+                          channel match {
                             case Channel.WA =>
-                              val event = stencilService.materialize(stencil, payload).asInstanceOf[WACallbackEvent]
-                              // TODO ::
-                              val messageId = "random-mid"
-                              val clientId = "random-cid"
-                              val contextId = "random-cnid"
-                              val e = event.copy(
-                                messageId = Option(messageId).orEmpty,
-                                providerMessageId = event.providerMessageId,
-                                clientId = Option(clientId).getOrElse(user.userId),
-                                appName = appName,
-                                contextId = Option(contextId).orEmpty,
-                                eventType = Option(event.eventType).map(_.toLowerCase).getOrElse("")
-                              )
-                              e.validate()
-                              e
+                              val waEvent = stencilService.materialize(stencil, payload).asInstanceOf[WAGeneratedEvent]
+                              waEvent match {
+                                case wACallbackEvent: WACallbackEvent =>
+                                  // TODO ::
+                                  val messageId = "random-mid"
+                                  val clientId = "random-cid"
+                                  val contextId = "random-cnid"
+                                  val e = wACallbackEvent.copy(
+                                    messageId = Option(messageId).orEmpty,
+                                    providerMessageId = wACallbackEvent.providerMessageId,
+                                    clientId = Option(clientId).getOrElse(user.userId),
+                                    appName = appName,
+                                    contextId = Option(contextId).orEmpty,
+                                    eventType = Option(wACallbackEvent.eventType).map(_.toLowerCase).getOrElse("")
+                                  )
+                                  e.validate()
+                                  e.enqueue
+                                  ServiceFactory.getReportingService.recordChannelStatsDelta(e.clientId, Some(e.contextId), None, channel, e.appName, e.eventType)
+                                  ConnektLogger(LogFile.SERVICE).debug(s"Whatapp callback events recieved ", supplier(e.getJson))
+                                  complete(GenericResponse(StatusCodes.OK.intValue, null, Response("Whatapp callbacks request recieved.", "Event successfully ingested")))
+                                case waResponse: WAResponse =>
+                                  ConnektLogger(LogFile.SERVICE).debug(s"Whatsapp response is not Callback event. Error occurred.", supplier(waResponse.getJson))
+                                  complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"${channel.toUpperCase} Whatsapp response is not Callback event. Error occurred.", waResponse)))
+                              }
+                            case _ =>
+                              complete(GenericResponse(StatusCodes.OK.intValue, null, Response("Channel not implemented yet.", null)))
                           }
-                          validEvent.enqueue
-                          ServiceFactory.getReportingService.recordChannelStatsDelta(validEvent.clientId, Some(validEvent.contextId), None, channel, validEvent.appName, validEvent.eventType)
-                          ConnektLogger(LogFile.SERVICE).debug(s"Received callback events ", supplier(validEvent.getJson))
-                          complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"${channel.toUpperCase} callbacks request recieved.", s"Event successfully ingested")))
                         }
                       }
                     }
