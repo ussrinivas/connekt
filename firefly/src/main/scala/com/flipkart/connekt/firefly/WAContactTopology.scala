@@ -33,7 +33,7 @@ class WAContactTopology(kafkaConsumerConnConf: Config, topicName: String, kafkaG
   private implicit val ec = am.executionContext
 
   private val httpCachedClient = HttpDispatcher.waPoolClientFlow
-  private val dispatcherPerpFlow = new WAHttpDispatcherPrepare().flow
+  private val dispatcherPrepFlow = new WAHttpDispatcherPrepare().flow
   private val waCheckContactResponse = new WAResponseHandler().flow
   private val waContactSize: Int = ConnektConfig.getInt("wa.check.contact.list.size").getOrElse(1000)
   private val waContactTimeLimit: Int = ConnektConfig.getInt("wa.check.contact.wait.time.limit.sec").getOrElse(30)
@@ -50,7 +50,7 @@ class WAContactTopology(kafkaConsumerConnConf: Config, topicName: String, kafkaG
       .watchTermination() { case (_, completed) => streamCompleted = completed }
       .groupedWithin(waContactSize, waContactTimeLimit.second)
       .throttle(waKafkaThrottle, 1.second, waKafkaThrottle, ThrottleMode.Shaping)
-      .via(dispatcherPerpFlow)
+      .via(dispatcherPrepFlow)
       .via(httpCachedClient)
       .via(waCheckContactResponse)
       .runWith(Sink.ignore)

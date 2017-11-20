@@ -26,7 +26,6 @@ class WAHttpDispatcherPrepare {
   val flow: Flow[Seq[Contact], (HttpRequest, HttpRequestTracker), NotUsed] = Flow[Seq[Contact]].map { contacts =>
 
     ConnektLogger(LogFile.PROCESSORS).debug("WAHttpDispatcherPrepare received message: {}", supplier(contacts.getJson))
-    ConnektLogger(LogFile.PROCESSORS).trace("WAHttpDispatcherPrepare received message: {}", supplier(contacts.getJson))
 
     val contactList = contacts.map(contact => contact.user_identifier).mkString("\"", "\",\"", "\"")
     val waPayload =

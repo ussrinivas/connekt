@@ -175,15 +175,13 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
             } ~ pathPrefix("wa") {
               extractTestRequestContext { isTestRequest =>
                 authorize(user, "REGISTRATION_WA") {
-                    withRequestTimeout(registrationTimeout) {
-                      put {
-                        meteredResource(s"register.wa.contact") {
-                          entity(as[Contact]) { contact =>
-                              val ref = ServiceFactory.getContactService
-                              ref.enqueueContactEvents(contact)
-                              complete(GenericResponse(StatusCodes.Accepted.intValue, null, Response("Contact registration request received", null)))
-                            }
-                          }
+                  withRequestTimeout(registrationTimeout) {
+                    put {
+                      meteredResource(s"register.wa.contact") {
+                        entity(as[Contact]) { contact =>
+                          val ref = ServiceFactory.getContactService
+                          ref.enqueueContactEvents(contact)
+                          complete(GenericResponse(StatusCodes.Accepted.intValue, null, Response("Contact registration request received", null)))
                         }
                       }
                     }
@@ -192,5 +190,6 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
               }
             }
           }
-
+        }
+    }
 }
