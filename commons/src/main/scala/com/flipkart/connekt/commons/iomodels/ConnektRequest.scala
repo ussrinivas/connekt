@@ -14,9 +14,12 @@ package com.flipkart.connekt.commons.iomodels
 
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
 import com.fasterxml.jackson.databind.node.ObjectNode
+import com.flipkart.connekt.commons.core.Wrappers.Try_#
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.services.TStencilService
 import com.flipkart.connekt.commons.utils.StringUtils._
+
+import scala.util.{Failure, Success, Try}
 
 case class ConnektRequest(@JsonProperty(required = false) id: String,
                           @JsonProperty(required = false) clientId: String,
@@ -48,7 +51,7 @@ case class ConnektRequest(@JsonProperty(required = false) id: String,
   }
 
   @JsonIgnore
-  def isTestRequest : Boolean = meta.get("x-perf-test").exists(v => v.trim.equalsIgnoreCase("true"))
+  def isTestRequest: Boolean = meta.get("x-perf-test").exists(v => v.trim.equalsIgnoreCase("true"))
 
   def getComputedChannelData(implicit stencilService: TStencilService): ChannelRequestData =
     stencilId.map(stencilService.get(_)).map { stencil =>
@@ -67,4 +70,20 @@ case class ConnektRequest(@JsonProperty(required = false) id: String,
           throw new Exception(s"`channelData` compute undefined for $unsupportedChannel")
       }
     }.getOrElse(channelData)
+
+
+  def validateStencilVariables(implicit stencilService: TStencilService): Try[Boolean] = Try_#(s"Request Stencil Validation Failed, for stencilId : ${stencilId.get} and ChannelDataMode : $channelDataModel") {
+    stencilId.map(stencilService.get(_)).map { stencil =>
+      Channel.withName(channel) match {
+        case Channel.WA =>
+          Try(stencilService.materialize(stencil.head, channelDataModel).asInstanceOf[String]) match {
+            case Success(_) => true
+            case Failure(f) =>
+              throw new Exception(s"Request Stencil Validation Failed, for stencilId : ${stencilId.get} and ChannelDataMode : $channelDataModel", f)
+          }
+        case unsupportedChannel =>
+          throw new Exception(s"`channelData` compute undefined for $unsupportedChannel")
+      }
+    }.get
+  }
 }

@@ -400,67 +400,73 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                   )
                                   request.validate
 
-                                  val appLevelConfigService = ServiceFactory.getUserProjectConfigService
-                                  ConnektLogger(LogFile.SERVICE).debug(s"Received whatsapp request with payload: ${request.toString}")
+                                  request.validateStencilVariables match {
+                                    case Failure(f) =>
+                                      ConnektLogger(LogFile.SERVICE).error(s"Request Stencil Validation Failed, for stencilId : ${request.stencilId.get} and ChannelDataMode : ${request.channelDataModel}")
+                                      GenericResponse(StatusCodes.BadRequest.intValue, null, SendResponse(s"Request Stencil Validation Failed, for stencilId : ${request.stencilId.get} and ChannelDataMode : ${request.channelDataModel} with ERROR : ${f.getCause}", Map.empty, List.empty)).respond
+                                    case Success(_) =>
+                                      val appLevelConfigService = ServiceFactory.getUserProjectConfigService
+                                      ConnektLogger(LogFile.SERVICE).debug(s"Received whatsapp request with payload: ${request.toString}")
 
-                                  val appDefaultCountryCode = appLevelConfigService.getProjectConfiguration(appName.toLowerCase, "app-local-country-code").get.get.value.getObj[ObjectNode]
-                                  val phoneUtil: PhoneNumberUtil = PhoneNumberUtil.getInstance()
+                                      val appDefaultCountryCode = appLevelConfigService.getProjectConfiguration(appName.toLowerCase, "app-local-country-code").get.get.value.getObj[ObjectNode]
+                                      val phoneUtil: PhoneNumberUtil = PhoneNumberUtil.getInstance()
 
-                                  val validNumbers = ListBuffer[String]()
-                                  val invalidNumbers = ListBuffer[String]()
+                                      val validNumbers = ListBuffer[String]()
+                                      val invalidNumbers = ListBuffer[String]()
 
-                                  val waRequestInfo = request.channelInfo.asInstanceOf[WARequestInfo]
+                                      val waRequestInfo = request.channelInfo.asInstanceOf[WARequestInfo]
 
-                                  if (waRequestInfo.destinations != null && waRequestInfo.destinations.nonEmpty) {
-                                    if (isTestRequest) {
-                                      GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse(s"Whatsapp Perf Send Request Received. Skipped sending.", Map("fake_message_id" -> r.destinations), List.empty)).respond
-                                    } else {
-                                      waRequestInfo.destinations.foreach(r => {
-                                        val validateNum = Try(phoneUtil.parse(r, appDefaultCountryCode.get("localRegion").asText.trim.toUpperCase))
-                                        if (validateNum.isSuccess && phoneUtil.isValidNumber(validateNum.get)) {
-                                          validNumbers += phoneUtil.format(validateNum.get, PhoneNumberFormat.E164)
-                                          ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.WA, appName, InternalStatus.Received)
+                                      if (waRequestInfo.destinations != null && waRequestInfo.destinations.nonEmpty) {
+                                        if (isTestRequest) {
+                                          GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse(s"Whatsapp Perf Send Request Received. Skipped sending.", Map("fake_message_id" -> r.destinations), List.empty)).respond
                                         } else {
-                                          ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatup invalid numbers: $r")
-                                          ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.WA, appName, InternalStatus.Rejected)
-                                          invalidNumbers += r
-                                        }
-                                      })
-                                      val waUserName = ListBuffer[String]()
-                                      val checkedContacts = validNumbers.filter { number => {
-                                        WACheckContactService.get(number).get match {
-                                          case Some(wa) =>
-                                            if (wa.waExists.equalsIgnoreCase("true")) {
-                                              waUserName += wa.waUserName
-                                              true
-                                            } else
-                                              false
-                                          case _ => false
+                                          waRequestInfo.destinations.foreach(r => {
+                                            val validateNum = Try(phoneUtil.parse(r, appDefaultCountryCode.get("localRegion").asText.trim.toUpperCase))
+                                            if (validateNum.isSuccess && phoneUtil.isValidNumber(validateNum.get)) {
+                                              validNumbers += phoneUtil.format(validateNum.get, PhoneNumberFormat.E164)
+                                              ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.WA, appName, InternalStatus.Received)
+                                            } else {
+                                              ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatup invalid numbers: $r")
+                                              ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.WA, appName, InternalStatus.Rejected)
+                                              invalidNumbers += r
+                                            }
+                                          })
+                                          val waUserName = ListBuffer[String]()
+                                          val checkedContacts = validNumbers.filter { number => {
+                                            WACheckContactService.get(number).get match {
+                                              case Some(wa) =>
+                                                if (wa.waExists.equalsIgnoreCase("true")) {
+                                                  waUserName += wa.waUserName
+                                                  true
+                                                } else
+                                                  false
+                                              case _ => false
+                                            }
+                                          }
+                                          }
+                                          val nonCheckedContacts = validNumbers.diff(checkedContacts)
+                                          // TODO : UserPreference check
+                                          if (checkedContacts.nonEmpty) {
+                                            val waRequest = request.copy(channelInfo = waRequestInfo.copy(destinations = checkedContacts.toSet))
+                                            val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(request, user)
+                                            /* enqueue multiple requests into kafka */
+                                            val (success, failure) = ServiceFactory.getMessageService(Channel.WA).saveRequest(waRequest, queueName, persistPayloadInDataStore = true) match {
+                                              case Success(id) =>
+                                                (Map(id -> checkedContacts.toSet), invalidNumbers ++ nonCheckedContacts)
+                                              case Failure(t) =>
+                                                (Map(), waRequestInfo.destinations)
+                                            }
+                                            val (responseCode, message) = if (success.nonEmpty) Tuple2(StatusCodes.Accepted, "Whatups Send Request Received") else Tuple2(StatusCodes.InternalServerError, "Whatups Send Request Failed")
+                                            GenericResponse(responseCode.intValue, null, SendResponse(message, success.toMap, failure.toList)).respond
+                                          } else {
+                                            GenericResponse(StatusCodes.BadRequest.intValue, null, SendResponse("No valid destinations found", Map.empty, waRequestInfo.destinations.toList)).respond
+                                          }
                                         }
                                       }
+                                      else {
+                                        ConnektLogger(LogFile.SERVICE).error(s"Request Validation Failed, $request ")
+                                        GenericResponse(StatusCodes.BadRequest.intValue, null, Response("Request Validation Failed, Please ensure mandatory field values.", null)).respond
                                       }
-                                      val nonCheckedContacts = validNumbers.diff(checkedContacts)
-                                      // TODO : UserPreference check
-                                      if (checkedContacts.nonEmpty) {
-                                        val waRequest = request.copy(channelInfo = waRequestInfo.copy(destinations = checkedContacts.toSet))
-                                        val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(request, user)
-                                        /* enqueue multiple requests into kafka */
-                                        val (success, failure) = ServiceFactory.getMessageService(Channel.WA).saveRequest(waRequest, queueName, persistPayloadInDataStore = true) match {
-                                          case Success(id) =>
-                                            (Map(id -> checkedContacts.toSet), invalidNumbers ++ nonCheckedContacts)
-                                          case Failure(t) =>
-                                            (Map(), waRequestInfo.destinations)
-                                        }
-                                        val (responseCode, message) = if (success.nonEmpty) Tuple2(StatusCodes.Accepted, "Whatups Send Request Received") else Tuple2(StatusCodes.InternalServerError, "Whatups Send Request Failed")
-                                        GenericResponse(responseCode.intValue, null, SendResponse(message, success.toMap, failure.toList)).respond
-                                      } else {
-                                        GenericResponse(StatusCodes.BadRequest.intValue, null, SendResponse("No valid destinations found", Map.empty, waRequestInfo.destinations.toList)).respond
-                                      }
-                                    }
-                                  }
-                                  else {
-                                    ConnektLogger(LogFile.SERVICE).error(s"Request Validation Failed, $request ")
-                                    GenericResponse(StatusCodes.BadRequest.intValue, null, Response("Request Validation Failed, Please ensure mandatory field values.", null)).respond
                                   }
                                 }
                               }(ioDispatcher)
