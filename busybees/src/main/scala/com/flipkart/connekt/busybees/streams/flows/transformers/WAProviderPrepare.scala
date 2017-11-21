@@ -22,10 +22,12 @@ import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFa
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.iomodels._
+import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.utils.StringUtils._
 
 class WAProviderPrepare extends MapFlowStage[ConnektRequest, (HttpRequest, WARequestTracker)] {
 
+  lazy val baseUrl = ConnektConfig.getConfig("wa.baseUrl").getOrElse("https://10.85.186.106:32785")
   lazy implicit val stencilService = ServiceFactory.getStencilService
 
   override val map: ConnektRequest => List[(HttpRequest, WARequestTracker)] = connektRequest => profile("map") {
@@ -44,7 +46,7 @@ class WAProviderPrepare extends MapFlowStage[ConnektRequest, (HttpRequest, WAReq
       )
 
       val waPayloads = WAPayloadFormatter.makePayload(connektRequest)
-      val uri = "https://10.85.185.89:32785/api/rest_send.php"
+      val uri = baseUrl + "/api/rest_send.php"
       waPayloads.map( waPayload => {
         val requestEntity = HttpEntity(ContentTypes.`application/json`, waPayload.getJson)
         def httpRequest = HttpRequest(HttpMethods.POST, uri, scala.collection.immutable.Seq.empty[HttpHeader], requestEntity)
@@ -63,7 +65,7 @@ class WAProviderPrepare extends MapFlowStage[ConnektRequest, (HttpRequest, WAReq
           Channel.WA,
           connektRequest.contextId.getOrElse(""),
           connektRequest.meta,
-          "SMSChannelFormatter::".concat(e.getMessage),
+          "WAProviderPrepare::".concat(e.getMessage),
           e
         )
     }
