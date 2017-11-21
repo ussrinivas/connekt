@@ -38,8 +38,13 @@ object WAPayloadFormatter{
         }
       case WAType.document =>
         List(WARequest(PDFWaPayload(
-          DocumentData(waRequestData.attachment.get.name, waRequestData.attachment.get.caption.getOrElse("")),
-          connektRequest.channelInfo.asInstanceOf[WARequestInfo].destinations.head
+          FileData(waRequestData.attachment.get.name, waRequestData.attachment.get.caption.getOrElse("")),
+          connektRequest.channelInfo.asInstanceOf[WARequestInfo].destinations.head.replace("+", "")
+        )))
+      case WAType.image =>
+        List(WARequest(ImageWaPayload(
+          FileData(waRequestData.attachment.get.name, waRequestData.attachment.get.caption.getOrElse("")),
+          connektRequest.channelInfo.asInstanceOf[WARequestInfo].destinations.head.replace("+", "")
         )))
       case WAType.text =>
         List(WARequest(TxtWaPayload(

@@ -34,6 +34,7 @@ class WAMediaResponseHandler(implicit m: Materializer, ec: ExecutionContext) ext
 
     val httpResponse = responseTrackerPair._1
     val requestTracker = responseTrackerPair._2
+    var mediaUploaded = false
 
     val messageId = requestTracker.messageId
     val appName = requestTracker.appName
@@ -51,36 +52,38 @@ class WAMediaResponseHandler(implicit m: Materializer, ec: ExecutionContext) ext
             case 200 =>
               val responseBody = stringResponse.getObj[ObjectNode]
               responseBody match {
-                case _ if responseBody.findValue("payload") == null =>
+                case _ if responseBody.findValue("payload").asText() == "null" =>
                   val error = responseBody.get("error")
                   val errorCode = error.findValue("errorcode").asInt()
                   val errorText = error.findValue("errortext").asText()
-                  ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.Error)
+                  ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.MediaUploadError)
                   events += WACallbackEvent(messageId, None, requestTracker.destination, errorText, requestTracker.clientId, appName, requestTracker.contextId, error.asText(), eventTS)
                 case _ if responseBody.findValue("error").asBoolean() == false =>
                   val payload = responseBody.get("payload")
-                  val providerMessageId = payload.get("message_id").asText()
-                  WAMessageIdMappingService.add(WAMessageIdMappingEntity(providerMessageId, requestTracker.messageId, requestTracker.clientId, requestTracker.appName, requestTracker.contextId))
-                  ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.ReceivedHTTP)
-                  events += WACallbackEvent(messageId, None, requestTracker.destination, WAResponseStatus.ReceivedHTTP, requestTracker.clientId, appName, requestTracker.contextId, payload.asText(), eventTS)
+//                  val providerMessageId = payload.get("filename").asText()
+                  mediaUploaded = true
+                  ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.MediaUploaded)
+                  events += WACallbackEvent(messageId, None, requestTracker.destination, WAResponseStatus.MediaUploaded, requestTracker.clientId, appName, requestTracker.contextId, payload.asText(), eventTS)
               }
             case _ =>
-              ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.Error)
-              events += WACallbackEvent(messageId, None, requestTracker.destination, WAResponseStatus.Error, requestTracker.clientId, appName, requestTracker.contextId, stringResponse, eventTS)
+              ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.MediaUploadError)
+              events += WACallbackEvent(messageId, None, requestTracker.destination, WAResponseStatus.MediaUploadError, requestTracker.clientId, appName, requestTracker.contextId, stringResponse, eventTS)
               ConnektLogger(LogFile.PROCESSORS).error(s"WAMediaResponseHandler received http failure for: $messageId with error: $stringResponse")
           }
         } catch {
           case e: Exception =>
-            ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.Error)
-            events += WACallbackEvent(messageId, None, requestTracker.destination, WAResponseStatus.Error, requestTracker.clientId, appName, requestTracker.contextId, e.getMessage, eventTS)
+            ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.MediaUploadError)
+            events += WACallbackEvent(messageId, None, requestTracker.destination, WAResponseStatus.MediaUploadError, requestTracker.clientId, appName, requestTracker.contextId, e.getMessage, eventTS)
             ConnektLogger(LogFile.PROCESSORS).error(s"WAMediaResponseHandler received http failure for: $messageId", e)
         }
       case Failure(e2) =>
-        ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.Error)
-        events += WACallbackEvent(messageId, None, requestTracker.destination, WAResponseStatus.Error, requestTracker.clientId, appName, requestTracker.contextId, e2.getMessage, eventTS)
+        ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.MediaUploadError)
+        events += WACallbackEvent(messageId, None, requestTracker.destination, WAResponseStatus.MediaUploadError, requestTracker.clientId, appName, requestTracker.contextId, e2.getMessage, eventTS)
         ConnektLogger(LogFile.PROCESSORS).error(s"WAMediaResponseHandler received http failure for: $messageId", e2)
     }
     events.enqueue
-    List(requestTracker.request)
+    if(mediaUploaded) List(requestTracker.request) else List()
   })(m.executionContext)
 }
+
+
