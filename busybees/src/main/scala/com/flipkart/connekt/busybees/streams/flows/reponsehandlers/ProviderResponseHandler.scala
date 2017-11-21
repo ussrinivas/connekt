@@ -21,7 +21,7 @@ abstract class PNProviderResponseErrorHandler[I, O1](parallelism: Int = 128) ext
 
 abstract class PNProviderResponseHandler[I](parallelism: Int = 128) extends MapAsyncFlowStage[I, PNCallbackEvent](parallelism) with ProviderResponseHandler
 
-abstract class WaProviderResponseHandler[I](parallelism: Int = 128) extends MapAsyncFlowStage[I, WACallbackEvent](parallelism) with ProviderResponseHandler
+abstract class WAProviderResponseHandler[I](parallelism: Int = 128) extends MapAsyncFlowStage[I, WACallbackEvent](parallelism) with ProviderResponseHandler
 
 abstract class WAMediaProviderResponseHandler[I](parallelism: Int = 128) extends MapAsyncFlowStage[I, ConnektRequest](parallelism) with ProviderResponseHandler
 

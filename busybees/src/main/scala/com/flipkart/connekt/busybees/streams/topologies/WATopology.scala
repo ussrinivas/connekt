@@ -13,29 +13,24 @@
 package com.flipkart.connekt.busybees.streams.topologies
 
 import akka.NotUsed
-import akka.stream._
+import akka.stream.{SourceShape, _}
 import akka.stream.scaladsl.GraphDSL.Implicits._
-import akka.stream.SourceShape
-import akka.stream.scaladsl._
-import akka.stream.scaladsl.{GraphDSL, Merge, Source}
-import com.flipkart.connekt.busybees.models.SmsRequestTracker
-import com.flipkart.connekt.busybees.streams.flows.profilers.TimedFlowOps._
+import akka.stream.scaladsl.{GraphDSL, Merge, Source, _}
 import com.flipkart.connekt.busybees.streams.ConnektTopology
+import com.flipkart.connekt.busybees.streams.flows.FlowMetrics
 import com.flipkart.connekt.busybees.streams.flows.dispatchers.{HttpDispatcher, WAMediaDispatcher}
-import com.flipkart.connekt.busybees.streams.flows.formaters.SmsChannelFormatter
-import com.flipkart.connekt.busybees.streams.flows.{ChooseProvider, FlowMetrics, RenderFlow, SMSTrackingFlow}
-import com.flipkart.connekt.busybees.streams.flows.reponsehandlers.{SmsResponseHandler, WAMediaResponseHandler, WaResponseHandler}
-import com.flipkart.connekt.busybees.streams.flows.transformers.{SmsProviderPrepare, SmsProviderResponseFormatter, WaProviderPrepare}
+import com.flipkart.connekt.busybees.streams.flows.profilers.TimedFlowOps._
+import com.flipkart.connekt.busybees.streams.flows.reponsehandlers.{WAMediaResponseHandler, WAResponseHandler}
+import com.flipkart.connekt.busybees.streams.flows.transformers.WAProviderPrepare
 import com.flipkart.connekt.busybees.streams.sources.KafkaSource
+import com.flipkart.connekt.busybees.streams.topologies.WATopology._
 import com.flipkart.connekt.commons.core.Wrappers.Try_
 import com.flipkart.connekt.commons.entities.Channel
-import com.flipkart.connekt.busybees.streams.topologies.WATopology._
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.services.ConnektConfig
-import com.flipkart.connekt.commons.streams.FirewallRequestTransformer
-import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncType}
 import com.flipkart.connekt.commons.sync.SyncType.SyncType
+import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncType}
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.typesafe.config.Config
 
@@ -118,12 +113,12 @@ object WATopology {
     val waMediaDispatcher = b.add(new WAMediaDispatcher().flow)
     val waHttpPoolMediaFlow = b.add(HttpDispatcher.waPoolClientFlow.timedAs("waMediaRTT"))
     val waMediaResponseHandler = b.add(new WAMediaResponseHandler().flow)
-    val waPrepare = b.add(new WaProviderPrepare().flow)
+    val waPrepare = b.add(new WAProviderPrepare().flow)
     val merge = b.add(Merge[ConnektRequest](2))
     val waHttpPoolFlow = b.add(HttpDispatcher.waPoolClientFlow.timedAs("waRTT"))
 
 //    val providerHandlerParallelism = ConnektConfig.getInt("topology.sms.parse.parallelism").get
-    val waResponseHandler = b.add(new WaResponseHandler()(ioMat,ioDispatcher).flow)
+    val waResponseHandler = b.add(new WAResponseHandler()(ioMat,ioDispatcher).flow)
 
     mediaPartitioner.out(0) ~> waMediaDispatcher ~> waHttpPoolMediaFlow ~> waMediaResponseHandler ~> merge.in(0)
     mediaPartitioner.out(1) ~>                                                                       merge.in(1)

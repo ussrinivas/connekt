@@ -30,7 +30,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
-class WaResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends  WaProviderResponseHandler[(Try[HttpResponse], WARequestTracker)](90) with Instrumented {
+class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends  WAProviderResponseHandler[(Try[HttpResponse], WARequestTracker)](90) with Instrumented {
   override val map: ((Try[HttpResponse], WARequestTracker)) => Future[List[WACallbackEvent]] = responseTrackerPair => Future(profile("map") {
 
     val httpResponse = responseTrackerPair._1
