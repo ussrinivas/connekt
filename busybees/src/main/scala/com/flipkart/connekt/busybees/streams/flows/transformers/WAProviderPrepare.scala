@@ -65,7 +65,7 @@ class WAProviderPrepare extends MapFlowStage[ConnektRequest, (HttpRequest, WAReq
           Channel.WA,
           connektRequest.contextId.getOrElse(""),
           connektRequest.meta,
-          "SMSChannelFormatter::".concat(e.getMessage),
+          "WAProviderPrepare::".concat(e.getMessage),
           e
         )
     }
