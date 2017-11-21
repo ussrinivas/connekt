@@ -21,8 +21,10 @@ import com.flipkart.connekt.busybees.streams.flows.MapFlowStage
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.iomodels.{Attachment, ConnektRequest, WARequestData}
 import com.flipkart.connekt.commons.metrics.Instrumented
+import com.flipkart.connekt.commons.services.ConnektConfig
 
 class WAMediaDispatcher extends MapFlowStage[ConnektRequest, (HttpRequest, WARequestTracker)] with Instrumented {
+  lazy val baseUrl = ConnektConfig.getConfig("wa.baseUrl").getOrElse("https://10.85.186.106:32785")
 
   def createEntity(payload: String, attachment: Attachment): RequestEntity = {
     val data = Base64.rfc2045().decode(attachment.base64Data)
@@ -33,7 +35,6 @@ class WAMediaDispatcher extends MapFlowStage[ConnektRequest, (HttpRequest, WAReq
 
     Multipart.FormData(jsonFormData, fileFormData).toEntity()
   }
-
 
   override val map: (ConnektRequest) => (List[(HttpRequest, WARequestTracker)]) = connektRequest => profile("map"){
     connektRequest.channelData.asInstanceOf[WARequestData].attachment match {
@@ -57,7 +58,7 @@ class WAMediaDispatcher extends MapFlowStage[ConnektRequest, (HttpRequest, WAReq
              |	}
              |}
         """.stripMargin
-        val uri = "https://10.85.185.89:32785/api/upload_outgoing_media.php"
+        val uri = baseUrl + "/api/upload_outgoing_media.php"
 
         val entity = createEntity(mediaPayload, attachment)
         val httpRequest = HttpRequest(HttpMethods.POST, uri = uri, entity = entity)
