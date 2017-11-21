@@ -17,7 +17,7 @@ import akka.stream.{SourceShape, _}
 import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl.{GraphDSL, Merge, Source, _}
 import com.flipkart.connekt.busybees.streams.ConnektTopology
-import com.flipkart.connekt.busybees.streams.flows.FlowMetrics
+import com.flipkart.connekt.busybees.streams.flows.{FlowMetrics, WATrackingFlow}
 import com.flipkart.connekt.busybees.streams.flows.dispatchers.{HttpDispatcher, WAMediaDispatcher}
 import com.flipkart.connekt.busybees.streams.flows.profilers.TimedFlowOps._
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers.{WAMediaResponseHandler, WAResponseHandler}
@@ -109,20 +109,20 @@ object WATopology {
         case _ => 1
       }))
     val trackSmsParallelism = ConnektConfig.getInt("topology.sms.tracking.parallelism").get
-//    val tracking = b.add(new SMSTrackingFlow(trackSmsParallelism)(ioDispatcher).flow)
+
     val waMediaDispatcher = b.add(new WAMediaDispatcher().flow)
     val waHttpPoolMediaFlow = b.add(HttpDispatcher.waPoolClientFlow.timedAs("waMediaRTT"))
     val waMediaResponseHandler = b.add(new WAMediaResponseHandler().flow)
     val waPrepare = b.add(new WAProviderPrepare().flow)
+    val tracking = b.add(new WATrackingFlow(5)(ioDispatcher).flow)
     val merge = b.add(Merge[ConnektRequest](2))
     val waHttpPoolFlow = b.add(HttpDispatcher.waPoolClientFlow.timedAs("waRTT"))
 
-//    val providerHandlerParallelism = ConnektConfig.getInt("topology.sms.parse.parallelism").get
     val waResponseHandler = b.add(new WAResponseHandler()(ioMat,ioDispatcher).flow)
 
     mediaPartitioner.out(0) ~> waMediaDispatcher ~> waHttpPoolMediaFlow ~> waMediaResponseHandler ~> merge.in(0)
     mediaPartitioner.out(1) ~>                                                                       merge.in(1)
-    merge.out ~> waPrepare ~> waHttpPoolFlow ~> waResponseHandler
+    merge.out ~> tracking ~> waPrepare ~> waHttpPoolFlow ~> waResponseHandler
 
     FlowShape(mediaPartitioner.in, waResponseHandler.out)
   })

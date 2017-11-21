@@ -33,7 +33,7 @@ abstract class TrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecu
   lazy private val projectConfigService = ServiceFactory.getUserProjectConfigService
   lazy private val defaultTrackingDomain = ConnektConfig.getString("tracking.default.domain").get
 
-  def transformChannelData(request:ConnektRequest, trackingDomain:String, transformer: TURLTransformer ):ChannelRequestData
+  def transformChannelData(request:ConnektRequest, trackingDomain:String, transformer: TURLTransformer ) : ChannelRequestData
 
   override val map: (ConnektRequest) => Future[List[ConnektRequest]] = input => Future(profile("map") {
     try {
@@ -47,7 +47,9 @@ abstract class TrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecu
       val trackingEnabled = projectConfigService.getProjectConfiguration(input.appName, s"tracking-enabled").get.map(_.value).getOrElse("true").toBoolean
 
       if(trackingEnabled) {
-        List(input.copy(channelData = transformChannelData(input, appDomain, transformer)))
+        List(input.copy(
+          channelData = transformChannelData(input, appDomain, transformer)
+        ))
       } else {
         ConnektLogger(LogFile.PROCESSORS).trace("TrackingFlow skipping since disabled for messageId: {}", supplier(input.id))
         List(input)
@@ -113,3 +115,27 @@ class SMSTrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecutor) e
 
   }
 }
+
+class WATrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecutor) extends TrackingFlow(parallelism)(ec) {
+  override def transformChannelData(input: ConnektRequest, trackingDomain:String, transformer: TURLTransformer ): ChannelRequestData = {
+    val destination = input.channelInfo.asInstanceOf[WARequestInfo].destinations.head
+    val waData = input.channelData.asInstanceOf[WARequestData]
+
+    val trackerOptions = TrackerOptions(domain = trackingDomain,
+      channel = Channel.WA,
+      messageId = input.id,
+      contextId = input.contextId,
+      destination = destination,
+      clientId = input.clientId,
+      appName = input.appName)
+
+    val attachment = waData.attachment.map(attachment => {
+      attachment.copy(caption = attachment.caption.map(caption => {
+        TrackingService.trackText(caption, trackerOptions, transformer)
+      }))
+    })
+    waData.copy(attachment = attachment)
+  }
+
+}
+

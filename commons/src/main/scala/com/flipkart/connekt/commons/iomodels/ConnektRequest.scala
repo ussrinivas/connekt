@@ -72,18 +72,16 @@ case class ConnektRequest(@JsonProperty(required = false) id: String,
     }.getOrElse(channelData)
 
 
-  def validateStencilVariables(implicit stencilService: TStencilService): Try[Boolean] = Try_#(s"Request Stencil Validation Failed, for stencilId : ${stencilId.get} and ChannelDataMode : $channelDataModel") {
-    stencilId.map(stencilService.get(_)).map { stencil =>
-      Channel.withName(channel) match {
-        case Channel.WA =>
-          Try(stencilService.materialize(stencil.head, channelDataModel).asInstanceOf[String]) match {
+  def validateStencilVariables(implicit stencilService: TStencilService): Try[Boolean] = Try_#(s"Request Stencil Validation Failed, for stencilId : ${stencilId.getOrElse("N/A")} and ChannelDataMode : $channelDataModel") {
+    stencilId match {
+      case Some(stencin: String) =>
+        stencilService.get(stencin).map { stencil =>
+          Try(stencilService.materialize(stencil, channelDataModel)) match {
             case Success(_) => true
-            case Failure(f) =>
-              throw new Exception(s"Request Stencil Validation Failed, for stencilId : ${stencilId.get} and ChannelDataMode : $channelDataModel", f)
+            case Failure(_) => false
           }
-        case unsupportedChannel =>
-          throw new Exception(s"`channelData` compute undefined for $unsupportedChannel")
-      }
-    }.get
+        }.reduce(_ & _)
+      case _ => true
+    }
   }
 }

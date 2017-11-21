@@ -45,3 +45,4 @@ abstract class CallbackEvent {
 
   def clientId: String
 }
+
