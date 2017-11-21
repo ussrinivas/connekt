@@ -21,11 +21,10 @@ case class WARequestData(
                         ) extends ChannelRequestData {
   def validate(appName: String)(implicit stencilService: TStencilService): Unit = {
     require(waType != null)
-    require {
-      if (waType.equals(WAType.text))
-        message.isDefined
-      else
-        attachment.isDefined
+    waType match {
+      case WAType.text => require(message.isDefined, "message is required")
+      case WAType.document | WAType.image | WAType.audio => require(attachment.isDefined, "attachment is required")
+      case _ => None
     }
   }
 }
