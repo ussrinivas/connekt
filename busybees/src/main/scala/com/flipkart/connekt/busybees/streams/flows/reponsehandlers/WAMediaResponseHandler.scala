@@ -16,13 +16,12 @@ import akka.http.scaladsl.model.HttpResponse
 import akka.stream.Materializer
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.flipkart.connekt.busybees.models.WARequestTracker
-import com.flipkart.connekt.commons.entities.{Channel, WAMessageIdMappingEntity}
+import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.WAResponseStatus
 import com.flipkart.connekt.commons.iomodels.{ConnektRequest, WACallbackEvent}
 import com.flipkart.connekt.commons.metrics.Instrumented
-import com.flipkart.connekt.commons.services.WAMessageIdMappingService
 import com.flipkart.connekt.commons.utils.StringUtils._
 
 import scala.collection.mutable.ListBuffer
