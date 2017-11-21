@@ -17,6 +17,8 @@ import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
 import com.flipkart.connekt.firefly.sinks.http.HttpRequestTracker
 import com.typesafe.config.Config
+import com.typesafe.sslconfig.akka.AkkaSSLConfig
+import com.typesafe.sslconfig.ssl.{TrustManagerConfig, TrustStoreConfig}
 
 import scala.concurrent.ExecutionContextExecutor
 
@@ -26,7 +28,22 @@ class HttpDispatcher(actorSystemConf: Config) {
   implicit val httpMat: ActorMaterializer = ActorMaterializer()
   implicit val ec: ExecutionContextExecutor = httpSystem.dispatcher
 
-  val callbackHttpPoolFlow = Http().superPool[HttpRequestTracker]()(httpMat)
+  private val waCheckContactPoolClientFlow = {
+
+    val trustStoreConfig = TrustStoreConfig(None, Some("/etc/connekt/keystore/wa.cer")).withStoreType("PEM")
+    val trustManagerConfig = TrustManagerConfig().withTrustStoreConfigs(List(trustStoreConfig))
+
+    val badSslConfig = AkkaSSLConfig().mapSettings(s => s.withLoose(s.loose
+      .withAcceptAnyCertificate(true)
+      .withDisableHostnameVerification(true)
+    ).withTrustManagerConfig(trustManagerConfig))
+
+    val badCtx = Http().createClientHttpsContext(badSslConfig)
+
+    Http().superPool[HttpRequestTracker](badCtx)(httpMat)
+  }
+
+  val httpPoolFlow = Http().superPool[HttpRequestTracker]()(httpMat)
 }
 
 object HttpDispatcher {
@@ -39,6 +56,7 @@ object HttpDispatcher {
     }
   }
 
-  def httpFlow = dispatcher.map(_.callbackHttpPoolFlow).get
+  def waCheckContactPoolClientFlow = dispatcher.map(_.waCheckContactPoolClientFlow).get
 
+  def httpFlow = dispatcher.map(_.httpPoolFlow).get
 }

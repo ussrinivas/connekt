@@ -16,7 +16,6 @@ import com.flipkart.connekt.commons.dao._
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.helpers.KafkaProducerHelper
-import com.flipkart.connekt.commons.iomodels.PullRequestInfo
 import com.flipkart.connekt.commons.services.{KeyChainService, _}
 import com.typesafe.config.Config
 import org.apache.hadoop.hbase.client.Connection
@@ -78,6 +77,10 @@ object ServiceFactory {
     serviceCache += ServiceType.PULL_QUEUE -> new MessageQueueService(dao, config.getConfig("inapp").getInt("ttl").days.toMillis, config.getConfig("inapp").getInt("maxRecords"))
   }
 
+  def initContactSyncService(queueProducerHelper: KafkaProducerHelper): Unit = {
+    serviceCache += ServiceType.CONTACT -> new ContactService(queueProducerHelper)
+  }
+
   def getMessageService(channel: Channel): TMessageService = {
     channel match {
       case Channel.PUSH => serviceCache(ServiceType.PN_MESSAGE).asInstanceOf[TMessageService]
@@ -110,8 +113,10 @@ object ServiceFactory {
 
   def getUserProjectConfigService = serviceCache(ServiceType.APP_CONFIG).asInstanceOf[UserProjectConfigService]
 
+  def getContactService = serviceCache(ServiceType.CONTACT).asInstanceOf[ContactService]
+
 }
 
 object ServiceType extends Enumeration {
-  val PN_MESSAGE, TEMPLATE, CALLBACK, USER_INFO, AUTHORISATION, KEY_CHAIN, STATS_REPORTING, SCHEDULER, STENCIL, SMS_MESSAGE, EMAIL_MESSAGE, APP_CONFIG, FETCH_PUSH_QUEUE, PULL_MESSAGE, PULL_QUEUE = Value
+  val PN_MESSAGE, TEMPLATE, CALLBACK, USER_INFO, AUTHORISATION, KEY_CHAIN, STATS_REPORTING, SCHEDULER, STENCIL, SMS_MESSAGE, WA_MESSAGE, EMAIL_MESSAGE, APP_CONFIG, FETCH_PUSH_QUEUE, PULL_MESSAGE, PULL_QUEUE, CONTACT = Value
 }

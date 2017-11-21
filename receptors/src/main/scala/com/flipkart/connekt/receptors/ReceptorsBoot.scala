@@ -83,6 +83,7 @@ object ReceptorsBoot extends BaseApp {
       ServiceFactory.initProjectConfigService(DaoFactory.getUserProjectConfigDao)
       ServiceFactory.initStatsReportingService(DaoFactory.getStatsReportingDao)
       ServiceFactory.initStencilService(DaoFactory.getStencilDao)
+      ServiceFactory.initContactSyncService(kafkaProducerHelper)
 
       //Start up the receptors
       ReceptorsServer(ConnektConfig.getConfig("react").get)

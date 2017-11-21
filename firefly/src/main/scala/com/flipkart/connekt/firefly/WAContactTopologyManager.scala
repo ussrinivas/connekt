@@ -14,35 +14,33 @@ package com.flipkart.connekt.firefly
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.services.ConnektConfig
 import com.typesafe.config.Config
 
-class InternalTopologyManager(kafkaConsumerConnConf: Config)(implicit am: ActorMaterializer, sys: ActorSystem) extends TopologyManager {
+class WAContactTopologyManager(kafkaConsumerConnConf: Config)(implicit am: ActorMaterializer, sys: ActorSystem) extends TopologyManager {
 
-  private lazy val CALLBACK_QUEUE_NAME = ConnektConfig.get("firefly.latency.metric.kafka.topic").getOrElse("ckt_callback_events_%s")
-  private val LATENCY_METRIC_NAME = "LatencyMetrics"
+  private lazy val WA_TOPIC = ConnektConfig.get("firefly.wa.contact.kafka.topic").get
+  private val CONSUMER_NAME = "WA_CONTACT_CONSUMER"
 
   kafkaGroupNames = List(
-    Map("name" -> Channel.SMS.toString.toUpperCase.concat(LATENCY_METRIC_NAME),
-      "topic" -> CALLBACK_QUEUE_NAME.format(Channel.SMS.toString.toLowerCase))
+    Map("name" -> CONSUMER_NAME, "topic" -> WA_TOPIC)
   )
 
   override def startTopology(topicName: String, kafkaGroupName: String): Unit = {
-    val (streamComplete, killSwitch) = new InternalTopology(kafkaConsumerConnConf, topicName, kafkaGroupName).start()
+    val (streamComplete, killSwitch) = new WAContactTopology(kafkaConsumerConnConf, topicName, kafkaGroupName).start()
     triggers += kafkaGroupName -> killSwitch
     streamComplete.onComplete(_ => triggers -= kafkaGroupName)(am.executionContext)
   }
 
 }
 
-object InternalTopologyManager {
-  var instance: InternalTopologyManager = _
+object WAContactTopologyManager {
+  var instance: WAContactTopologyManager = _
 
-  def apply(kafkaConsumerConnConf: Config)(implicit am: ActorMaterializer, sys: ActorSystem): InternalTopologyManager = {
+  def apply(kafkaConsumerConnConf: Config)(implicit am: ActorMaterializer, sys: ActorSystem): WAContactTopologyManager = {
     if (null == instance)
       this.synchronized {
-        instance = new InternalTopologyManager(kafkaConsumerConnConf)(am, sys)
+        instance = new WAContactTopologyManager(kafkaConsumerConnConf)(am, sys)
         instance.restoreState()
       }
     instance
