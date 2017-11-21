@@ -45,18 +45,18 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) {
           r.status.intValue() match {
             case 200 if response.error.equalsIgnoreCase("false") =>
               results.map(result => {
-                dao.add(WACheckContactEntity(result.input_number, result.wa_username, result.wa_exists, None))
+                dao.add(WACheckContactEntity(result.input_number, result.wa_username, result.wa_exists, Map.empty))
               })
               ConnektLogger(LogFile.PROCESSORS).trace(s"WAResponseHandler contacts updated in hbase : $results")
             case w =>
-              ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler received http response for: $results , with status code $w")
+              ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler received http response for: ${response.getJson} , with status code $w")
           }
         } catch {
           case e: Exception =>
             ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler failed processing http response body for: $r", e)
         }
       case Failure(e2) =>
-        ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler send failure for: ${requestTracker.httpRequest}", e2)
+        ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler send failure for: $requestTracker", e2)
     }
     NotUsed
   }

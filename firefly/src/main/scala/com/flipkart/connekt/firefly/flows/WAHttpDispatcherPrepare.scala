@@ -48,5 +48,5 @@ class WAHttpDispatcherPrepare {
     httpRequest -> requestTrace
   }
 
-  private val sendUri = Uri(ConnektConfig.getString("wa.contact.send.uri").getOrElse("https://10.85.185.89:32785/api/check_contacts.php"))
+  private val sendUri = Uri(s"${ConnektConfig.getString("wa.contact.send.uri.host").get}/api/check_contacts.php")
 }

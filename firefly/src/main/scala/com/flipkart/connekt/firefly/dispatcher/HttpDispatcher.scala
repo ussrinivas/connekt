@@ -28,7 +28,7 @@ class HttpDispatcher(actorSystemConf: Config) {
   implicit val httpMat: ActorMaterializer = ActorMaterializer()
   implicit val ec: ExecutionContextExecutor = httpSystem.dispatcher
 
-  private val waPoolClientFlow = {
+  private val waCheckContactPoolClientFlow = {
 
     val trustStoreConfig = TrustStoreConfig(None, Some("/etc/connekt/keystore/wa.cer")).withStoreType("PEM")
     val trustManagerConfig = TrustManagerConfig().withTrustStoreConfigs(List(trustStoreConfig))
@@ -56,8 +56,7 @@ object HttpDispatcher {
     }
   }
 
-  def waPoolClientFlow = dispatcher.map(_.waPoolClientFlow).get
+  def waCheckContactPoolClientFlow = dispatcher.map(_.waCheckContactPoolClientFlow).get
 
   def httpFlow = dispatcher.map(_.httpPoolFlow).get
-
 }

@@ -15,7 +15,7 @@ package com.flipkart.connekt.commons.dao
 import java.util.concurrent.{ScheduledThreadPoolExecutor, TimeUnit}
 
 import com.flipkart.connekt.commons.core.Wrappers._
-import com.flipkart.connekt.commons.dao.HbaseDao.{longHandyFunctions, mapKVHandyFunctions}
+import com.flipkart.connekt.commons.dao.HbaseDao.{RowData, longHandyFunctions, mapKVHandyFunctions}
 import com.flipkart.connekt.commons.entities.WACheckContactEntity
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, THTableFactory}
 import com.flipkart.connekt.commons.iomodels.Contact
@@ -42,6 +42,8 @@ class WACheckContactDao(tableName: String, hTableFactory: THTableFactory) extend
     }
   }, 60, 60, TimeUnit.SECONDS)
 
+  val dataColFamilies = List("d")
+
   override def close(): Unit = {
     flusher.cancel(true)
     Option(hTableMutator).foreach(_.close())
@@ -58,9 +60,9 @@ class WACheckContactDao(tableName: String, hTableFactory: THTableFactory) extend
       "destination" -> checkContactEntity.destination.getUtf8Bytes,
       "waUserName" -> checkContactEntity.waUserName.getUtf8Bytes,
       "waExists" -> checkContactEntity.waExists.getUtf8Bytes,
-      "waLastCheckContactTS" -> checkContactEntity.waLastCheckContactTS.getBytes
+      "waLastCheckContactTS" -> checkContactEntity.waLastCheckContactTS.getBytes,
+      "lastContacted" -> Option(checkContactEntity.lastContacted).map(_.getJson.getUtf8Bytes).orNull
     )
-    checkContactEntity.lastContacted.foreach(entity += "lastContacted" -> _.getBytes)
     val rD = Map[String, Map[String, Array[Byte]]](columnFamily -> entity.toMap)
     asyncAddRow(rowKey, rD)(hTableMutator)
     ConnektLogger(LogFile.DAO).info(s"WAEntry added for destination ${checkContactEntity.destination} with waExists ${checkContactEntity.waExists}")
@@ -78,7 +80,7 @@ class WACheckContactDao(tableName: String, hTableFactory: THTableFactory) extend
         fields.get("destination").map(v => v.getString).orNull,
         fields.get("waUserName").map(v => v.getString).orNull,
         fields.get("waExists").map(v => v.getString).orNull,
-        Option(fields.getL("lastContacted")).map(_.asInstanceOf[Long]),
+        Option(fields.get("lastContacted")).map(_.asInstanceOf[Map[String, Long]]).getOrElse(Map.empty),
         fields.getL("waLastCheckContactTS").asInstanceOf[Long]
       )
     })
@@ -98,7 +100,7 @@ class WACheckContactDao(tableName: String, hTableFactory: THTableFactory) extend
           fields.get("destination").map(v => v.getString).orNull,
           fields.get("waUserName").map(v => v.getString).orNull,
           fields.get("waExists").map(v => v.getString).orNull,
-          Option(fields.getL("lastContacted")).map(_.asInstanceOf[Long]),
+          Option(fields.get("lastContacted")).map(_.asInstanceOf[Map[String, Long]]).getOrElse(Map.empty),
           fields.getL("waLastCheckContactTS").asInstanceOf[Long]
         )
       })
@@ -107,15 +109,23 @@ class WACheckContactDao(tableName: String, hTableFactory: THTableFactory) extend
   }
 
   @Timed("getAll")
-  def getAll:Iterator[Contact] = {
+  def getAllContacts: Iterator[Contact] = {
     implicit val hTableInterface = hTableConnFactory.getTableInterface(hTableName)
     try {
       val scan = new Scan()
       scan.addColumn(columnFamily.getBytes, "destination".getBytes)
       val resultScanner = hTableInterface.getScanner(scan)
-      resultScanner.iterator().toIterator.map(r =>
-        Contact(r.value.getString)
-      )
+      resultScanner.iterator().toIterator.map(r => {
+        val resultMap: RowData = getRowData(r, dataColFamilies)
+        val contactProps = resultMap.get("d")
+        contactProps.map(fields => {
+          def getOption(key: String) = fields.get(key).map(v => v.getString)
+
+          def get(key: String) = getOption(key).orNull
+
+          Contact(user_identifier = get("destination"))
+        }).get
+      })
     }
   }
 

@@ -19,7 +19,7 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 
 class ContactService(queueProducerHelper: KafkaProducerHelper) extends TService with Instrumented {
 
-  private final val WA_CONTACT_QUEUE = "WA_CONTACT"
+  private final val WA_CONTACT_QUEUE = ConnektConfig.getString("wa.check.contact.queue.name").get
 
   def enqueueContactEvents(contact: Contact): Unit = {
     val reqWithId = generateUUID

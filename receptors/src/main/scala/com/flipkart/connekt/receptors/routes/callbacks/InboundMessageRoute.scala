@@ -49,15 +49,13 @@ class InboundMessageRoute(implicit am: ActorMaterializer) extends BaseJsonHandle
                         event.validate()
                         event.enqueue
                         ConnektLogger(LogFile.SERVICE).debug(s"Received inbound event {}", supplier(event.toString))
-                        complete(GenericResponse(StatusCodes.OK.intValue, null, Response("Event saved successfully.", null)))
+                        complete(GenericResponse(StatusCodes.OK.intValue, null, Response("InboundMessage event recieved successfully.", null)))
                       }
                     }
                   }
                 }
             }
-
           }
-
         }
     }
 }

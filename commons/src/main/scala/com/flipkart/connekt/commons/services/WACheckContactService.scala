@@ -23,7 +23,8 @@ import scala.util.Try
 object WACheckContactService extends Instrumented {
 
   private lazy val dao = DaoFactory.getWACheckContactDao
-  private final val WA_CONTACT_BATCH = 1000
+  private final val WA_CONTACT_BATCH = ConnektConfig.getInt("wa.check.contact.batch.size").getOrElse(1000)
+  private lazy val contactService = ServiceFactory.getContactService
 
   @Timed("add")
   def add(checkContactEntity: WACheckContactEntity): Try[Unit] = profile("add") {
@@ -45,9 +46,8 @@ object WACheckContactService extends Instrumented {
     val task = new Runnable {
       override def run() = {
         try {
-          dao.getAll.grouped(WA_CONTACT_BATCH).foreach(seq => {
-            val ref = ServiceFactory.getContactService
-            seq.map(contact => ref.enqueueContactEvents(contact))
+          dao.getAllContacts.grouped(WA_CONTACT_BATCH).foreach(seq => {
+            seq.foreach(contact => contactService.enqueueContactEvents(contact))
           })
         } catch {
           case e: Exception =>

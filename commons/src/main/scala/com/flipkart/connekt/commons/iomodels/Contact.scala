@@ -13,6 +13,5 @@
 package com.flipkart.connekt.commons.iomodels
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import org.apache.commons.lang3.StringUtils
 
-case class Contact(@JsonProperty(required = true) user_identifier: String, account_id: String = StringUtils.EMPTY)
+case class Contact(@JsonProperty(required = true) user_identifier: String)

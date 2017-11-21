@@ -426,15 +426,19 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                           invalidNumbers += r
                                         }
                                       })
-                                     /* val checkedContacts = validNumbers.filter { number => {
+                                      val waUserName = ListBuffer[String]()
+                                      val checkedContacts = validNumbers.filter { number => {
                                         WACheckContactService.get(number).get match {
-                                          case Some(wa) => wa.waExists.equalsIgnoreCase("true")
-                                          case None => false
+                                          case Some(wa) =>
+                                            if (wa.waExists.equalsIgnoreCase("true")) {
+                                              waUserName += wa.waUserName
+                                              true
+                                            } else
+                                              false
+                                          case _ => false
                                         }
-                                      }}*/
-
-                                      val checkedContacts = validNumbers
-
+                                      }
+                                      }
                                       val nonCheckedContacts = validNumbers.diff(checkedContacts)
                                       // TODO : UserPreference check
                                       if (checkedContacts.nonEmpty) {
