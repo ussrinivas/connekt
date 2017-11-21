@@ -30,6 +30,7 @@ import com.flipkart.connekt.receptors.directives.MPlatformSegment
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
 import com.flipkart.connekt.receptors.wire.ResponseUtils._
 import com.google.i18n.phonenumbers.PhoneNumberUtil
+import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -187,7 +188,8 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                           val appDefaultCountryCode = appLevelConfigService.getProjectConfiguration("fk-whatsapp", "app-local-country-code").get.get.value.getObj[ObjectNode]
                           val validateNum = Try(phoneUtil.parse(contact.user_identifier, appDefaultCountryCode.get("localRegion").asText.trim.toUpperCase))
                           if (validateNum.isSuccess && phoneUtil.isValidNumber(validateNum.get)) {
-                            contactService.enqueueContactEvents(contact)
+                            val updatedContact = contact.copy(user_identifier = phoneUtil.format(validateNum.get, PhoneNumberFormat.E164))
+                            contactService.enqueueContactEvents(updatedContact)
                             complete(GenericResponse(StatusCodes.Accepted.intValue, null, Response("Contact registration request received", null)))
                           } else {
                             ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatup invalid numbers: $validateNum")

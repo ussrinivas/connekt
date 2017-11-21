@@ -20,6 +20,7 @@ import com.flipkart.connekt.commons.entities.WACheckContactEntity
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, THTableFactory}
 import com.flipkart.connekt.commons.iomodels.Contact
 import com.flipkart.connekt.commons.metrics.Instrumented
+import com.flipkart.connekt.commons.serializers.KryoSerializer
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.metrics.Timed
 import com.roundeights.hasher.Implicits.stringToHasher
@@ -61,7 +62,8 @@ class WACheckContactDao(tableName: String, hTableFactory: THTableFactory) extend
       "waUserName" -> checkContactEntity.waUserName.getUtf8Bytes,
       "waExists" -> checkContactEntity.waExists.getUtf8Bytes,
       "waLastCheckContactTS" -> checkContactEntity.waLastCheckContactTS.getBytes,
-      "lastContacted" -> Option(checkContactEntity.lastContacted).map(_.getJson.getUtf8Bytes).orNull
+      "lastContacted" -> KryoSerializer.serialize(checkContactEntity.lastContacted)
+
     )
     val rD = Map[String, Map[String, Array[Byte]]](columnFamily -> entity.toMap)
     asyncAddRow(rowKey, rD)(hTableMutator)
@@ -80,7 +82,7 @@ class WACheckContactDao(tableName: String, hTableFactory: THTableFactory) extend
         fields.get("destination").map(v => v.getString).orNull,
         fields.get("waUserName").map(v => v.getString).orNull,
         fields.get("waExists").map(v => v.getString).orNull,
-        Option(fields.get("lastContacted")).map(_.asInstanceOf[Map[String, Long]]).getOrElse(Map.empty),
+        fields.get("lastContacted").map(KryoSerializer.deserialize[Map[String, Long]]).getOrElse(Map.empty[String, Long]),
         fields.getL("waLastCheckContactTS").asInstanceOf[Long]
       )
     })
@@ -100,7 +102,7 @@ class WACheckContactDao(tableName: String, hTableFactory: THTableFactory) extend
           fields.get("destination").map(v => v.getString).orNull,
           fields.get("waUserName").map(v => v.getString).orNull,
           fields.get("waExists").map(v => v.getString).orNull,
-          Option(fields.get("lastContacted")).map(_.asInstanceOf[Map[String, Long]]).getOrElse(Map.empty),
+          fields.get("lastContacted").map(_.asInstanceOf[Map[String, Long]]).getOrElse(Map.empty),
           fields.getL("waLastCheckContactTS").asInstanceOf[Long]
         )
       })
