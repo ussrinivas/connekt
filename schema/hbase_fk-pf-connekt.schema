@@ -46,6 +46,3 @@ enable 'fk-connekt-pull-info'
 disable 'fk-connekt-pull-events'
 alter 'fk-connekt-pull-events', {NAME => 'e', VERSIONS => '1', TTL => '7776000',  COMPRESSION => 'SNAPPY'}
 enable 'fk-connekt-pull-events'
-
-
-create 'fk-connekt-wa-message-mapping', {NAME => 'd', VERSIONS => '1', TTL => '1296000',  COMPRESSION => 'GZ'}
