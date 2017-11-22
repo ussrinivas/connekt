@@ -22,7 +22,7 @@ import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFa
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.iomodels._
-import com.flipkart.connekt.commons.services.{DeviceDetailsService, ExclusionService, WACheckContactService}
+import com.flipkart.connekt.commons.services.{DeviceDetailsService, ExclusionService, WAContactService}
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.receptors.directives.MPlatformSegment
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
@@ -433,10 +433,10 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                           })
                                           val waUserName = ListBuffer[String]()
                                           val checkedContacts = validNumbers.filter { number => {
-                                            WACheckContactService.get(number).get match {
+                                            WAContactService.instance.get(number).get match {
                                               case Some(wa) =>
-                                                if (wa.waExists.equalsIgnoreCase("true")) {
-                                                  waUserName += wa.waUserName
+                                                if (wa.exists.equalsIgnoreCase("true")) {
+                                                  waUserName += wa.userName
                                                   true
                                                 } else
                                                   false

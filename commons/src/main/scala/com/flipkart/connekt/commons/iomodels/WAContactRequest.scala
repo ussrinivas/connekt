@@ -12,12 +12,9 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
-import com.fasterxml.jackson.databind.node.ObjectNode
+import com.fasterxml.jackson.annotation.JsonProperty
 
-trait WAGeneratedEvent
+case class WAContactRequest(@JsonProperty payload: Payload)
 
-case class WAResponse(meta: ObjectNode, payload: Results, error: String) extends WAGeneratedEvent
-
-case class Results(results: List[WAContact])
-
-case class WAContact(input_number: String, wa_exists: String, wa_username: String)
+case class Payload(@JsonProperty blocking: String = "wait",
+                   @JsonProperty(required = true) users: List[String])

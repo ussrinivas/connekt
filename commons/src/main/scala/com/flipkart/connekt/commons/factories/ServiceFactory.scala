@@ -16,7 +16,6 @@ import com.flipkart.connekt.commons.dao._
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.helpers.KafkaProducerHelper
-import com.flipkart.connekt.commons.iomodels.PullRequestInfo
 import com.flipkart.connekt.commons.services.{KeyChainService, _}
 import com.typesafe.config.Config
 import org.apache.hadoop.hbase.client.Connection
@@ -83,7 +82,7 @@ object ServiceFactory {
   }
 
   def initContactSyncService(queueProducerHelper: KafkaProducerHelper): Unit = {
-    serviceCache += ServiceType.CONTACT -> new ContactService(queueProducerHelper)
+    serviceCache += ServiceType.CONTACT -> WAContactService(queueProducerHelper)
   }
 
   def getMessageService(channel: Channel): TMessageService = {
@@ -119,7 +118,7 @@ object ServiceFactory {
 
   def getUserProjectConfigService = serviceCache(ServiceType.APP_CONFIG).asInstanceOf[UserProjectConfigService]
 
-  def getContactService = serviceCache(ServiceType.CONTACT).asInstanceOf[ContactService]
+  def getContactService = serviceCache(ServiceType.CONTACT).asInstanceOf[WAContactService]
 
 }
 
