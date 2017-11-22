@@ -116,9 +116,17 @@ class WAContactDao(tableName: String, hTableFactory: THTableFactory) extends Dao
     implicit val hTableInterface = hTableConnFactory.getTableInterface(hTableName)
     try {
       val scan = new Scan()
-      scan.addColumn(columnFamily.getBytes, "destination".getBytes)
+      val colDestTuple = (columnFamily.getBytes, "destination".getBytes)
+      val colAppTuple = (columnFamily.getBytes, "appName".getBytes)
+      scan.addColumn(colDestTuple._1, colDestTuple._2)
+      scan.addColumn(colAppTuple._1, colAppTuple._2)
       val resultScanner = hTableInterface.getScanner(scan)
-      resultScanner.iterator().toIterator.map(r => ContactPayload(Bytes.toString(r.value)))
+      resultScanner.iterator().toIterator.map(r =>
+        ContactPayload(
+          Bytes.toString(r.getValue(colDestTuple._1, colDestTuple._2)),
+          Bytes.toString(r.getValue(colAppTuple._1, colAppTuple._2))
+        )
+      )
     }
   }
 
