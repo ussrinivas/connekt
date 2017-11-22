@@ -93,6 +93,7 @@ object MessageStatus {
     val InternalError = Value("wa_server_error")
     val AuthError = Value("wa_auth_error")
     val Delivered = Value("wa_delivered")
+    val WANotExist = Value("wa_not_exists")
   }
 
 

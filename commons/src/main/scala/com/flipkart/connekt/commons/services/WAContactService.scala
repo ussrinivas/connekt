@@ -34,16 +34,16 @@ class WAContactService(queueProducerHelper: KafkaProducerHelper) extends TServic
   }
 
   @Timed("get")
-  def get(destination: String): Try[Option[WAContactEntity]] = profile("get") {
-    dao.get(destination)
+  def get(appName: String, destination: String): Try[Option[WAContactEntity]] = profile("get") {
+    dao.get(appName, destination)
   }
 
   @Timed("gets")
-  def gets(destinations: Set[String]): Try[List[WAContactEntity]] = profile("gets") {
-    dao.gets(destinations)
+  def gets(appName: String, destinations: Set[String]): Try[List[WAContactEntity]] = profile("gets") {
+    dao.gets(appName, destinations)
   }
 
-  def refreshWAContacts =  {
+  def refreshWAContacts = {
     val task = new Runnable {
       override def run() = {
         profile("refreshAll") {

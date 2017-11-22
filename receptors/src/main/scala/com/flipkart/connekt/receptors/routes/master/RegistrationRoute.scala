@@ -176,7 +176,8 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                     }
                   }
               }
-            } ~ path("wa") {
+            } ~ path("wa" / Segment) {
+              (appName: String) =>
               extractTestRequestContext { isTestRequest =>
                 authorize(user, "REGISTRATION_WA") {
                   withRequestTimeout(registrationTimeout) {
@@ -185,10 +186,10 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                         entity(as[ContactPayload]) { contact =>
                           val appLevelConfigService = ServiceFactory.getUserProjectConfigService
                           val phoneUtil: PhoneNumberUtil = PhoneNumberUtil.getInstance()
-                          val appDefaultCountryCode = appLevelConfigService.getProjectConfiguration("fk-whatsapp", "app-local-country-code").get.get.value.getObj[ObjectNode]
+                          val appDefaultCountryCode = appLevelConfigService.getProjectConfiguration(appName, "app-local-country-code").get.get.value.getObj[ObjectNode]
                           val validateNum = Try(phoneUtil.parse(contact.user_identifier, appDefaultCountryCode.get("localRegion").asText.trim.toUpperCase))
                           if (validateNum.isSuccess && phoneUtil.isValidNumber(validateNum.get)) {
-                            val updatedContact = contact.copy(user_identifier = phoneUtil.format(validateNum.get, PhoneNumberFormat.E164))
+                            val updatedContact = contact.copy(user_identifier = phoneUtil.format(validateNum.get, PhoneNumberFormat.E164), appName = appName)
                             contactService.enqueueContactEvents(updatedContact)
                             complete(GenericResponse(StatusCodes.Accepted.intValue, null, Response("Contact registration request received", null)))
                           } else {
@@ -205,4 +206,5 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
           }
         }
     }
+
 }

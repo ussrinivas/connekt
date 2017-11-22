@@ -10,11 +10,11 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.commons.entities
+package com.flipkart.connekt.busybees.models
 
-case class WAContactEntity(destination: String,
-                           userName: String,
-                           appName: String,
-                           exists: String,
-                           lastContacted: Option[Long],
-                           lastCheckContactTS: Long = System.currentTimeMillis)
+import akka.http.scaladsl.model.HttpRequest
+
+case class WAContactTracker(
+                             httpRequest: HttpRequest,
+                             appName: String,
+                           )

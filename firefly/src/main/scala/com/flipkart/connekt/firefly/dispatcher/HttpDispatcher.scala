@@ -15,6 +15,7 @@ package com.flipkart.connekt.firefly.dispatcher
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
+import com.flipkart.connekt.busybees.models.WAContactTracker
 import com.flipkart.connekt.firefly.sinks.http.HttpRequestTracker
 import com.typesafe.config.Config
 import com.typesafe.sslconfig.akka.AkkaSSLConfig
@@ -39,10 +40,11 @@ class HttpDispatcher(actorSystemConf: Config) {
 
     val badCtx = Http().createClientHttpsContext(badSslConfig)
 
-    Http().superPool[HttpRequestTracker](badCtx)(httpMat)
+    Http().superPool[WAContactTracker](badCtx)(httpMat)
   }
 
   val httpPoolFlow = Http().superPool[HttpRequestTracker]()(httpMat)
+
 }
 
 object HttpDispatcher {
@@ -58,4 +60,5 @@ object HttpDispatcher {
   def insecureHttpFlow = dispatcher.map(_.insecureHttpFlow).get
 
   def httpFlow = dispatcher.map(_.httpPoolFlow).get
+
 }

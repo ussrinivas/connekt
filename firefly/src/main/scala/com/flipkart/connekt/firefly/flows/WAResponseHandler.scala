@@ -16,18 +16,19 @@ import akka.NotUsed
 import akka.http.scaladsl.model._
 import akka.stream.Materializer
 import akka.stream.scaladsl.Flow
+import com.flipkart.connekt.busybees.models.WAContactTracker
 import com.flipkart.connekt.commons.entities.WAContactEntity
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels.WAResponse
 import com.flipkart.connekt.commons.services.WAContactService
 import com.flipkart.connekt.commons.utils.StringUtils._
-import com.flipkart.connekt.firefly.sinks.http.HttpRequestTracker
+
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success, Try}
 
 class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) {
 
-  val flow: Flow[(Try[HttpResponse], HttpRequestTracker), NotUsed, NotUsed] = Flow[(Try[HttpResponse], HttpRequestTracker)].map { responseTrackerPair =>
+  val flow: Flow[(Try[HttpResponse], WAContactTracker), NotUsed, NotUsed] = Flow[(Try[HttpResponse], WAContactTracker)].map { responseTrackerPair =>
 
     val httpResponse = responseTrackerPair._1
     val requestTracker = responseTrackerPair._2
@@ -42,7 +43,7 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) {
           r.status.intValue() match {
             case 200 if response.error.equalsIgnoreCase("false") =>
               results.map(result => {
-                WAContactService.instance.add(WAContactEntity(result.input_number, result.wa_username, result.wa_exists, Map.empty))
+                WAContactService.instance.add(WAContactEntity(result.input_number, result.wa_username,requestTracker.appName, result.wa_exists, None))
               })
               ConnektLogger(LogFile.PROCESSORS).trace(s"WAResponseHandler contacts updated in hbase : $results")
             case w =>
