@@ -78,7 +78,7 @@ object ServiceFactory {
   }
 
   def initContactSyncService(queueProducerHelper: KafkaProducerHelper): Unit = {
-    serviceCache += ServiceType.CONTACT -> new ContactService(queueProducerHelper)
+    serviceCache += ServiceType.CONTACT -> WAContactService(queueProducerHelper)
   }
 
   def getMessageService(channel: Channel): TMessageService = {
@@ -113,7 +113,7 @@ object ServiceFactory {
 
   def getUserProjectConfigService = serviceCache(ServiceType.APP_CONFIG).asInstanceOf[UserProjectConfigService]
 
-  def getContactService = serviceCache(ServiceType.CONTACT).asInstanceOf[ContactService]
+  def getContactService = serviceCache(ServiceType.CONTACT).asInstanceOf[WAContactService]
 
 }
 

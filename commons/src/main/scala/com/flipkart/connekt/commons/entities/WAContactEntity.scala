@@ -12,8 +12,8 @@
  */
 package com.flipkart.connekt.commons.entities
 
-case class WACheckContactEntity(destination: String,
-                                waUserName: String,
-                                waExists: String,
-                                lastContacted: Map[String, Long],
-                                waLastCheckContactTS: Long = System.currentTimeMillis)
+case class WAContactEntity(destination: String,
+                           userName: String,
+                           exists: String,
+                           lastContactedApp: Map[String, Long], /* AppName, timestamp*/
+                           lastCheckContactTS: Long = System.currentTimeMillis)

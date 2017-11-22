@@ -13,24 +13,19 @@
 package com.flipkart.connekt.commons.dao
 
 import java.util.concurrent.TimeUnit
-
 import com.aerospike.client.async.AsyncClient
 import com.couchbase.client.java.Bucket
 import com.flipkart.connekt.commons.connections.TConnectionProvider
 import com.flipkart.connekt.commons.factories.{HTableFactory, MySQLFactory, THTableFactory, TMySQLFactory}
 import com.typesafe.config.Config
-
 import scala.concurrent.duration._
 
 object DaoFactory {
 
-  var connectionProvider: TConnectionProvider = null
-
+  private var connectionProvider: TConnectionProvider = null
   private var daoMap = Map[DaoType.Value, Dao]()
-  var mysqlFactoryWrapper: TMySQLFactory = null
-
+  private var mysqlFactoryWrapper: TMySQLFactory = null
   private var hTableFactory: THTableFactory = null
-
   private var couchBaseCluster: com.couchbase.client.java.Cluster = null
   private var couchbaseBuckets: Map[String, Bucket] = null
 
@@ -43,7 +38,7 @@ object DaoFactory {
 
     daoMap += DaoType.DEVICE_DETAILS -> DeviceDetailsDao("connekt-registry", hTableFactory)
     daoMap += DaoType.EXCLUSION_DETAILS -> ExclusionDao("fk-connekt-exclusions", hTableFactory)
-    daoMap += DaoType.WA_CHECK_CONTACT -> WACheckContactDao("fk-connekt-wa-check-contact", hTableFactory)
+    daoMap += DaoType.WA_CONTACT -> WAContactDao("fk-connekt-wa-contact", hTableFactory)
     daoMap += DaoType.PN_REQUEST_INFO -> PNRequestDao(tableName = "fk-connekt-pn-info", hTableFactory = hTableFactory)
     daoMap += DaoType.SMS_REQUEST_INFO -> SmsRequestDao(tableName = "fk-connekt-sms-info", hTableFactory = hTableFactory)
     daoMap += DaoType.PULL_REQUEST_INFO -> PullRequestDao(tableName = "fk-connekt-pull-info", hTableFactory = hTableFactory)
@@ -119,7 +114,7 @@ object DaoFactory {
 
   def getExclusionDao: ExclusionDao = daoMap(DaoType.EXCLUSION_DETAILS).asInstanceOf[ExclusionDao]
 
-  def getWACheckContactDao: WACheckContactDao = daoMap(DaoType.WA_CHECK_CONTACT).asInstanceOf[WACheckContactDao]
+  def getWAContactDao: WAContactDao = daoMap(DaoType.WA_CONTACT).asInstanceOf[WAContactDao]
 
   def getPNRequestDao: PNRequestDao = daoMap(DaoType.PN_REQUEST_INFO).asInstanceOf[PNRequestDao]
 
@@ -158,7 +153,7 @@ object DaoType extends Enumeration {
   val DEVICE_DETAILS,
   REQUEST_META,
   EXCLUSION_DETAILS,
-  WA_CHECK_CONTACT,
+  WA_CONTACT,
   WA_REQUEST_INFO,
   WA_MESSAGEID_MAPPING,
   PN_REQUEST_INFO,

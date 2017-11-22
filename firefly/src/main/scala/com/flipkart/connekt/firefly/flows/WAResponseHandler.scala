@@ -16,19 +16,16 @@ import akka.NotUsed
 import akka.http.scaladsl.model._
 import akka.stream.Materializer
 import akka.stream.scaladsl.Flow
-import com.flipkart.connekt.commons.dao.DaoFactory
-import com.flipkart.connekt.commons.entities.WACheckContactEntity
+import com.flipkart.connekt.commons.entities.WAContactEntity
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels.WAResponse
+import com.flipkart.connekt.commons.services.WAContactService
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.firefly.sinks.http.HttpRequestTracker
-
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success, Try}
 
 class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) {
-
-  private lazy val dao = DaoFactory.getWACheckContactDao
 
   val flow: Flow[(Try[HttpResponse], HttpRequestTracker), NotUsed, NotUsed] = Flow[(Try[HttpResponse], HttpRequestTracker)].map { responseTrackerPair =>
 
@@ -39,14 +36,13 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) {
       case Success(r) =>
         try {
 //          TODO: Added metering for errors
-          val response = r.entity.getString(m).getObj[WAResponse]
+          val response = r.entity.asInstanceOf[WAResponse]
           val results = response.payload.results
           ConnektLogger(LogFile.PROCESSORS).debug(s"WAResponseHandler received http response for: $results")
-          ConnektLogger(LogFile.PROCESSORS).trace(s"WAResponseHandler received http response for: $results")
           r.status.intValue() match {
             case 200 if response.error.equalsIgnoreCase("false") =>
               results.map(result => {
-                dao.add(WACheckContactEntity(result.input_number, result.wa_username, result.wa_exists, Map.empty))
+                WAContactService.instance.add(WAContactEntity(result.input_number, result.wa_username, result.wa_exists, Map.empty))
               })
               ConnektLogger(LogFile.PROCESSORS).trace(s"WAResponseHandler contacts updated in hbase : $results")
             case w =>

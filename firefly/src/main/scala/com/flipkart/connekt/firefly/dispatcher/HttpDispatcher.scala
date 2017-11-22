@@ -19,7 +19,6 @@ import com.flipkart.connekt.firefly.sinks.http.HttpRequestTracker
 import com.typesafe.config.Config
 import com.typesafe.sslconfig.akka.AkkaSSLConfig
 import com.typesafe.sslconfig.ssl.{TrustManagerConfig, TrustStoreConfig}
-
 import scala.concurrent.ExecutionContextExecutor
 
 class HttpDispatcher(actorSystemConf: Config) {
@@ -28,7 +27,7 @@ class HttpDispatcher(actorSystemConf: Config) {
   implicit val httpMat: ActorMaterializer = ActorMaterializer()
   implicit val ec: ExecutionContextExecutor = httpSystem.dispatcher
 
-  private val waCheckContactPoolClientFlow = {
+  private val waContactPoolClientFlow = {
 
     val trustStoreConfig = TrustStoreConfig(None, Some("/etc/connekt/keystore/wa.cer")).withStoreType("PEM")
     val trustManagerConfig = TrustManagerConfig().withTrustStoreConfigs(List(trustStoreConfig))
@@ -56,7 +55,7 @@ object HttpDispatcher {
     }
   }
 
-  def waCheckContactPoolClientFlow = dispatcher.map(_.waCheckContactPoolClientFlow).get
+  def waContactPoolClientFlow = dispatcher.map(_.waContactPoolClientFlow).get
 
   def httpFlow = dispatcher.map(_.httpPoolFlow).get
 }

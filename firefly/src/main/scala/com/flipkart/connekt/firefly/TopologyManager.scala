@@ -17,7 +17,7 @@ import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.sync.SyncDelegate
 import com.flipkart.connekt.commons.sync.SyncType._
 
-class TopologyManager extends SyncDelegate {
+trait TopologyManager extends SyncDelegate {
 
   val triggers = scala.collection.mutable.Map[String, KillSwitch]()
 

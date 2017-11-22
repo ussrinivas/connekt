@@ -21,7 +21,7 @@ import akka.stream.scaladsl.Source
 import com.flipkart.connekt.commons.entities.DeviceDetails
 import com.flipkart.connekt.commons.entities.MobilePlatform.MobilePlatform
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
-import com.flipkart.connekt.commons.iomodels.{Contact, GenericResponse, Response}
+import com.flipkart.connekt.commons.iomodels.{ContactPayload, GenericResponse, Response}
 import com.flipkart.connekt.commons.services.{ConnektConfig, DeviceDetailsService}
 import com.flipkart.connekt.commons.utils.GenericUtils.CaseClassPatch
 import com.flipkart.connekt.commons.utils.StringUtils._
@@ -178,7 +178,7 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                   withRequestTimeout(registrationTimeout) {
                     put {
                       meteredResource(s"register.wa.contact") {
-                        entity(as[Contact]) { contact =>
+                        entity(as[ContactPayload]) { contact =>
                           ServiceFactory.getContactService.enqueueContactEvents(contact)
                           complete(GenericResponse(StatusCodes.Accepted.intValue, null, Response("Contact registration request received", null)))
                         }
