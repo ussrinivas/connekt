@@ -10,11 +10,10 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.busybees.models
+package com.flipkart.connekt.firefly.flows.responsehandlers
 
-import akka.http.scaladsl.model.HttpRequest
+import com.flipkart.connekt.firefly.flows.MapAsyncFlowStage
 
-case class WAContactTracker(
-                             httpRequest: HttpRequest,
-                             appName: String
-                           )
+trait ProviderResponseHandler
+
+abstract class WAProviderResponseHandler[I](parallelism: Int = 128) extends MapAsyncFlowStage[I, Nothing](parallelism) with ProviderResponseHandler

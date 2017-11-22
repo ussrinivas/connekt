@@ -10,11 +10,12 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.busybees.models
+package fkint.mp.connekt
 
-import akka.http.scaladsl.model.HttpRequest
+import com.flipkart.concord.publisher.TPublishRequest
 
-case class WAContactTracker(
-                             httpRequest: HttpRequest,
-                             appName: String
-                           )
+case class WAContactEntity(destination: String, userName: String, appName: String, exists: String, lastContacted: String, lastCheckContactTS: String) extends TPublishRequest {
+  override def validate(): Boolean = true
+
+  override def schemaVersion(): String = "1.0"
+}

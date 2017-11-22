@@ -10,25 +10,24 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.firefly.flows
+package com.flipkart.connekt.firefly.flows.responsehandlers
 
-import akka.NotUsed
 import akka.http.scaladsl.model._
 import akka.stream.Materializer
-import akka.stream.scaladsl.Flow
 import com.flipkart.connekt.busybees.models.WAContactTracker
 import com.flipkart.connekt.commons.entities.WAContactEntity
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
-import com.flipkart.connekt.commons.iomodels.WAResponse
-import com.flipkart.connekt.commons.services.WAContactService
+import com.flipkart.connekt.commons.iomodels._
+import com.flipkart.connekt.commons.metrics.Instrumented
+import com.flipkart.connekt.commons.services.{BigfootService, WAContactService}
 import com.flipkart.connekt.commons.utils.StringUtils._
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
-class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) {
+class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends WAProviderResponseHandler[(Try[HttpResponse], WAContactTracker)](96) with Instrumented {
 
-  val flow: Flow[(Try[HttpResponse], WAContactTracker), NotUsed, NotUsed] = Flow[(Try[HttpResponse], WAContactTracker)].map { responseTrackerPair =>
+  override implicit val map: ((Try[HttpResponse], WAContactTracker)) => Future[List[Nothing]] = responseTrackerPair => Future(profile("map") {
 
     val httpResponse = responseTrackerPair._1
     val requestTracker = responseTrackerPair._2
@@ -36,14 +35,16 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) {
     httpResponse match {
       case Success(r) =>
         try {
-//          TODO: Added metering for errors
+          //          TODO: Added metering for errors
           val response = r.entity.asInstanceOf[WAResponse]
           val results = response.payload.results
           ConnektLogger(LogFile.PROCESSORS).debug(s"WAResponseHandler received http response for: $results")
           r.status.intValue() match {
             case 200 if response.error.equalsIgnoreCase("false") =>
               results.map(result => {
-                WAContactService.instance.add(WAContactEntity(result.input_number, result.wa_username,requestTracker.appName, result.wa_exists, None))
+                val waContactEntity = WAContactEntity(result.input_number, result.wa_username, requestTracker.appName, result.wa_exists, None)
+                WAContactService.instance.add(waContactEntity)
+                BigfootService.ingestEntity(result.wa_username, waContactEntity.toPublishFormat, waContactEntity.namespace).get
               })
               ConnektLogger(LogFile.PROCESSORS).trace(s"WAResponseHandler contacts updated in hbase : $results")
             case w =>
@@ -56,6 +57,6 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) {
       case Failure(e2) =>
         ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler send failure for: $requestTracker", e2)
     }
-    NotUsed
-  }
+    List.empty[Nothing]
+  })(m.executionContext)
 }
