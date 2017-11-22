@@ -33,8 +33,6 @@ class WAProviderPrepare extends MapFlowStage[ConnektRequest, (HttpRequest, WAReq
   override val map: ConnektRequest => List[(HttpRequest, WARequestTracker)] = connektRequest => profile("map") {
 
     try {
-//      val credentials = KeyChainManager.getSimpleCredential(s"whatsapp.${connektRequest.appName}").get
-
       val tracker = WARequestTracker(
         messageId = connektRequest.id,
         clientId = connektRequest.clientId,

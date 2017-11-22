@@ -96,19 +96,17 @@ object WATopology {
     /**
       * Whatsapp Topology
       *
-      *                     +-------------------+        +----------+     +-----------------+      +-----------------------+     +---------------------+     +----------------+     +----------------------------+     +---------------------+     +-------------------------+      +--..
-      *  ConnektRequest --> |SmsChannelFormatter| |----> |  Merger  | --> | ChooseProvider  |  --> | SeparateIntlReceivers | --> |  SmsProviderPrepare | --> |  SmsDispatcher | --> |SmsProviderResponseFormatter| --> |  SmsResponseHandler | --> |Response / Error Splitter| -+-> |Merger
-      *                     +-------------------+ |      +----------+     +-----------------+      +-----------------------+     +---------------------+     +----------------+     +----------------------------+     +---------------------+     +-------------------------+  |   +-----
-      *                                           +-------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------------------------------------------------------+
+      *                     +-------------------+        +---------------------+     +-------------------------+             +--------+       +------------+      +-------------------+      +-------------------+       +-----+
+      *  ConnektRequest --> |  MediaPartitioner | |----> |  WAMediaDispatcher  | --> | WaMediaResponseHandler  |  --> + -+-> | Merger | -->   |  Tracking  | -->  | WAProviderPrepare | -->  | WAResponseHandler |  -->  | out |
+      *                     +-------------------+ |      +---------------------+     +-------------------------+      |      +--------+       +------------+      +-------------------+      +-------------------+       +-----+
+      *                                           +-------------------------------------------------------------------
       */
 
-//    val render = b.add(new RenderFlow().flow)
     val mediaPartitioner = b.add(Partition[ConnektRequest](2,
       _.channelData.asInstanceOf[WARequestData].attachment match {
         case Some(_:Attachment) => 0
         case _ => 1
       }))
-    val trackSmsParallelism = ConnektConfig.getInt("topology.sms.tracking.parallelism").get
 
     val waMediaDispatcher = b.add(new WAMediaDispatcher().flow)
     val waHttpPoolMediaFlow = b.add(HttpDispatcher.waPoolClientFlow.timedAs("waMediaRTT"))
@@ -126,6 +124,5 @@ object WATopology {
 
     FlowShape(mediaPartitioner.in, waResponseHandler.out)
   })
-
-
+  
 }
