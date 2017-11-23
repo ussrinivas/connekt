@@ -12,9 +12,7 @@
  */
 package com.flipkart.connekt.busybees.models
 
-import akka.http.scaladsl.model.HttpRequest
-
 case class WAContactTracker(
-                             httpRequest: HttpRequest,
+                             contacts: Set[String],
                              appName: String
                            )

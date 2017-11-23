@@ -22,7 +22,7 @@ import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFa
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.{InternalStatus, WAResponseStatus}
 import com.flipkart.connekt.commons.iomodels._
-import com.flipkart.connekt.commons.services.{DeviceDetailsService, ExclusionService, WAContactService}
+import com.flipkart.connekt.commons.services._
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.receptors.directives.MPlatformSegment
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
@@ -31,7 +31,8 @@ import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.Future
+import scala.concurrent.duration.DurationDouble
+import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success, Try}
 
 class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
@@ -447,15 +448,24 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                             }
                                           }
                                           }
-                                          val nonCheckedContacts = validNumbers.diff(checkedContacts)
-                                          // TODO : UserPreference check
-                                          if (checkedContacts.nonEmpty) {
+                                          val prefCheckedContacts = checkedContacts.map(c => {
+                                            val prefValidator = ValidatorService.validate(appName, Channel.WA, c)
+                                            val isValid = Await.result(prefValidator, ConnektConfig.getInt("user.preference.service.timeout").getOrElse(5).seconds) match {
+                                              case Success(s) => c -> true
+                                              case Failure(f) => c -> false
+                                            }
+                                            isValid
+                                          }).filter(_._2)
+
+                                          val rejectedContacts = prefCheckedContacts.map(_._1).diff(validNumbers)
+
+                                          if (prefCheckedContacts.nonEmpty) {
                                             val waRequest = request.copy(channelInfo = waRequestInfo.copy(destinations = waUserName.toSet))
                                             val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(request, user)
                                             /* enqueue multiple requests into kafka */
                                             val (success, failure) = ServiceFactory.getMessageService(Channel.WA).saveRequest(waRequest, queueName, persistPayloadInDataStore = true) match {
                                               case Success(id) =>
-                                                (Map(id -> waUserName.toSet), invalidNumbers ++ nonCheckedContacts)
+                                                (Map(id -> waUserName.toSet), invalidNumbers ++ rejectedContacts)
                                               case Failure(t) =>
                                                 (Map(), waRequestInfo.destinations)
                                             }

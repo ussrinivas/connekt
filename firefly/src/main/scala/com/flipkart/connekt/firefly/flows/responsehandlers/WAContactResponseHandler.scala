@@ -50,7 +50,7 @@ class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) e
               })
               ConnektLogger(LogFile.PROCESSORS).trace(s"WAResponseHandler contacts updated in hbase : $results")
             case w =>
-              ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler received http response for: ${response.getJson} , with status code $w")
+              ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler received http response : ${response.getJson} , with status code $w and tracker ${responseTrackerPair.getJson}")
           }
         } catch {
           case e: Exception =>

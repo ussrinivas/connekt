@@ -36,7 +36,7 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
     authenticate {
       user =>
         pathPrefix("v1") {
-          pathPrefix("wa" / "checkcontact" / Segment) {
+          pathPrefix("whatsapp" / "checkcontact" / Segment) {
             (appName: String) =>
               pathEndOrSingleSlash {
                 post {

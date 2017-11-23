@@ -26,13 +26,13 @@ class WAHttpDispatcherPrepare extends MapFlowStage[Seq[ContactPayload], (HttpReq
     try {
       ConnektLogger(LogFile.PROCESSORS).debug("WAHttpDispatcherPrepare received message: {}", supplier(contacts.getJson))
 
-      val contactList = contacts.map(_.user_identifier).toList
+      val contactList = contacts.map(_.user_identifier).toSet
       val waPayload = WAContactRequest(Payload(users = contactList))
 
       val requestEntity = HttpEntity(ContentTypes.`application/json`, waPayload.getJson)
       val requestHeaders = scala.collection.immutable.Seq.empty[HttpHeader]
       val httpRequest = HttpRequest(HttpMethods.POST, sendUri, requestHeaders, requestEntity)
-      val requestTrace = WAContactTracker(httpRequest, contacts.head.appName)
+      val requestTrace = WAContactTracker(contactList, contacts.head.appName)
       List(httpRequest -> requestTrace)
     } catch {
       case e: Throwable =>

@@ -10,11 +10,18 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.commons.iomodels
+package com.flipkart.connekt.commons.utils
 
-import com.fasterxml.jackson.annotation.JsonProperty
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
+import com.flipkart.concord.validator.TGuardrailService
 
-case class WAContactRequest(@JsonProperty payload: Payload)
+import scala.concurrent.Future
+import scala.util.{Success, Try}
 
-case class Payload(@JsonProperty blocking: String = "wait",
-                   @JsonProperty(required = true) users: Set[String])
+class GuardrailService extends TGuardrailService {
+
+  override def guard(params: AnyRef*): Try[Boolean] = Success(true)
+
+  override def entryViaHttp(httpRequest: HttpRequest): Future[HttpResponse] = Future(null)
+
+}
