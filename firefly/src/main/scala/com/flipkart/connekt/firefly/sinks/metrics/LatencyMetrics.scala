@@ -40,16 +40,19 @@ class LatencyMetrics extends Instrumented {
 
   def sink: Sink[CallbackEvent, Future[Done]] = Sink.foreach[CallbackEvent] {
     case event@(sce: SmsCallbackEvent) =>
-      val providerName :String = Option(sce.cargo).filter(cargo => cargo.nonEmpty && cargo.startsWith("{")).map(_.getObj[Map[String, String]].getOrElse("provider","na")).getOrElse("na")
+      val eventCargo = Option(sce.cargo).filter(cargo => cargo.nonEmpty && cargo.startsWith("{"))
+      val cargoMap = if(eventCargo.isDefined) eventCargo.get.getObj[Map[String, String]] else Map[String, String]()
+      val deliveredTS: Long = cargoMap.getOrElse("deliveredTS","0").toLong
+      val providerName: String = cargoMap.getOrElse("provider", "na")
+
       meter(s"provider.$providerName.event.${sce.eventType}").mark()
 
-      if (sce.eventType.equalsIgnoreCase("sms_delivered") && publishSMSLatency) {
-        val minTimestamp: Long = sce.timestamp - 86400000L
-        val maxTimestamp: Long = sce.timestamp + 120000L
+      if (sce.eventType.equalsIgnoreCase("sms_delivered") && publishSMSLatency && !deliveredTS.equals(0L)) {
+        val minTimestamp: Long = deliveredTS - 86400000L
+        val maxTimestamp: Long = deliveredTS + 120000L
         val smsEventDetails = ServiceFactory.getCallbackService.fetchCallbackEventByMId(event.messageId.toString, Channel.SMS, Some(Tuple2(minTimestamp, maxTimestamp)))
         if (smsEventDetails.isSuccess && smsEventDetails.get.nonEmpty) {
           val eventDetails = smsEventDetails.get.get(sce.asInstanceOf[SmsCallbackEvent].receiver)
-          val deliveredTS = sce.timestamp
           eventDetails.foreach(eventDetail => {
             if (eventDetail.exists(_.eventType.equalsIgnoreCase("sms_received"))) {
               val receivedEvent = eventDetail.filter(_.eventType.equalsIgnoreCase("sms_received")).head
