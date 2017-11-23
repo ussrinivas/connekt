@@ -27,6 +27,8 @@ import scala.util.{Failure, Success, Try}
 
 class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends WAProviderResponseHandler[(Try[HttpResponse], WAContactTracker)](96) with Instrumented {
 
+  val waContactService = WAContactService()
+
   override implicit val map: ((Try[HttpResponse], WAContactTracker)) => Future[List[Nothing]] = responseTrackerPair => Future(profile("map") {
 
     val httpResponse = responseTrackerPair._1
@@ -36,14 +38,14 @@ class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) e
       case Success(r) =>
         try {
           //          TODO: Added metering for errors
-          val response = r.entity.asInstanceOf[WAResponse]
+          val response = r.entity.getString.getObj[WAResponse]
           val results = response.payload.results
           ConnektLogger(LogFile.PROCESSORS).debug(s"WAResponseHandler received http response for: $results")
           r.status.intValue() match {
             case 200 if response.error.equalsIgnoreCase("false") =>
               results.map(result => {
                 val waContactEntity = WAContactEntity(result.input_number, result.wa_username, requestTracker.appName, result.wa_exists, None)
-                WAContactService.instance.add(waContactEntity)
+                waContactService.add(waContactEntity)
                 BigfootService.ingestEntity(result.wa_username, waContactEntity.toPublishFormat, waContactEntity.namespace).get
               })
               ConnektLogger(LogFile.PROCESSORS).trace(s"WAResponseHandler contacts updated in hbase : $results")

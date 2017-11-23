@@ -22,6 +22,7 @@ import com.flipkart.connekt.commons.iomodels.ContactPayload
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.metrics.Timed
+import com.roundeights.hasher.Implicits.stringToHasher
 import org.apache.hadoop.hbase.client.{BufferedMutator, Scan}
 import org.apache.hadoop.hbase.util.Bytes
 
@@ -50,7 +51,7 @@ class WAContactDao(tableName: String, hTableFactory: THTableFactory) extends Dao
     Option(hTableMutator).foreach(_.close())
   }
 
-  private def getRowKey(appName: String, destination: String) = s"${appName.toLowerCase}$destination.sha256.hash.hex"
+  private def getRowKey(appName: String, destination: String) = s"${appName.toLowerCase}$destination".sha256.hash.hex
 
   @Timed("add")
   def add(checkContactEntity: WAContactEntity): Try[Unit] = Try_#(s"Adding WAContactEntity failed for ${checkContactEntity.destination}") {

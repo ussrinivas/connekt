@@ -19,7 +19,7 @@ import com.typesafe.config.Config
 
 class WAContactTopologyManager(kafkaConsumerConnConf: Config)(implicit am: ActorMaterializer, sys: ActorSystem) extends TopologyManager {
 
-  private lazy val WA_TOPIC = ConnektConfig.get("firefly.wa.contact.kafka.topic").get
+  private lazy val WA_TOPIC = ConnektConfig.getString("wa.contact.topic.name").get
   private val CONSUMER_NAME = "WA_CONTACT_CONSUMER"
 
   kafkaGroupNames = List(

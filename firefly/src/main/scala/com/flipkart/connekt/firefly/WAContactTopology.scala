@@ -34,8 +34,8 @@ import scala.concurrent.duration._
 class WAContactTopology(kafkaConsumerConnConf: Config, topicName: String, kafkaGroupName: String)(implicit am: ActorMaterializer, sys: ActorSystem) {
   private implicit val ec = am.executionContext
 
-  private val waContactSize: Int = ConnektConfig.getInt("wa.check.contact.batch.size").getOrElse(1000)
-  private val waContactTimeLimit: Int = ConnektConfig.getInt("wa.check.contact.wait.time.limit.sec").getOrElse(30)
+  private val waContactSize: Int = ConnektConfig.getInt("wa.contact.batch.size").getOrElse(1000)
+  private val waContactTimeLimit: Int = ConnektConfig.getInt("wa.contact.wait.time.limit.sec").getOrElse(2)
 
   def start(): (Future[Done], KillSwitch) = {
 
