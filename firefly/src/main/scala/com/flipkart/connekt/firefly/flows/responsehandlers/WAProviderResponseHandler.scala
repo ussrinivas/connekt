@@ -10,8 +10,10 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.commons.iomodels
+package com.flipkart.connekt.firefly.flows.responsehandlers
 
-import com.fasterxml.jackson.annotation.JsonProperty
+import com.flipkart.connekt.firefly.flows.MapAsyncFlowStage
 
-case class ContactPayload(@JsonProperty(required = true) user_identifier: String, appName: String)
+trait ProviderResponseHandler
+
+abstract class WAProviderResponseHandler[I](parallelism: Int = 128) extends MapAsyncFlowStage[I, Nothing](parallelism) with ProviderResponseHandler

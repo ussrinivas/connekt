@@ -13,30 +13,27 @@
 package com.flipkart.connekt.firefly
 
 import java.util.UUID
-
-import akka.Done
 import akka.actor.ActorSystem
-import akka.stream.scaladsl.{Sink, Source}
-import akka.stream.{ActorMaterializer, KillSwitch, KillSwitches, ThrottleMode}
+import akka.stream._
+import akka.stream.scaladsl.GraphDSL.Implicits._
+import akka.stream.scaladsl.{Flow, GraphDSL, Sink, Source}
+import akka.{Done, NotUsed}
 import com.flipkart.connekt.busybees.streams.sources.KafkaSource
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels.ContactPayload
 import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.firefly.dispatcher.HttpDispatcher
-import com.flipkart.connekt.firefly.flows.{WAHttpDispatcherPrepare, WAResponseHandler}
+import com.flipkart.connekt.firefly.flows.dispatchers.WAHttpDispatcherPrepare
+import com.flipkart.connekt.firefly.flows.responsehandlers.WAContactResponseHandler
 import com.typesafe.config.Config
-
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
 class WAContactTopology(kafkaConsumerConnConf: Config, topicName: String, kafkaGroupName: String)(implicit am: ActorMaterializer, sys: ActorSystem) {
   private implicit val ec = am.executionContext
 
-  private val httpCachedClient = HttpDispatcher.waContactPoolClientFlow
-  private val dispatcherPerpFlow = new WAHttpDispatcherPrepare().flow
-  private val waContactResponse = new WAResponseHandler().flow
-  private val waContactSize: Int = ConnektConfig.getInt("wa.check.contact.batch.size").getOrElse(1000)
-  private val waContactTimeLimit: Int = ConnektConfig.getInt("wa.check.contact.wait.time.limit.sec").getOrElse(30)
+  private val waContactSize: Int = ConnektConfig.getInt("wa.contact.batch.size").getOrElse(1000)
+  private val waContactTimeLimit: Int = ConnektConfig.getInt("wa.contact.wait.time.limit.sec").getOrElse(30)
 
   def start(): (Future[Done], KillSwitch) = {
 
@@ -50,13 +47,23 @@ class WAContactTopology(kafkaConsumerConnConf: Config, topicName: String, kafkaG
       .watchTermination() { case (_, completed) => streamCompleted = completed }
       .groupedWithin(waContactSize, waContactTimeLimit.second)
       .throttle(waKafkaThrottle, 1.second, waKafkaThrottle, ThrottleMode.Shaping)
-      .via(dispatcherPerpFlow)
-      .via(httpCachedClient)
-      .via(waContactResponse)
+      .via(waContactTransformFlow)
       .runWith(Sink.ignore)
 
     ConnektLogger(LogFile.SERVICE).info(s"Started WAContactTopology for topic $topicName")
     (streamCompleted, killSwitch)
 
   }
+
+  def waContactTransformFlow: Flow[Seq[ContactPayload], String, NotUsed] = Flow.fromGraph(GraphDSL.create() { implicit b =>
+
+    val dispatcherPrepFlow = b.add(new WAHttpDispatcherPrepare().flow)
+    val httpCachedClient = b.add(HttpDispatcher.insecureHttpFlow)
+    val waContactResponseFormatter = b.add(new WAContactResponseHandler().flow)
+
+    dispatcherPrepFlow ~> httpCachedClient ~> waContactResponseFormatter
+
+    FlowShape(dispatcherPrepFlow.in, waContactResponseFormatter.out)
+  })
+
 }

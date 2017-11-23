@@ -22,11 +22,17 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.metrics.Timed
 import scala.util.Try
 
-class WAContactService(queueProducerHelper: KafkaProducerHelper) extends TService with Instrumented {
+class WAContactService extends TService with Instrumented {
 
+  var queueProducerHelper: KafkaProducerHelper = null
   private lazy val dao = DaoFactory.getWAContactDao
   private final val WA_CONTACT_BATCH = ConnektConfig.getInt("wa.check.contact.batch.size").getOrElse(1000)
-  private final val WA_CONTACT_QUEUE = ConnektConfig.getString("wa.check.contact.queue.name").get
+  private final val WA_CONTACT_QUEUE = ConnektConfig.getString("wa.contact.topic.name").get
+
+  def this(queueProducerHelper: KafkaProducerHelper){
+    this()
+    this.queueProducerHelper = queueProducerHelper
+  }
 
   @Timed("add")
   def add(contactEntity: WAContactEntity): Try[Unit] = profile("add") {
@@ -34,16 +40,16 @@ class WAContactService(queueProducerHelper: KafkaProducerHelper) extends TServic
   }
 
   @Timed("get")
-  def get(destination: String): Try[Option[WAContactEntity]] = profile("get") {
-    dao.get(destination)
+  def get(appName: String, destination: String): Try[Option[WAContactEntity]] = profile("get") {
+    dao.get(appName, destination)
   }
 
   @Timed("gets")
-  def gets(destinations: Set[String]): Try[List[WAContactEntity]] = profile("gets") {
-    dao.gets(destinations)
+  def gets(appName: String, destinations: Set[String]): Try[List[WAContactEntity]] = profile("gets") {
+    dao.gets(appName, destinations)
   }
 
-  def refreshWAContacts =  {
+  def refreshWAContacts = {
     val task = new Runnable {
       override def run() = {
         profile("refreshAll") {
@@ -76,6 +82,14 @@ object WAContactService {
     if (null == instance)
       this.synchronized {
         instance = new WAContactService(queueProducerHelper)
+      }
+    instance
+  }
+
+  def apply(): WAContactService = {
+    if (null == instance)
+      this.synchronized {
+        instance = new WAContactService()
       }
     instance
   }

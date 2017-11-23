@@ -18,6 +18,7 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.util.FastFuture
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Source
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.flipkart.connekt.commons.entities.DeviceDetails
 import com.flipkart.connekt.commons.entities.MobilePlatform.MobilePlatform
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
@@ -28,15 +29,17 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.receptors.directives.MPlatformSegment
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
 import com.flipkart.connekt.receptors.wire.ResponseUtils._
-
+import com.google.i18n.phonenumbers.PhoneNumberUtil
+import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
 import scala.concurrent.duration._
 import scala.concurrent.Future
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
   private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
   private val registrationTimeout = ConnektConfig.getInt("timeout.registration").getOrElse(8000).millis
+  private val contactService = ServiceFactory.getContactService
 
   val route =
     authenticate {
@@ -172,21 +175,32 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                     }
                   }
               }
-            } ~ pathPrefix("wa") {
-              extractTestRequestContext { isTestRequest =>
-                authorize(user, "REGISTRATION_WA") {
-                  withRequestTimeout(registrationTimeout) {
-                    put {
-                      meteredResource(s"register.wa.contact") {
-                        entity(as[ContactPayload]) { contact =>
-                          ServiceFactory.getContactService.enqueueContactEvents(contact)
-                          complete(GenericResponse(StatusCodes.Accepted.intValue, null, Response("Contact registration request received", null)))
+            } ~ path("wa" / Segment) {
+              (appName: String) =>
+                extractTestRequestContext { isTestRequest =>
+                  authorize(user, "REGISTRATION_WA") {
+                    withRequestTimeout(registrationTimeout) {
+                      put {
+                        meteredResource(s"register.wa.contact") {
+                          entity(as[ContactPayload]) { contact =>
+                            val appLevelConfigService = ServiceFactory.getUserProjectConfigService
+                            val phoneUtil: PhoneNumberUtil = PhoneNumberUtil.getInstance()
+                            val appDefaultCountryCode = appLevelConfigService.getProjectConfiguration(appName, "app-local-country-code").get.get.value.getObj[ObjectNode]
+                            val validateNum = Try(phoneUtil.parse(contact.user_identifier, appDefaultCountryCode.get("localRegion").asText.trim.toUpperCase))
+                            if (validateNum.isSuccess && phoneUtil.isValidNumber(validateNum.get)) {
+                              val updatedContact = contact.copy(user_identifier = phoneUtil.format(validateNum.get, PhoneNumberFormat.E164), appName = appName)
+                              contactService.enqueueContactEvents(updatedContact)
+                              complete(GenericResponse(StatusCodes.Accepted.intValue, null, Response("Contact registration request received", null)))
+                            } else {
+                              ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatsapp invalid numbers: $validateNum")
+                              complete(GenericResponse(StatusCodes.BadRequest.intValue, null, Response(s"Dropping whatsapp invalid numbers $validateNum", null)))
+                            }
+                          }
                         }
                       }
                     }
                   }
                 }
-              }
             }
           }
         }

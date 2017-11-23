@@ -14,7 +14,7 @@ package com.flipkart.connekt.commons.dao
 
 import java.util.concurrent.{ScheduledThreadPoolExecutor, TimeUnit}
 import com.flipkart.connekt.commons.core.Wrappers._
-import com.flipkart.connekt.commons.dao.HbaseDao.{RowData, longHandyFunctions, mapKVHandyFunctions}
+import com.flipkart.connekt.commons.dao.HbaseDao.{longHandyFunctions, mapKVHandyFunctions}
 import com.flipkart.connekt.commons.entities.WAContactEntity
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, THTableFactory}
 import com.flipkart.connekt.commons.iomodels.ContactPayload
@@ -47,27 +47,29 @@ class WAContactDao(tableName: String, hTableFactory: THTableFactory) extends Dao
     Option(hTableMutator).foreach(_.close())
   }
 
-  private def getRowKey(destination: String) = destination.sha256.hash.hex
+  private def getRowKey(appName: String, destination: String) = s"${appName.toLowerCase}$destination".sha256.hash.hex
 
   @Timed("add")
-  def add(contactEntity: WAContactEntity): Try[Unit] = Try_#(s"Adding WAContactEntity failed for ${contactEntity.destination}") {
-    val rowKey = getRowKey(contactEntity.destination)
+  def add(checkContactEntity: WAContactEntity): Try[Unit] = Try_#(s"Adding WAContactEntity failed for ${checkContactEntity.destination}") {
+    val rowKey = getRowKey(checkContactEntity.appName, checkContactEntity.destination)
     val entity = mutable.Map[String, Array[Byte]](
-      "destination" -> contactEntity.destination.getUtf8Bytes,
-      "userName" -> contactEntity.userName.getUtf8Bytes,
-      "exists" -> contactEntity.exists.getUtf8Bytes,
-      "lastCheckContactTS" -> contactEntity.lastCheckContactTS.getBytes,
-      "lastContacted" -> Option(contactEntity.lastContactedApp).map(_.getJson.getUtf8Bytes).orNull
+      "destination" -> checkContactEntity.destination.getUtf8Bytes,
+      "userName" -> checkContactEntity.userName.getUtf8Bytes,
+      "appName" -> checkContactEntity.appName.getUtf8Bytes,
+      "exists" -> checkContactEntity.exists.getUtf8Bytes,
+      "lastCheckContactTS" -> checkContactEntity.lastCheckContactTS.getBytes
     )
+    checkContactEntity.lastContacted.foreach(entity += "lastContacted" -> _.getBytes)
+
     val rD = Map[String, Map[String, Array[Byte]]](columnFamily -> entity.toMap)
     asyncAddRow(rowKey, rD)(hTableMutator)
-    ConnektLogger(LogFile.DAO).info(s"WAEntry added for destination ${contactEntity.destination} with exists ${contactEntity.exists}")
+    ConnektLogger(LogFile.DAO).info(s"WAEntry added for destination ${checkContactEntity.destination} with exists ${checkContactEntity.exists}")
   }
 
   @Timed("get")
-  def get(destination: String): Try[Option[WAContactEntity]] = Try_#(s"WAContactEntity get failed for destination : $destination") {
+  def get(appName: String, destination: String): Try[Option[WAContactEntity]] = Try_#(s"WACheckContactEntity get failed for destination : $destination") {
     implicit val hTableInterface = hTableConnFactory.getTableInterface(hTableName)
-    val rowKeys = getRowKey(destination)
+    val rowKeys = getRowKey(appName, destination)
     val rawData = fetchRow(rowKeys, List(columnFamily))
     val reqProps: Option[HbaseDao.ColumnData] = rawData.get(columnFamily)
     hTableConnFactory.releaseTableInterface(hTableInterface)
@@ -75,8 +77,9 @@ class WAContactDao(tableName: String, hTableFactory: THTableFactory) extends Dao
       WAContactEntity(
         fields.get("destination").map(v => v.getString).orNull,
         fields.get("userName").map(v => v.getString).orNull,
+        fields.get("appName").map(v => v.getString).orNull,
         fields.get("exists").map(v => v.getString).orNull,
-        Option(fields.get("lastContacted")).map(_.asInstanceOf[Map[String, Long]]).getOrElse(Map.empty),
+        Option(fields.getL("lastContacted")).map(_.asInstanceOf[Long]),
         fields.getL("lastCheckContactTS").asInstanceOf[Long]
       )
     })
@@ -84,9 +87,9 @@ class WAContactDao(tableName: String, hTableFactory: THTableFactory) extends Dao
   }
 
   @Timed("gets")
-  def gets(destinations: Set[String]): Try[List[WAContactEntity]] = Try_#(s"WAContactEntity gets failed for destinations : $destinations") {
+  def gets(appName: String, destinations: Set[String]): Try[List[WAContactEntity]] = Try_#(s"WAContactEntity gets failed for destinations : $destinations") {
     implicit val hTableInterface = hTableConnFactory.getTableInterface(hTableName)
-    val rowKeys = destinations.map(getRowKey).toList
+    val rowKeys = destinations.map(getRowKey(appName, _)).toList
     val rawDataList = fetchMultiRows(rowKeys, List(columnFamily))
     hTableConnFactory.releaseTableInterface(hTableInterface)
     rawDataList.values.flatMap(rowData => {
@@ -95,8 +98,9 @@ class WAContactDao(tableName: String, hTableFactory: THTableFactory) extends Dao
         WAContactEntity(
           fields.get("destination").map(v => v.getString).orNull,
           fields.get("userName").map(v => v.getString).orNull,
+          fields.get("appName").map(v => v.getString).orNull,
           fields.get("exists").map(v => v.getString).orNull,
-          Option(fields.get("lastContacted")).map(_.asInstanceOf[Map[String, Long]]).getOrElse(Map.empty),
+          Option(fields.getL("lastContacted")).map(_.asInstanceOf[Long]),
           fields.getL("lastCheckContactTS").asInstanceOf[Long]
         )
       })
@@ -109,9 +113,17 @@ class WAContactDao(tableName: String, hTableFactory: THTableFactory) extends Dao
     implicit val hTableInterface = hTableConnFactory.getTableInterface(hTableName)
     try {
       val scan = new Scan()
-      scan.addColumn(columnFamily.getBytes, "destination".getBytes)
+      val colDestTuple = (columnFamily.getBytes, "destination".getBytes)
+      val colAppTuple = (columnFamily.getBytes, "appName".getBytes)
+      scan.addColumn(colDestTuple._1, colDestTuple._2)
+      scan.addColumn(colAppTuple._1, colAppTuple._2)
       val resultScanner = hTableInterface.getScanner(scan)
-      resultScanner.iterator().toIterator.map(r => ContactPayload(Bytes.toString(r.value)))
+      resultScanner.iterator().toIterator.map(r =>
+        ContactPayload(
+          Bytes.toString(r.getValue(colDestTuple._1, colDestTuple._2)),
+          Bytes.toString(r.getValue(colAppTuple._1, colAppTuple._2))
+        )
+      )
     }
   }
 

@@ -10,8 +10,11 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.commons.iomodels
+package com.flipkart.connekt.busybees.models
 
-import com.fasterxml.jackson.annotation.JsonProperty
+import akka.http.scaladsl.model.HttpRequest
 
-case class ContactPayload(@JsonProperty(required = true) user_identifier: String, appName: String)
+case class WAContactTracker(
+                             httpRequest: HttpRequest,
+                             appName: String
+                           )
