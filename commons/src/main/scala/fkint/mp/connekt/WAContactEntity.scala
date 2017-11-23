@@ -14,7 +14,14 @@ package fkint.mp.connekt
 
 import com.flipkart.concord.publisher.TPublishRequest
 
-case class WAContactEntity(destination: String, userName: String, appName: String, exists: String, lastContacted: String, lastCheckContactTS: String) extends TPublishRequest {
+case class WAContactEntity(
+                            destination: String,
+                            userName: String,
+                            appName: String,
+                            exists: String,
+                            lastContacted: String,
+                            lastCheckContactTS: String
+                          ) extends TPublishRequest {
   override def validate(): Boolean = true
 
   override def schemaVersion(): String = "1.0"

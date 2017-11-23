@@ -20,6 +20,9 @@ case class WARequestTracker(
                              destination: String,
                              appName: String,
                              contextId: String,
-                             request: ConnektRequest,
                              meta: Map[String, Any]
+                            ) extends RequestTracker
+
+case class WAMediaRequestTracker(
+                             request: ConnektRequest
                             ) extends RequestTracker

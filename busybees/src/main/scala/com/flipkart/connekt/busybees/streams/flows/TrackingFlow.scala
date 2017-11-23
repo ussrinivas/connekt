@@ -24,6 +24,7 @@ import com.flipkart.connekt.commons.services.TrackingService.TrackerOptions
 import com.flipkart.connekt.commons.services.{ConnektConfig, TrackingService}
 import com.flipkart.connekt.commons.utils.IdentityURLTransformer
 import com.flipkart.connekt.commons.utils.StringUtils._
+import com.fasterxml.jackson.databind.node.ObjectNode
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 
@@ -34,6 +35,9 @@ abstract class TrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecu
   lazy private val defaultTrackingDomain = ConnektConfig.getString("tracking.default.domain").get
 
   def transformChannelData(request:ConnektRequest, trackingDomain:String, transformer: TURLTransformer ) : ChannelRequestData
+  def transformChannelDataModel(request:ConnektRequest, trackingDomain:String, transformer: TURLTransformer ) : ObjectNode = {
+    request.channelDataModel
+  }
 
   override val map: (ConnektRequest) => Future[List[ConnektRequest]] = input => Future(profile("map") {
     try {
@@ -48,7 +52,8 @@ abstract class TrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecu
 
       if(trackingEnabled) {
         List(input.copy(
-          channelData = transformChannelData(input, appDomain, transformer)
+          channelData = transformChannelData(input, appDomain, transformer),
+          channelDataModel = transformChannelDataModel(input, appDomain, transformer)
         ))
       } else {
         ConnektLogger(LogFile.PROCESSORS).trace("TrackingFlow skipping since disabled for messageId: {}", supplier(input.id))
@@ -117,6 +122,23 @@ class SMSTrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecutor) e
 }
 
 class WATrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecutor) extends TrackingFlow(parallelism)(ec) {
+  override def transformChannelDataModel(input: ConnektRequest, trackingDomain:String, transformer: TURLTransformer ): ObjectNode = {
+    val destination = input.channelInfo.asInstanceOf[WARequestInfo].destinations.head
+    val trackerOptions = TrackerOptions(domain = trackingDomain,
+      channel = Channel.WA,
+      messageId = input.id,
+      contextId = input.contextId,
+      destination = destination,
+      clientId = input.clientId,
+      appName = input.appName)
+
+    input.channelDataModel match {
+      case dataModel:ObjectNode =>
+        TrackingService.trackText(dataModel.toString, trackerOptions, transformer).getObj[ObjectNode]
+      case _ => input.channelDataModel
+    }
+  }
+
   override def transformChannelData(input: ConnektRequest, trackingDomain:String, transformer: TURLTransformer ): ChannelRequestData = {
     val destination = input.channelInfo.asInstanceOf[WARequestInfo].destinations.head
     val waData = input.channelData.asInstanceOf[WARequestData]
@@ -134,7 +156,10 @@ class WATrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecutor) ex
         TrackingService.trackText(caption, trackerOptions, transformer)
       }))
     })
-    waData.copy(attachment = attachment)
+    waData.copy(
+      attachment = attachment,
+      message = waData.message.map(TrackingService.trackText(_, trackerOptions, transformer))
+    )
   }
 
 }

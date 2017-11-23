@@ -16,54 +16,38 @@ package com.flipkart.connekt.busybees.streams.flows.dispatchers
 import akka.http.scaladsl.model.{HttpEntity, _}
 import akka.parboiled2.util.Base64
 import akka.util.ByteString
-import com.flipkart.connekt.busybees.models.WARequestTracker
+import com.flipkart.connekt.busybees.models.{WAMediaRequestTracker}
 import com.flipkart.connekt.busybees.streams.flows.MapFlowStage
-import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
-import com.flipkart.connekt.commons.iomodels.{Attachment, ConnektRequest, WARequestData}
+import com.flipkart.connekt.commons.utils.StringUtils._
+import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.services.ConnektConfig
 
-class WAMediaDispatcher extends MapFlowStage[ConnektRequest, (HttpRequest, WARequestTracker)] with Instrumented {
-  lazy val baseUrl = ConnektConfig.getConfig("wa.baseUrl").getOrElse("https://10.85.186.106:32785")
+class WAMediaDispatcher extends MapFlowStage[ConnektRequest, (HttpRequest, WAMediaRequestTracker)] with Instrumented {
+  private lazy val baseUrl = ConnektConfig.getConfig("wa.baseUrl").getOrElse("https://10.85.186.106:32785")
+  private val mediaUploadUri = baseUrl + "/api/upload_outgoing_media.php"
 
-  def createEntity(payload: String, attachment: Attachment): RequestEntity = {
-    val data = Base64.rfc2045().decode(attachment.base64Data)
-
-    val httpEntity = HttpEntity.Strict(MediaTypes.`application/octet-stream`, ByteString(data))
-    val fileFormData = Multipart.FormData.BodyPart.Strict("file", httpEntity, Map("filename" -> attachment.name))
-    val jsonFormData = Multipart.FormData.BodyPart.Strict("json_query", payload, Map.empty)
-
-    Multipart.FormData(jsonFormData, fileFormData).toEntity()
-  }
-
-  override val map: (ConnektRequest) => (List[(HttpRequest, WARequestTracker)]) = connektRequest => profile("map"){
+  override val map: (ConnektRequest) => (List[(HttpRequest, WAMediaRequestTracker)]) = connektRequest => profile("map"){
     connektRequest.channelData.asInstanceOf[WARequestData].attachment match {
       case Some(attachment: Attachment) =>
-        val waRequestTracker = WARequestTracker(
-          connektRequest.id,
-          connektRequest.clientId,
-          connektRequest.destinations.head,
-          connektRequest.appName,
-          connektRequest.contextId.getOrElse(""),
-          connektRequest,
-          connektRequest.meta
-        )
+        val waRequestTracker = WAMediaRequestTracker(connektRequest)
 
-        val mediaPayload =
-          s"""
-             |{
-             |	"payload":
-             |	{
-             |  		"filename": "${attachment.name}"
-             |	}
-             |}
-        """.stripMargin
-        val uri = baseUrl + "/api/upload_outgoing_media.php"
-
-        val entity = createEntity(mediaPayload, attachment)
-        val httpRequest = HttpRequest(HttpMethods.POST, uri = uri, entity = entity)
+        val entity = createEntity(attachment, connektRequest.id)
+        val httpRequest = HttpRequest(HttpMethods.POST, uri = mediaUploadUri, entity = entity)
         List(httpRequest -> waRequestTracker)
       case _ => List()
     }
   }
+
+  private def createEntity(attachment: Attachment, id: String): RequestEntity = {
+    val payload = WARequest(WAMediaPayload(s"${id}_${attachment.name}"))
+    val data = Base64.rfc2045().decode(attachment.base64Data)
+
+    val httpEntity = HttpEntity.Strict(MediaTypes.`application/octet-stream`, ByteString(data))
+    val fileFormData = Multipart.FormData.BodyPart.Strict("file", httpEntity, Map("filename" -> attachment.name))
+    val jsonFormData = Multipart.FormData.BodyPart.Strict("json_query", payload.getJson, Map.empty)
+
+    Multipart.FormData(jsonFormData, fileFormData).toEntity()
+  }
+
 }
