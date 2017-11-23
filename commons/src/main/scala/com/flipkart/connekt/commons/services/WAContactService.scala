@@ -22,11 +22,17 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.metrics.Timed
 import scala.util.Try
 
-class WAContactService(queueProducerHelper: KafkaProducerHelper) extends TService with Instrumented {
+class WAContactService extends TService with Instrumented {
 
+  var queueProducerHelper: KafkaProducerHelper = null
   private lazy val dao = DaoFactory.getWAContactDao
   private final val WA_CONTACT_BATCH = ConnektConfig.getInt("wa.check.contact.batch.size").getOrElse(1000)
-  private final val WA_CONTACT_QUEUE = ConnektConfig.getString("wa.check.contact.queue.name").get
+  private final val WA_CONTACT_QUEUE = ConnektConfig.getString("wa.contact.topic.name").get
+
+  def this(queueProducerHelper: KafkaProducerHelper){
+    this()
+    this.queueProducerHelper = queueProducerHelper
+}
 
   @Timed("add")
   def add(contactEntity: WAContactEntity): Try[Unit] = profile("add") {
@@ -76,6 +82,14 @@ object WAContactService {
     if (null == instance)
       this.synchronized {
         instance = new WAContactService(queueProducerHelper)
+      }
+    instance
+  }
+
+  def apply(): WAContactService = {
+    if (null == instance)
+      this.synchronized {
+        instance = new WAContactService()
       }
     instance
   }
