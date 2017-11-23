@@ -12,6 +12,7 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonIgnoreProperties, JsonProperty}
 import com.fasterxml.jackson.databind.node.ObjectNode
 
 trait WAGeneratedEvent

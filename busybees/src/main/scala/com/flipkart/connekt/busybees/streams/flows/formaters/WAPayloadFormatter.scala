@@ -18,46 +18,41 @@ import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.WAResponseStatus
 import com.flipkart.connekt.commons.iomodels._
-import com.flipkart.connekt.commons.helpers.CallbackRecorder._
-import com.flipkart.connekt.commons.utils.StringUtils.{JSONUnMarshallFunctions, _}
-import com.flipkart.connekt.commons.utils.StringUtils._
+import com.flipkart.connekt.commons.utils.StringUtils.JSONUnMarshallFunctions
 
 object WAPayloadFormatter{
   lazy implicit val stencilService = ServiceFactory.getStencilService
-  def makePayload(connektRequest: ConnektRequest): List[WARequest] = {
+  def makePayload(connektRequest: ConnektRequest, destination: String): Option[WARequest] = {
     val waRequestData = connektRequest.channelData.asInstanceOf[WARequestData]
     waRequestData.waType match {
       case WAType.hsm =>
         stencilService.get(connektRequest.stencilId.get).headOption match {
           case Some(stencil: Stencil) =>
             val hsmData = stencilService.materialize(stencil, connektRequest.channelDataModel).asInstanceOf[String].getObj[HsmData]
-            List(WARequest(HSMWaPayload(
-              hsmData, connektRequest.channelInfo.asInstanceOf[WARequestInfo].destinations.head
-            )))
+            Some(WARequest(HSMWAPayload( hsmData, destination )))
           case _ =>
             ServiceFactory.getReportingService.recordChannelStatsDelta(connektRequest.clientId, connektRequest.contextId, connektRequest.stencilId, Channel.WA, connektRequest.appName, WAResponseStatus.StencilNotFound.toString)
-            val event = WACallbackEvent(connektRequest.id, None, connektRequest.destinations.head, WAResponseStatus.StencilNotFound.toString, connektRequest.clientId, connektRequest.appName, connektRequest.contextId.get, WAResponseStatus.StencilNotFound.toString, System.currentTimeMillis())
+            ConnektLogger(LogFile.PROCESSORS).error(s"WAMediaResponseHandler stencil failure for hsm message to: $destination")
+            val event = WACallbackEvent(connektRequest.id, None, destination, WAResponseStatus.StencilNotFound.toString, connektRequest.clientId, connektRequest.appName, connektRequest.contextId.get, WAResponseStatus.StencilNotFound.toString, System.currentTimeMillis())
             event.enqueue
-            List()
+            None
         }
       case WAType.document =>
-        List(WARequest(PDFWaPayload(
-          FileData(waRequestData.attachment.get.name, waRequestData.attachment.get.caption.getOrElse("")),
-          connektRequest.channelInfo.asInstanceOf[WARequestInfo].destinations.head
+        val attachment = waRequestData.attachment.get
+        Some(WARequest(DocumentWAPayload(
+          FileData(attachment.name, attachment.caption.getOrElse("")), destination
         )))
       case WAType.image =>
-        List(WARequest(ImageWaPayload(
-          FileData(waRequestData.attachment.get.name, waRequestData.attachment.get.caption.getOrElse("")),
-          connektRequest.channelInfo.asInstanceOf[WARequestInfo].destinations.head
+        Some(WARequest(ImageWAPayload(
+          FileData(waRequestData.attachment.get.name, waRequestData.attachment.get.caption.getOrElse("")), destination
         )))
       case WAType.text =>
-        List(WARequest(TxtWaPayload(
-          waRequestData.message.get,
-          connektRequest.channelInfo.asInstanceOf[WARequestInfo].destinations.head.replace("+", "")
+        Some(WARequest(TxtWAPayload(
+          waRequestData.message.get, destination
         )))
       case _ =>
         ConnektLogger(LogFile.PROCESSORS).error(s"WAMediaResponseHandler unknown WA ConnektRequest Data type: ${waRequestData.waType}")
-        List()
+        None
     }
   }
 }

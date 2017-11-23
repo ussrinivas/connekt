@@ -193,8 +193,8 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                             contactService.enqueueContactEvents(updatedContact)
                             complete(GenericResponse(StatusCodes.Accepted.intValue, null, Response("Contact registration request received", null)))
                           } else {
-                            ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatup invalid numbers: $validateNum")
-                            complete(GenericResponse(StatusCodes.BadRequest.intValue, null, Response(s"Dropping whatup invalid numbers $validateNum", null)))
+                            ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatsapp invalid numbers: $validateNum")
+                            complete(GenericResponse(StatusCodes.BadRequest.intValue, null, Response(s"Dropping whatsapp invalid numbers $validateNum", null)))
                           }
                         }
                       }

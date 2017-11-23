@@ -177,7 +177,7 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with
                                   e.enqueue
                                   ServiceFactory.getReportingService.recordChannelStatsDelta(e.clientId, Some(e.contextId), None, channel, e.appName, e.eventType)
                                   ConnektLogger(LogFile.SERVICE).debug(s"Whatapp callback events recieved ", supplier(e.getJson))
-                                  complete(GenericResponse(StatusCodes.OK.intValue, null, Response("Whatapp callbacks request recieved.", "Event successfully ingested")))
+                                  complete(GenericResponse(StatusCodes.OK.intValue, null, Response("Whatapp callbacks request received.", "Event successfully ingested")))
                                 case waResponse: WAResponse =>
                                   ConnektLogger(LogFile.SERVICE).debug(s"Whatsapp response is not Callback event. Error occurred.", supplier(waResponse.getJson))
                                   complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"${channel.toUpperCase} Whatsapp response is not Callback event. Error occurred.", waResponse)))

@@ -36,9 +36,6 @@ import com.typesafe.config.Config
 
 import scala.concurrent.ExecutionContextExecutor
 
-/**
-  * Created by saurabh.mimani on 14/11/17.
-  */
 class WATopology(kafkaConsumerConfig: Config) extends ConnektTopology[WACallbackEvent] with SyncDelegate {
 
   override def onUpdate(_type: SyncType, args: List[AnyRef]): Any = {
@@ -96,10 +93,10 @@ object WATopology {
     /**
       * Whatsapp Topology
       *
-      *                     +-------------------+        +---------------------+     +-------------------------+             +--------+       +------------+      +-------------------+      +-------------------+       +-----+
-      *  ConnektRequest --> |  MediaPartitioner | |----> |  WAMediaDispatcher  | --> | WaMediaResponseHandler  |  --> + -+-> | Merger | -->   |  Tracking  | -->  | WAProviderPrepare | -->  | WAResponseHandler |  -->  | out |
-      *                     +-------------------+ |      +---------------------+     +-------------------------+      |      +--------+       +------------+      +-------------------+      +-------------------+       +-----+
-      *                                           +-------------------------------------------------------------------
+      *                     +-------------------+         +---------------------+     +-------------------------+             +--------+       +------------+      +-------------------+      +-------------------+       +-----+
+      *  ConnektRequest --> |  MediaPartitioner | -+----> |  WAMediaDispatcher  | --> | WaMediaResponseHandler  |  --> +  --> | Merger | -->   |  Tracking  | -->  | WAProviderPrepare | -->  | WAResponseHandler |  -->  | out |
+      *                     +-------------------+  |      +---------------------+     +-------------------------+      |      +--------+       +------------+      +-------------------+      +-------------------+       +-----+
+      *                                            +-------------------------------------------------------------------+
       */
 
     val mediaPartitioner = b.add(Partition[ConnektRequest](2,
@@ -111,9 +108,11 @@ object WATopology {
     val waMediaDispatcher = b.add(new WAMediaDispatcher().flow)
     val waHttpPoolMediaFlow = b.add(HttpDispatcher.waPoolClientFlow.timedAs("waMediaRTT"))
     val waMediaResponseHandler = b.add(new WAMediaResponseHandler().flow)
-    val waPrepare = b.add(new WAProviderPrepare().flow)
-    val tracking = b.add(new WATrackingFlow(5)(ioDispatcher).flow)
     val merge = b.add(Merge[ConnektRequest](2))
+    val waPrepare = b.add(new WAProviderPrepare().flow)
+
+    val trackingParallelism = ConnektConfig.getInt("topology.wa.tracking.parallelism").getOrElse(5)
+    val tracking = b.add(new WATrackingFlow(trackingParallelism)(ioDispatcher).flow)
     val waHttpPoolFlow = b.add(HttpDispatcher.waPoolClientFlow.timedAs("waRTT"))
 
     val waResponseHandler = b.add(new WAResponseHandler()(ioMat,ioDispatcher).flow)
@@ -124,5 +123,5 @@ object WATopology {
 
     FlowShape(mediaPartitioner.in, waResponseHandler.out)
   })
-  
+
 }

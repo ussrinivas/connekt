@@ -29,27 +29,28 @@ class WAProviderPrepare extends MapFlowStage[ConnektRequest, (HttpRequest, WAReq
 
   lazy val baseUrl = ConnektConfig.getConfig("wa.baseUrl").getOrElse("https://10.85.186.106:32785")
   lazy implicit val stencilService = ServiceFactory.getStencilService
+  private val sendUri = baseUrl + "/api/rest_send.php"
 
   override val map: ConnektRequest => List[(HttpRequest, WARequestTracker)] = connektRequest => profile("map") {
 
     try {
-      val tracker = WARequestTracker(
-        messageId = connektRequest.id,
-        clientId = connektRequest.clientId,
-        destination = connektRequest.channelInfo.asInstanceOf[WARequestInfo].destinations.head,
-        appName = connektRequest.appName,
-        contextId = connektRequest.contextId.getOrElse(""),
-        connektRequest,
-        meta = connektRequest.meta
-      )
-
-      val waPayloads = WAPayloadFormatter.makePayload(connektRequest)
-      val uri = baseUrl + "/api/rest_send.php"
-      waPayloads.map( waPayload => {
-        val requestEntity = HttpEntity(ContentTypes.`application/json`, waPayload.getJson)
-        def httpRequest = HttpRequest(HttpMethods.POST, uri, scala.collection.immutable.Seq.empty[HttpHeader], requestEntity)
-        (httpRequest -> tracker)
-      })
+      connektRequest.destinations.map(destination => {
+        val tracker = WARequestTracker(
+          messageId = connektRequest.id,
+          clientId = connektRequest.clientId,
+          destination = destination,
+          appName = connektRequest.appName,
+          contextId = connektRequest.contextId.getOrElse(""),
+          meta = connektRequest.meta
+        )
+        WAPayloadFormatter.makePayload(connektRequest, destination) match {
+          case (waPayload: Some[WARequest]) =>
+            ConnektLogger(LogFile.PROCESSORS).info(s"WAProviderPrepare sending whatsapp message to: $destination, payload: $waPayload")
+            val requestEntity = HttpEntity(ContentTypes.`application/json`, waPayload.getJson)
+            def httpRequest = HttpRequest(HttpMethods.POST, sendUri, scala.collection.immutable.Seq.empty[HttpHeader], requestEntity)
+            (httpRequest -> tracker)
+        }
+      }).toList
     }
     catch {
       case e: Exception =>

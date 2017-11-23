@@ -17,9 +17,11 @@ import akka.http.scaladsl.Http
 import akka.stream._
 import com.flipkart.connekt.busybees.models._
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
+import com.flipkart.connekt.commons.services.ConnektConfig
 import com.typesafe.config.Config
 import com.typesafe.sslconfig.akka.AkkaSSLConfig
 import com.typesafe.sslconfig.ssl.{TrustManagerConfig, TrustStoreConfig}
+
 import scala.concurrent.ExecutionContextExecutor
 
 class HttpDispatcher(actorSystemConf: Config) {
@@ -27,6 +29,7 @@ class HttpDispatcher(actorSystemConf: Config) {
   implicit val httpSystem: ActorSystem = ActorSystem("http-out", actorSystemConf)
   implicit val httpMat: ActorMaterializer = ActorMaterializer()
   implicit val ec: ExecutionContextExecutor = httpSystem.dispatcher
+  private lazy val certPath = ConnektConfig.getString("wa.certPath").getOrElse("/etc/connekt/keystore/wa.cer")
 
   private val gcmPoolClientFlow = Http().superPool[GCMRequestTracker]()(httpMat)
 
@@ -34,19 +37,20 @@ class HttpDispatcher(actorSystemConf: Config) {
 
   private val smsPoolClientFlow = Http().superPool[SmsRequestTracker]()(httpMat)
 
-  private val waPoolClientFlow = {
+  private val waPoolInsecureClientFlow = {
 
-    val trustStoreConfig = TrustStoreConfig(None, Some("/etc/connekt/keystore/wa.cer")).withStoreType("PEM")
+//    TODO: add cert file as part of deployment
+//    TODO: Remove this code once move to signed certified certs
+    val trustStoreConfig = TrustStoreConfig(None, Some(certPath)).withStoreType("PEM")
     val trustManagerConfig = TrustManagerConfig().withTrustStoreConfigs(List(trustStoreConfig))
 
     val badSslConfig = AkkaSSLConfig().mapSettings(s => s.withLoose(s.loose
       .withAcceptAnyCertificate(true)
       .withDisableHostnameVerification(true)
     ).withTrustManagerConfig(trustManagerConfig))
-
     val badCtx = Http().createClientHttpsContext(badSslConfig)
 
-    Http().superPool[WARequestTracker](badCtx)(httpMat)
+    Http().superPool[RequestTracker](badCtx)(httpMat)
   }
 
   private val openWebPoolClientFlow = Http().superPool[OpenWebRequestTracker]()(httpMat)
@@ -70,7 +74,7 @@ object HttpDispatcher {
 
   def smsPoolClientFlow = instance.map(_.smsPoolClientFlow).get
 
-  def waPoolClientFlow = instance.map(_.waPoolClientFlow).get
+  def waPoolClientFlow = instance.map(_.waPoolInsecureClientFlow).get
 
   def wnsPoolClientFlow = instance.map(_.wnsPoolClientFlow).get
 
