@@ -29,7 +29,7 @@ class HttpDispatcher(actorSystemConf: Config) {
   implicit val httpSystem: ActorSystem = ActorSystem("http-out", actorSystemConf)
   implicit val httpMat: ActorMaterializer = ActorMaterializer()
   implicit val ec: ExecutionContextExecutor = httpSystem.dispatcher
-  private lazy val certPath = ConnektConfig.getString("wa.certPath").getOrElse("/etc/connekt/keystore/wa.cer")
+  private lazy val certPath = ConnektConfig.getString("wa.certPath").getOrElse("/etc/default/wa.cer")
 
   private val gcmPoolClientFlow = Http().superPool[GCMRequestTracker]()(httpMat)
 
@@ -38,8 +38,7 @@ class HttpDispatcher(actorSystemConf: Config) {
   private val smsPoolClientFlow = Http().superPool[SmsRequestTracker]()(httpMat)
 
   private val waPoolInsecureClientFlow = {
-
-//    TODO: add cert file as part of deployment
+    
 //    TODO: Remove this code once move to signed certified certs
     val trustStoreConfig = TrustStoreConfig(None, Some(certPath)).withStoreType("PEM")
     val trustManagerConfig = TrustManagerConfig().withTrustStoreConfigs(List(trustStoreConfig))
