@@ -96,7 +96,11 @@ abstract class CallbackDao(tableName: String, hTableFactory: THTableFactory) ext
     val colFamiliesReqd = List(columnFamily)
     implicit val hTableInterface = hTableConnFactory.getTableInterface(hTableName)
     try {
+      val t1 = System.currentTimeMillis()
       val rawDataList = fetchRows(s"${contactId.sha256.hash.hex}:$requestId", s"${contactId.sha256.hash.hex}:$requestId{", colFamiliesReqd, timestampRange, maxRowsLimit)
+
+      val t2 = System.currentTimeMillis() - t1
+      ConnektLogger(LogFile.DAO).trace(s"Time taken to scan in table $hTableName for key $requestId _ $contactId is $t2")
       rawDataList.values.flatMap(rowData => {
         val eventProps = rowData.data.get(columnFamily)
         val event = eventProps.map(mapToChannelEvent)
