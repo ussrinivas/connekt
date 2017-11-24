@@ -12,7 +12,7 @@
  */
 package com.flipkart.connekt.commons.services
 
-import com.flipkart.concord.validator.TGuardrailService
+import com.flipkart.concord.guardrail.TGuardrailService
 import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.metrics.Instrumented

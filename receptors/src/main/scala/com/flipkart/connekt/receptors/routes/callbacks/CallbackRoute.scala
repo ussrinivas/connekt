@@ -23,7 +23,7 @@ import com.flipkart.connekt.commons.entities.MobilePlatform._
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.iomodels._
-import com.flipkart.connekt.commons.services.ConnektConfig
+import com.flipkart.connekt.commons.services.{ConnektConfig, WAMessageIdMappingService}
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.receptors.directives.{ChannelSegment, MPlatformSegment}
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
@@ -31,7 +31,7 @@ import com.flipkart.connekt.receptors.wire.ResponseUtils._
 import org.apache.commons.lang.RandomStringUtils
 
 import scala.collection.JavaConverters._
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with PredefinedFromEntityUnmarshallers {
 
@@ -161,29 +161,37 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with
                               val waEvent = stencilService.materialize(stencil, payload).asInstanceOf[WAGeneratedEvent]
                               waEvent match {
                                 case wACallbackEvent: WACallbackEvent =>
-                                  // TODO ::
-                                  val messageId = "random-mid"
-                                  val clientId = "random-cid"
-                                  val contextId = "random-cnid"
-                                  val e = wACallbackEvent.copy(
-                                    messageId = Option(messageId).orEmpty,
-                                    providerMessageId = wACallbackEvent.providerMessageId,
-                                    clientId = Option(clientId).getOrElse(user.userId),
-                                    appName = appName,
-                                    contextId = Option(contextId).orEmpty,
-                                    eventType = Option(wACallbackEvent.eventType).map(_.toLowerCase).getOrElse("")
-                                  )
-                                  e.validate()
-                                  e.enqueue
-                                  ServiceFactory.getReportingService.recordChannelStatsDelta(e.clientId, Some(e.contextId), None, channel, e.appName, e.eventType)
-                                  ConnektLogger(LogFile.SERVICE).debug(s"Whatapp callback events recieved ", supplier(e.getJson))
-                                  complete(GenericResponse(StatusCodes.OK.intValue, null, Response("Whatapp callbacks request received.", "Event successfully ingested")))
+                                  WAMessageIdMappingService.get(wACallbackEvent.providerMessageId.get) match {
+                                    case Success(s) if s.isDefined =>
+                                      val wE = s.get
+                                      val messageId = wE.connektMessageId
+                                      val clientId = wE.clientId
+                                      val contextId = wE.contextId
+                                      val e = wACallbackEvent.copy(
+                                        messageId = Option(messageId).orEmpty,
+                                        providerMessageId = wACallbackEvent.providerMessageId,
+                                        clientId = Option(clientId).getOrElse(user.userId),
+                                        appName = appName,
+                                        contextId = Option(contextId).orEmpty,
+                                        eventType = Option(wACallbackEvent.eventType).map(_.toLowerCase).getOrElse("")
+                                      )
+                                      e.validate()
+                                      e.enqueue
+                                      ServiceFactory.getReportingService.recordChannelStatsDelta(e.clientId, Some(e.contextId), None, channel, e.appName, e.eventType)
+                                      ConnektLogger(LogFile.SERVICE).debug(s"Whatapp callback events recieved ", supplier(e.getJson))
+                                      complete(GenericResponse(StatusCodes.OK.intValue, null, Response("Whatapp callbacks request received.", "Event successfully ingested")))
+                                    case Success(_) =>
+                                      complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"No Whatsapp entry found for whatsapp messageId ${wACallbackEvent.providerMessageId.get}.", null)))
+                                    case Failure(f) =>
+                                      ConnektLogger(LogFile.SERVICE).error(s"Whatsapp callback events failed", f)
+                                      complete(GenericResponse(StatusCodes.InternalServerError.intValue, null, Response("Whatsapp callback events failed", f.getCause)))
+                                  }
                                 case waResponse: WAResponse =>
-                                  ConnektLogger(LogFile.SERVICE).debug(s"Whatsapp response is not Callback event. Error occurred.", supplier(waResponse.getJson))
-                                  complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"${channel.toUpperCase} Whatsapp response is not Callback event. Error occurred.", waResponse)))
+                                  ConnektLogger(LogFile.SERVICE).error(s"Whatsapp response is not Callback event. Error occurred.", supplier(waResponse.getJson))
+                                  complete(GenericResponse(StatusCodes.InternalServerError.intValue, null, Response(s"${channel.toUpperCase} Whatsapp response is not Callback event. Error occurred.", waResponse)))
                               }
                             case _ =>
-                              complete(GenericResponse(StatusCodes.OK.intValue, null, Response("Channel not implemented yet.", null)))
+                              complete(GenericResponse(StatusCodes.BadRequest.intValue, null, Response("Channel not implemented yet.", null)))
                           }
                         }
                       }
