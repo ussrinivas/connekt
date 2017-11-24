@@ -44,8 +44,9 @@ class LatencyMetrics extends Instrumented {
       val cargoMap = if(eventCargo.isDefined) eventCargo.get.getObj[Map[String, String]] else Map[String, String]()
       val deliveredTS: Long = cargoMap.getOrElse("deliveredTS","0").toLong
       val providerName: String = cargoMap.getOrElse("provider", "na")
+      val appName: String = sce.appName
 
-      meter(s"provider.$providerName.event.${sce.eventType}").mark()
+      meter(s"provider.$providerName.appName.${sce.appName}.event.${sce.eventType}").mark()
 
       if (sce.eventType.equalsIgnoreCase("sms_delivered") && publishSMSLatency && !deliveredTS.equals(0L)) {
         val minTimestamp: Long = deliveredTS - 86400000L
