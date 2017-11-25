@@ -21,13 +21,11 @@ import com.flipkart.connekt.commons.entities.{AppUser, Channel}
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.helpers.{KafkaConnectionHelper, KafkaProducerHelper}
 import com.flipkart.connekt.commons.iomodels.ConnektRequest
+import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.services.SchedulerService.ScheduledRequest
 import com.flipkart.connekt.commons.utils.StringUtils._
-import com.roundeights.hasher.Implicits._
 import com.typesafe.config.Config
-import kafka.utils.{ZKStringSerializer, ZkUtils}
-import org.I0Itec.zkclient.ZkClient
-
+import com.roundeights.hasher.Implicits._
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
@@ -45,7 +43,7 @@ class MessageService(requestDao: TRequestDao, userConfigurationDao: TUserConfigu
           schedulerService.client.add(ScheduledRequest(reqWithId, requestBucket), scheduleTime)
           ConnektLogger(LogFile.SERVICE).info(s"Scheduled request ${reqWithId.id} at $scheduleTime to $requestBucket")
         case _ =>
-          queueProducer.writeMessages(requestBucket, Tuple2(reqWithId.id, reqWithId.getJson))
+          queueProducer.writeMessages(requestBucket, Tuple2(reqWithId.destinations.toString.sha256.hash.hex, reqWithId.getJson))
           ConnektLogger(LogFile.SERVICE).debug(s"Saved request ${reqWithId.id} to $requestBucket")
       }
 
