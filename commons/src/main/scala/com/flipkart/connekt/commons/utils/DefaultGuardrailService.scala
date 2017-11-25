@@ -18,7 +18,7 @@ import com.flipkart.concord.guardrail.TGuardrailService
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Success, Try}
 
-class GuardrailService extends TGuardrailService {
+class DefaultGuardrailService extends TGuardrailService {
 
   override def guard(params: AnyRef*): Try[Boolean] = Success(true)
 

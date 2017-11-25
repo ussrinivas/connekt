@@ -67,7 +67,7 @@ class WAContactDao(tableName: String, hTableFactory: THTableFactory) extends Dao
 
     val rD = Map[String, Map[String, Array[Byte]]](columnFamily -> entity.toMap)
     asyncAddRow(rowKey, rD)(hTableMutator)
-    ConnektLogger(LogFile.DAO).info(s"WAEntry added for destination ${checkContactEntity.destination} with exists ${checkContactEntity.exists}")
+    ConnektLogger(LogFile.DAO).info(s"WAEntry added for destination : ${checkContactEntity.destination} with exists : ${checkContactEntity.exists} and with rowkey : $rowKey")
   }
 
   @Timed("get")

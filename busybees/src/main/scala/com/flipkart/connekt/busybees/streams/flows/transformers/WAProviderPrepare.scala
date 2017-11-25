@@ -27,7 +27,7 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 
 class WAProviderPrepare extends MapFlowStage[ConnektRequest, (HttpRequest, WARequestTracker)] {
 
-  lazy val baseUrl = ConnektConfig.getConfig("wa.baseUrl").getOrElse("https://10.85.186.106:32785")
+  lazy val baseUrl = ConnektConfig.getString("wa.base.uri").get
   lazy implicit val stencilService = ServiceFactory.getStencilService
   private val sendUri = baseUrl + "/api/rest_send.php"
 

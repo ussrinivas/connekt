@@ -46,12 +46,11 @@ class WAMessageIdMappingDao(tableName: String, hTableFactory: THTableFactory) ex
     Option(hTableMutator).foreach(_.close())
   }
 
-  private def getRowKey(waMessageId: String) = waMessageId.sha256.hash.hex
-
+  private def getRowKey(appName: String, waMessageId: String) = s"${appName.toLowerCase}$waMessageId".sha256.hash.hex
 
   @Timed("add")
   def add(waMessageIdMappingEntity: WAMessageIdMappingEntity): Try[Unit] = Try_#(s"Adding waMessageIdMappingEntity failed for ${waMessageIdMappingEntity.providerMessageId} -> ${waMessageIdMappingEntity.connektMessageId}") {
-    val rowKey = getRowKey(waMessageIdMappingEntity.providerMessageId)
+    val rowKey = getRowKey(waMessageIdMappingEntity.appName, waMessageIdMappingEntity.providerMessageId)
     val entity = mutable.Map[String, Array[Byte]](
       "providerMessageId" -> waMessageIdMappingEntity.providerMessageId.getUtf8Bytes,
       "connektMessageId" -> waMessageIdMappingEntity.connektMessageId.getUtf8Bytes,
@@ -65,9 +64,9 @@ class WAMessageIdMappingDao(tableName: String, hTableFactory: THTableFactory) ex
   }
 
   @Timed("get")
-  def get(waMessageId: String): Try[Option[WAMessageIdMappingEntity]] = Try_#(s"waMessageIdMappingEntity get failed for destination : $waMessageId") {
+  def get(appName: String, waMessageId: String): Try[Option[WAMessageIdMappingEntity]] = Try_#(s"waMessageIdMappingEntity get failed for destination : $waMessageId") {
     implicit val hTableInterface = hTableConnFactory.getTableInterface(hTableName)
-    val rowKeys = getRowKey(waMessageId)
+    val rowKeys = getRowKey(appName, waMessageId)
     val rawData = fetchRow(rowKeys, List(columnFamily))
     val reqProps: Option[HbaseDao.ColumnData] = rawData.get(columnFamily)
     hTableConnFactory.releaseTableInterface(hTableInterface)

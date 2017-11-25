@@ -41,5 +41,5 @@ class WAHttpDispatcherPrepare extends MapFlowStage[Seq[ContactPayload], (HttpReq
     }
   }
 
-  private val sendUri = Uri(s"${ConnektConfig.getString("wa.contact.send.uri.host").get}/api/check_contacts.php")
+  private val sendUri = Uri(s"${ConnektConfig.getString("wa.base.uri").get}/api/check_contacts.php")
 }

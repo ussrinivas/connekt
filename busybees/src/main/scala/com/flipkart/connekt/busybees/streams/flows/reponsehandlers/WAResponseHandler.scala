@@ -57,7 +57,7 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends 
                   ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.Error)
                   events += WACallbackEvent(messageId, None, requestTracker.destination, errorText, requestTracker.clientId, appName, requestTracker.contextId, error.asText(), eventTS)
                   counter(s"whatsapp.sendFailed.${WAResponseStatus.Error}")
-                case _ if responseBody.findValue("error").asBoolean() == false =>
+                case _ if !responseBody.findValue("error").asBoolean() =>
                   val payload = responseBody.get("payload")
                   val providerMessageId = payload.get("message_id").asText()
                   WAMessageIdMappingService.add(WAMessageIdMappingEntity(
@@ -68,7 +68,7 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends 
                                                                           requestTracker.contextId
                                                                         ))
                   ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.SendHTTP)
-                  events += WACallbackEvent(messageId, Some(providerMessageId), requestTracker.destination, WAResponseStatus.SendHTTP, requestTracker.clientId, appName, requestTracker.contextId, payload.asText(), eventTS)
+                  events += WACallbackEvent(messageId, Some(providerMessageId), requestTracker.destination, WAResponseStatus.SendHTTP, requestTracker.clientId, appName, requestTracker.contextId, responseBody.toString, eventTS)
                   counter(s"whatsapp.send.${WAResponseStatus.SendHTTP}")
               }
             case _ =>

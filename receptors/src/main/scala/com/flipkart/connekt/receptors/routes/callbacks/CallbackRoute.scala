@@ -161,7 +161,7 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with
                               val waEvent = stencilService.materialize(stencil, payload).asInstanceOf[WAGeneratedEvent]
                               waEvent match {
                                 case wACallbackEvent: WACallbackEvent =>
-                                  WAMessageIdMappingService.get(wACallbackEvent.providerMessageId.get) match {
+                                  WAMessageIdMappingService.get(appName, wACallbackEvent.providerMessageId.get) match {
                                     case Success(s) if s.isDefined =>
                                       val wE = s.get
                                       val messageId = wE.connektMessageId

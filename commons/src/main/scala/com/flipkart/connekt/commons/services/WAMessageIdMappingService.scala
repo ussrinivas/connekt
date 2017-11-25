@@ -29,7 +29,7 @@ object WAMessageIdMappingService extends Instrumented {
   }
 
   @Timed("get")
-  def get(waMessageId: String): Try[Option[WAMessageIdMappingEntity]] = profile(s"get") {
-    dao.get(waMessageId)
+  def get(appName: String, waMessageId: String): Try[Option[WAMessageIdMappingEntity]] = profile(s"get") {
+    dao.get(appName, waMessageId)
   }
 }

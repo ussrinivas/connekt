@@ -60,6 +60,6 @@ class WACallbackDao(tableName: String, hTableFactory: THTableFactory) extends Ca
       .flatMap(fetchCallbackEvents(requestId, _, fetchRange))
       .asInstanceOf[List[(WACallbackEvent, Long)]]
       .map(_._1)
-      .groupBy(_.contactId)
+      .groupBy(_.destination)
   }
 }
