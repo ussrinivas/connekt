@@ -43,8 +43,9 @@ object WAPayloadFormatter{
           FileData(attachment.name, attachment.caption.getOrElse("")), destination
         )))
       case WAType.image =>
+        val attachment = waRequestData.attachment.get
         Some(WARequest(ImageWAPayload(
-          FileData(waRequestData.attachment.get.name, waRequestData.attachment.get.caption.getOrElse("")), destination
+          FileData(attachment.name, attachment.caption.getOrElse("")), destination
         )))
       case WAType.text =>
         Some(WARequest(TxtWAPayload(

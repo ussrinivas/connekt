@@ -32,15 +32,15 @@ class WAMediaDispatcher extends MapFlowStage[ConnektRequest, (HttpRequest, WAMed
       case Some(attachment: Attachment) =>
         val waRequestTracker = WAMediaRequestTracker(connektRequest)
 
-        val entity = createEntity(attachment, connektRequest.id)
+        val entity = createEntity(attachment)
         val httpRequest = HttpRequest(HttpMethods.POST, uri = mediaUploadUri, entity = entity)
         List(httpRequest -> waRequestTracker)
       case _ => List()
     }
   }
 
-  private def createEntity(attachment: Attachment, id: String): RequestEntity = {
-    val payload = WARequest(WAMediaPayload(s"${id}_${attachment.name}"))
+  private def createEntity(attachment: Attachment): RequestEntity = {
+    val payload = WARequest(WAMediaPayload(attachment.name))
     val data = Base64.rfc2045().decode(attachment.base64Data)
 
     val httpEntity = HttpEntity.Strict(MediaTypes.`application/octet-stream`, ByteString(data))

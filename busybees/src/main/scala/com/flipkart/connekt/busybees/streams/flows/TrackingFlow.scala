@@ -152,9 +152,12 @@ class WATrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecutor) ex
       appName = input.appName)
 
     val attachment = waData.attachment.map(attachment => {
-      attachment.copy(caption = attachment.caption.map(caption => {
-        TrackingService.trackText(caption, trackerOptions, transformer)
-      }))
+      attachment.copy(
+        caption = attachment.caption.map(caption => {
+          TrackingService.trackText(caption, trackerOptions, transformer)
+        }),
+        name = s"${input.id}_${attachment.name}"
+      )
     })
     waData.copy(
       attachment = attachment,
