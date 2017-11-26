@@ -119,7 +119,7 @@ object WATopology {
 
     mediaPartitioner.out(0) ~> waMediaDispatcher ~> waHttpPoolMediaFlow ~> waMediaResponseHandler ~> merge.in(0)
     mediaPartitioner.out(1) ~>                                                                       merge.in(1)
-    merge.out ~> tracking ~> waPrepare ~> waHttpPoolFlow ~> waResponseHandler
+                                                                                                     merge.out ~> tracking ~> waPrepare ~> waHttpPoolFlow ~> waResponseHandler
 
     FlowShape(mediaPartitioner.in, waResponseHandler.out)
   })

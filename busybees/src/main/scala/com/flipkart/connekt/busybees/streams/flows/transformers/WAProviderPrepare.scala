@@ -48,7 +48,7 @@ class WAProviderPrepare extends MapFlowStage[ConnektRequest, (HttpRequest, WAReq
             ConnektLogger(LogFile.PROCESSORS).info(s"WAProviderPrepare sending whatsapp message to: $destination, payload: $waPayload")
             val requestEntity = HttpEntity(ContentTypes.`application/json`, waPayload.getJson)
             def httpRequest = HttpRequest(HttpMethods.POST, sendUri, scala.collection.immutable.Seq.empty[HttpHeader], requestEntity)
-            (httpRequest -> tracker)
+            httpRequest -> tracker
         }
       }).toList
     }
