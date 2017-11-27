@@ -21,9 +21,9 @@ import com.flipkart.connekt.commons.factories.ServiceFactory
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.services.WAContactService
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
-import com.flipkart.connekt.receptors.wire.ResponseUtils._
 
 import scala.collection.JavaConverters._
+import scala.concurrent.Future
 
 class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
@@ -41,11 +41,15 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
               pathEndOrSingleSlash {
                 post {
                   meteredResource("checkcontact") {
-                    authorize(user, "CHECK_CONTACT") {
+                    authorize(user, "CHECK_CONTACT", s"CHECK_CONTACT_$appName") {
                       entity(as[ObjectNode]) { obj =>
-                        val destinations = obj.get("destinations").asInstanceOf[ArrayNode].elements().asScala.map(_.asText).toSet
                         complete {
-                          GenericResponse(StatusCodes.OK.intValue, null, Response(s"WACheckContactService for destinations ${destinations.mkString(",")}", WAContactService.instance.gets(appName, destinations).get))
+                          Future {
+                            profile(s"whatsapp.post.checkcontact.$appName") {
+                              val destinations = obj.get("destinations").asInstanceOf[ArrayNode].elements().asScala.map(_.asText).toSet
+                              GenericResponse(StatusCodes.OK.intValue, null, Response(s"WACheckContactService for destinations ${destinations.mkString(",")}", WAContactService.instance.gets(appName, destinations).get))
+                            }
+                          }(ioDispatcher)
                         }
                       }
                     }
@@ -56,12 +60,16 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                   pathEndOrSingleSlash {
                     get {
                       meteredResource("checkcontact") {
-                        authorize(user, "CHECK_CONTACT") {
+                        authorize(user, "CHECK_CONTACT", s"CHECK_CONTACT_$appName") {
                           complete {
-                            WAContactService.instance.get(appName, destination).get match {
-                              case Some(wa) => GenericResponse(StatusCodes.OK.intValue, null, Response(s"WACheckContactService for destination $destination", wa))
-                              case None => GenericResponse(StatusCodes.NotFound.intValue, null, Response(s"No mapping found for destination $destination", null))
-                            }
+                            Future {
+                              profile(s"whatsapp.get.checkcontact.$appName") {
+                                WAContactService.instance.get(appName, destination).get match {
+                                  case Some(wa) => GenericResponse(StatusCodes.OK.intValue, null, Response(s"WACheckContactService for destination $destination", wa))
+                                  case None => GenericResponse(StatusCodes.NotFound.intValue, null, Response(s"No mapping found for destination $destination", null))
+                                }
+                              }
+                            }(ioDispatcher)
                           }
                         }
                       }

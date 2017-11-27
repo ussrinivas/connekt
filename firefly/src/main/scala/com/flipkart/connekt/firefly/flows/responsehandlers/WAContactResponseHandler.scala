@@ -17,6 +17,7 @@ import akka.stream.Materializer
 import com.flipkart.connekt.busybees.models.WAContactTracker
 import com.flipkart.connekt.commons.entities.WAContactEntity
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
+import com.flipkart.connekt.commons.iomodels.MessageStatus.WAResponseStatus
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.services.{BigfootService, WAContactService}
@@ -25,7 +26,7 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
-class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends WAProviderResponseHandler[(Try[HttpResponse], WAContactTracker)](96) with Instrumented {
+class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends WAProviderResponseHandler[(Try[HttpResponse], WAContactTracker)](1) with Instrumented {
 
   val waContactService = WAContactService()
 
@@ -37,7 +38,6 @@ class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) e
     httpResponse match {
       case Success(r) =>
         try {
-          //          TODO: Added metering for errors
           val response = r.entity.getString.getObj[WAResponse]
           val results = response.payload.results
           ConnektLogger(LogFile.PROCESSORS).debug(s"WAResponseHandler received http response for: $results")
@@ -49,15 +49,19 @@ class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) e
                 BigfootService.ingestEntity(result.wa_username, waContactEntity.toPublishFormat, waContactEntity.namespace).get
               })
               ConnektLogger(LogFile.PROCESSORS).trace(s"WAResponseHandler contacts updated in hbase : $results")
+              meter(s"check.contact.${WAResponseStatus.ContactHTTP}")
             case w =>
               ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler received http response : ${response.getJson} , with status code $w and tracker ${responseTrackerPair.getJson}")
+              meter(s"check.contact.failed.${WAResponseStatus.ContactError}")
           }
         } catch {
           case e: Exception =>
             ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler failed processing http response body for: $r", e)
+            meter(s"check.contact.failed.${WAResponseStatus.ContactSystemError}")
         }
       case Failure(e2) =>
         ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler send failure for: $requestTracker", e2)
+        meter(s"check.contact.failed.${WAResponseStatus.ContactHTTP}")
     }
     List.empty[Nothing]
   })(m.executionContext)

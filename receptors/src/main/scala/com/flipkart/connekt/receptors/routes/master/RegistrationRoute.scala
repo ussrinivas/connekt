@@ -182,7 +182,7 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                   authorize(user, "REGISTRATION_WA", s"REGISTRATION_WA_$appName") {
                     withRequestTimeout(registrationTimeout) {
                       put {
-                        meteredResource(s"register.wa.contact") {
+                        meteredResource(s"register.wa.contact.$appName") {
                           entity(as[ContactPayload]) { contact =>
                             val appLevelConfigService = ServiceFactory.getUserProjectConfigService
                             val phoneUtil: PhoneNumberUtil = PhoneNumberUtil.getInstance()
