@@ -57,6 +57,7 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends 
                   ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.Error)
                   events += WACallbackEvent(messageId, None, requestTracker.destination, errorText, requestTracker.clientId, appName, requestTracker.contextId, error.asText(), eventTS)
                   meter(s"send.failed.${WAResponseStatus.Error}").mark()
+                  ConnektLogger(LogFile.PROCESSORS).error(s"WaResponseHandler received http failure for: $messageId with error: $error")
                 case _ if !responseBody.findValue("error").asBoolean() =>
                   val payload = responseBody.get("payload")
                   val providerMessageId = payload.get("message_id").asText()
@@ -70,6 +71,7 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends 
                   ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.SendHTTP)
                   events += WACallbackEvent(messageId, Some(providerMessageId), requestTracker.destination, WAResponseStatus.SendHTTP, requestTracker.clientId, appName, requestTracker.contextId, responseBody.toString, eventTS)
                   meter(s"send.${WAResponseStatus.SendHTTP}").mark()
+                  ConnektLogger(LogFile.PROCESSORS).info(s"WaResponseHandler received for: $messageId and waMessageId : $providerMessageId")
               }
             case _ =>
               ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.Error)
