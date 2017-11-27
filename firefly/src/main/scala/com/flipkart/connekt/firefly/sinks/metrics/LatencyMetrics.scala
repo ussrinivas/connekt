@@ -12,7 +12,7 @@
  */
 package com.flipkart.connekt.firefly.sinks.metrics
 
-import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
+import java.util.concurrent.TimeUnit
 
 import akka.Done
 import akka.stream.scaladsl.Sink
@@ -20,50 +20,71 @@ import com.codahale.metrics.{SlidingTimeWindowReservoir, Timer}
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels._
+import com.flipkart.connekt.commons.iomodels.MessageStatus._
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.utils.StringUtils._
 
-import scala.collection.JavaConverters._
 import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 class LatencyMetrics extends Instrumented {
 
   private def publishSMSLatency: Boolean = ConnektConfig.getBoolean("publish.sms.latency").getOrElse(false)
 
-  private val _timer = new ConcurrentHashMap[String,Timer]().asScala
-  private def slidingTimer(name:String):Timer =  _timer.getOrElseUpdate(name, {
+  private val _timer = scala.collection.concurrent.TrieMap[String, Timer]()
+
+  private def slidingTimer(name: String): Timer = _timer.getOrElseUpdate(name, {
     val slidingTimer = new Timer(new SlidingTimeWindowReservoir(2, TimeUnit.MINUTES))
     registry.register(name, slidingTimer)
     slidingTimer
   })
 
   def sink: Sink[CallbackEvent, Future[Done]] = Sink.foreach[CallbackEvent] {
-    case event@(sce: SmsCallbackEvent) =>
-      val providerName :String = Option(sce.cargo).filter(cargo => cargo.nonEmpty && cargo.startsWith("{")).map(_.getObj[Map[String, String]].getOrElse("provider","na")).getOrElse("na")
-      meter(s"provider.$providerName.event.${sce.eventType}").mark()
+    case sce: SmsCallbackEvent =>
+      val messageId = sce.messageId
+      def excludedEvents: List[String] = ConnektConfig.getList[String]("sms.metrics.publish.excluded.eventsList").map(_.toLowerCase)
+      if (!excludedEvents.contains(sce.eventType.toLowerCase)) {
+        val cargoMap = Option(sce.cargo).map(_.getObj[Map[String, String]]).getOrElse(Map.empty[String, String])
+        val providerName = cargoMap("provider")
+        meter(s"${sce.appName}.$providerName.${sce.eventType}").mark()
+        if (sce.eventType.equalsIgnoreCase(SmsResponseStatus.Delivered) && publishSMSLatency && cargoMap.nonEmpty) {
+          val deliveredTS: Long = try {
+            cargoMap("deliveredTS").toLong
+          } catch {
+            case ex: Exception =>
+              meter(s"${sce.appName}.$providerName.errored").mark()
+              ConnektLogger(LogFile.SERVICE).error(s"Erroneous DeliveredTS value being sent by provider: $providerName for messageId:$messageId ${ex.getMessage}")
+              -1L
+          }
+          if (deliveredTS >= 0L) {
+            val minTimestamp: Long = sce.timestamp - 86400000L
+            val maxTimestamp: Long = sce.timestamp + 1800000L
 
-      if (sce.eventType.equalsIgnoreCase("sms_delivered") && publishSMSLatency) {
-        val minTimestamp: Long = sce.timestamp - 86400000L
-        val maxTimestamp: Long = sce.timestamp + 120000L
-        val smsEventDetails = ServiceFactory.getCallbackService.fetchCallbackEventByMId(event.messageId.toString, Channel.SMS, Some(Tuple2(minTimestamp, maxTimestamp)))
-        if (smsEventDetails.isSuccess && smsEventDetails.get.nonEmpty) {
-          val eventDetails = smsEventDetails.get.get(sce.asInstanceOf[SmsCallbackEvent].receiver)
-          val deliveredTS = sce.timestamp
-          eventDetails.foreach(eventDetail => {
-            if (eventDetail.exists(_.eventType.equalsIgnoreCase("sms_received"))) {
-              val receivedEvent = eventDetail.filter(_.eventType.equalsIgnoreCase("sms_received")).head
-
-              val receivedProviderName = if (providerName.equalsIgnoreCase("na")) receivedEvent.asInstanceOf[SmsCallbackEvent].cargo.getObj[Map[String, String]].getOrElse("provider", "na") else providerName
-
-              val recTS = receivedEvent.asInstanceOf[SmsCallbackEvent].timestamp
-              val lagTS = deliveredTS - recTS
-              slidingTimer(getMetricName(s"SMS.latency.${receivedEvent.appName}.$receivedProviderName")).update(lagTS, TimeUnit.MILLISECONDS)
-              ConnektLogger(LogFile.SERVICE).trace(s"Metrics.LatencyMetrics for ${event.messageId.toString} is ingested into cosmos")
+            ServiceFactory.getCallbackService.fetchCallbackEventByMId(messageId, Channel.SMS, Some(Tuple2(minTimestamp, maxTimestamp))) match {
+              case Success(details) if details.nonEmpty =>
+                val eventDetails = details.get(sce.receiver)
+                eventDetails.foreach(eventDetail => {
+                  val receivedEvent = eventDetail.filter(_.eventType.equalsIgnoreCase(SmsResponseStatus.Received))
+                  if (receivedEvent.nonEmpty) {
+                    val receivedTs = receivedEvent.head.asInstanceOf[SmsCallbackEvent].timestamp
+                    val diff = deliveredTS - receivedTs
+                    slidingTimer(getMetricName(s"sms.latency.${receivedEvent.head.appName}.$providerName")).update(diff, TimeUnit.MILLISECONDS)
+                    ConnektLogger(LogFile.SERVICE).trace(s"Metrics.LatencyMetrics for $messageId is ingested into cosmos")
+                  }
+                })
+              case Success(details) =>
+                ConnektLogger(LogFile.SERVICE).trace(s"Events not available: fetchCallbackEventByMId for messageId : $messageId")
+              case Failure(f) =>
+                ConnektLogger(LogFile.SERVICE).trace(s"Events fetch failed fetchCallbackEventByMId for messageId : $messageId with error : ", f)
             }
-          })
+          }
         }
       }
-    case _ =>
+      else {
+        ConnektLogger(LogFile.SERVICE).trace(s"Event: ${sce.eventType} is in the exclusion list for metrics publish, messageID: $messageId")
+      }
+    case _ => ConnektLogger(LogFile.SERVICE).trace(s"LatencyMetrics for channel callback event not implemented yet.")
   }
+
 }

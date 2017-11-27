@@ -77,6 +77,7 @@ object MessageStatus {
 
     val Received = Value("sms_received")
     val Error = Value("sms_error")
+    val Delivered = Value("sms_delivered")
     val InternalError = Value("sms_server_error")
     val AuthError = Value("sms_auth_error")
   }
