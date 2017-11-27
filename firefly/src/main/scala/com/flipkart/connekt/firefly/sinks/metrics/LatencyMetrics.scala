@@ -44,13 +44,15 @@ class LatencyMetrics extends Instrumented {
   def sink: Sink[CallbackEvent, Future[Done]] = Sink.foreach[CallbackEvent] {
     case sce: SmsCallbackEvent =>
       val messageId = sce.messageId
+
       def excludedEvents: List[String] = ConnektConfig.getList[String]("sms.metrics.publish.excluded.eventsList").map(_.toLowerCase)
 
+      ConnektLogger(LogFile.SERVICE).trace(s"Ingesting Metrics.LatencyMetrics for $messageId with cargo : ${sce.cargo}.")
       if (!excludedEvents.contains(sce.eventType.toLowerCase)) {
-        val cargoMap = Option(sce.cargo).map(_.getObj[Map[String, String]]).getOrElse(Map.empty[String, String])
-        val tryProviderName = Try(cargoMap("provider"))
-        tryProviderName match {
-          case Success(providerName) =>
+        val tryCargoMap = Try(sce.cargo.getObj[Map[String, String]])
+        tryCargoMap match {
+          case Success(cargoMap) if Try(cargoMap("provider")).isSuccess && Try(cargoMap("deliveredTS")).isSuccess =>
+            val providerName = cargoMap("provider")
             meter(s"${sce.appName}.$providerName.${sce.eventType}").mark()
             if (sce.eventType.equalsIgnoreCase(SmsResponseStatus.Delivered) && publishSMSLatency && cargoMap.nonEmpty) {
               val deliveredTS: Long = try {
@@ -84,16 +86,15 @@ class LatencyMetrics extends Instrumented {
                 }
               }
             }
+          case Success(cargoMap) =>
+            ConnektLogger(LogFile.SERVICE).trace(s"Events fetch null providerName for cargo: ${sce.cargo} messageId : $messageId")
           case Failure(f) =>
-            ConnektLogger(LogFile.SERVICE).trace(s"Events fetch null providerName for eventType: ${sce.eventType} messageId : $messageId with error : ", f)
+            ConnektLogger(LogFile.SERVICE).error(s"Erroneous cargo value for messageId : $messageId with error : ", f)
         }
-
-
       }
       else {
         ConnektLogger(LogFile.SERVICE).trace(s"Event: ${sce.eventType} is in the exclusion list for metrics publish, messageID: $messageId")
       }
-    case _ => ConnektLogger(LogFile.SERVICE).trace(s"LatencyMetrics for channel callback event not implemented yet.")
+    case _ => ConnektLogger(LogFile.SERVICE).info(s"LatencyMetrics for channel callback event not implemented yet.")
   }
-
 }
