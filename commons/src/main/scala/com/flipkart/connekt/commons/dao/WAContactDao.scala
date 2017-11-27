@@ -113,24 +113,21 @@ class WAContactDao(tableName: String, hTableFactory: THTableFactory) extends Dao
   }
 
   @Timed("getAll")
-  def getAllContacts: Iterator[ContactPayload] = {
+  def getAllContacts: Try[Iterator[ContactPayload]] = Try_#(s"WAContactEntity getAllContacts failed") {
     implicit val hTableInterface = hTableConnFactory.getTableInterface(hTableName)
-    try {
-      val scan = new Scan()
-      val colDestTuple = (columnFamily.getBytes, "destination".getBytes)
-      val colAppTuple = (columnFamily.getBytes, "appName".getBytes)
-      scan.addColumn(colDestTuple._1, colDestTuple._2)
-      scan.addColumn(colAppTuple._1, colAppTuple._2)
-      val resultScanner = hTableInterface.getScanner(scan)
-      resultScanner.iterator().toIterator.map(r =>
-        ContactPayload(
-          Bytes.toString(r.getValue(colDestTuple._1, colDestTuple._2)),
-          Bytes.toString(r.getValue(colAppTuple._1, colAppTuple._2))
-        )
+    val scan = new Scan()
+    val colDestTuple = (columnFamily.getBytes, "destination".getBytes)
+    val colAppTuple = (columnFamily.getBytes, "appName".getBytes)
+    scan.addColumn(colDestTuple._1, colDestTuple._2)
+    scan.addColumn(colAppTuple._1, colAppTuple._2)
+    val resultScanner = hTableInterface.getScanner(scan)
+    resultScanner.iterator().toIterator.map(r =>
+      ContactPayload(
+        Bytes.toString(r.getValue(colDestTuple._1, colDestTuple._2)),
+        Bytes.toString(r.getValue(colAppTuple._1, colAppTuple._2))
       )
-    }
+    )
   }
-
 }
 
 object WAContactDao {

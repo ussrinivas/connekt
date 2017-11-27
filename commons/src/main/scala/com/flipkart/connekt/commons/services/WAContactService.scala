@@ -20,7 +20,8 @@ import com.flipkart.connekt.commons.iomodels.ContactPayload
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.metrics.Timed
-import scala.util.Try
+
+import scala.util.{Failure, Success, Try}
 
 class WAContactService extends TService with Instrumented {
 
@@ -29,10 +30,10 @@ class WAContactService extends TService with Instrumented {
   private final val WA_CONTACT_BATCH = ConnektConfig.getInt("wa.check.contact.batch.size").getOrElse(1000)
   private final val WA_CONTACT_QUEUE = ConnektConfig.getString("wa.contact.topic.name").get
 
-  def this(queueProducerHelper: KafkaProducerHelper){
+  def this(queueProducerHelper: KafkaProducerHelper) {
     this()
     this.queueProducerHelper = queueProducerHelper
-}
+  }
 
   @Timed("add")
   def add(contactEntity: WAContactEntity): Try[Unit] = profile("add") {
@@ -49,17 +50,13 @@ class WAContactService extends TService with Instrumented {
     dao.gets(appName, destinations)
   }
 
-  def refreshWAContacts = {
+  def refreshWAContacts() = {
     val task = new Runnable {
       override def run() = {
         profile("refreshAll") {
-          try {
-            dao.getAllContacts
-              .grouped(WA_CONTACT_BATCH)
-              .foreach(_.foreach(contact => enqueueContactEvents(contact)))
-          } catch {
-            case e: Exception =>
-              ConnektLogger(LogFile.SERVICE).error(s"Contact warm-up failure", e)
+          dao.getAllContacts match {
+            case Success(c) => c.grouped(WA_CONTACT_BATCH).foreach(_.foreach(contact => enqueueContactEvents(contact)))
+            case Failure(f) => ConnektLogger(LogFile.SERVICE).error(s"Contact warm-up failure", f)
           }
         }
       }
