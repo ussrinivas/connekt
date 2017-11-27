@@ -26,7 +26,8 @@ import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.utils.StringUtils._
 
 import scala.concurrent.Future
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
+
 
 class LatencyMetrics extends Instrumented {
 
@@ -43,48 +44,57 @@ class LatencyMetrics extends Instrumented {
   def sink: Sink[CallbackEvent, Future[Done]] = Sink.foreach[CallbackEvent] {
     case sce: SmsCallbackEvent =>
       val messageId = sce.messageId
-      def excludedEvents: List[String] = ConnektConfig.getList[String]("sms.metrics.publish.excluded.eventsList").map(_.toLowerCase)
-      if (!excludedEvents.contains(sce.eventType.toLowerCase)) {
-        val cargoMap = Option(sce.cargo).map(_.getObj[Map[String, String]]).getOrElse(Map.empty[String, String])
-        val providerName = cargoMap("provider")
-        meter(s"${sce.appName}.$providerName.${sce.eventType}").mark()
-        if (sce.eventType.equalsIgnoreCase(SmsResponseStatus.Delivered) && publishSMSLatency && cargoMap.nonEmpty) {
-          val deliveredTS: Long = try {
-            cargoMap("deliveredTS").toLong
-          } catch {
-            case ex: Exception =>
-              meter(s"${sce.appName}.$providerName.errored").mark()
-              ConnektLogger(LogFile.SERVICE).error(s"Erroneous DeliveredTS value being sent by provider: $providerName for messageId:$messageId ${ex.getMessage}")
-              -1L
-          }
-          if (deliveredTS >= 0L) {
-            val minTimestamp: Long = sce.timestamp - 86400000L
-            val maxTimestamp: Long = sce.timestamp + 1800000L
 
-            ServiceFactory.getCallbackService.fetchCallbackEventByMId(messageId, Channel.SMS, Some(Tuple2(minTimestamp, maxTimestamp))) match {
-              case Success(details) if details.nonEmpty =>
-                val eventDetails = details.get(sce.receiver)
-                eventDetails.foreach(eventDetail => {
-                  val receivedEvent = eventDetail.filter(_.eventType.equalsIgnoreCase(SmsResponseStatus.Received))
-                  if (receivedEvent.nonEmpty) {
-                    val receivedTs = receivedEvent.head.asInstanceOf[SmsCallbackEvent].timestamp
-                    val diff = deliveredTS - receivedTs
-                    slidingTimer(getMetricName(s"sms.latency.${receivedEvent.head.appName}.$providerName")).update(diff, TimeUnit.MILLISECONDS)
-                    ConnektLogger(LogFile.SERVICE).trace(s"Metrics.LatencyMetrics for $messageId is ingested into cosmos")
-                  }
-                })
-              case Success(details) =>
-                ConnektLogger(LogFile.SERVICE).trace(s"Events not available: fetchCallbackEventByMId for messageId : $messageId")
-              case Failure(f) =>
-                ConnektLogger(LogFile.SERVICE).trace(s"Events fetch failed fetchCallbackEventByMId for messageId : $messageId with error : ", f)
+      def excludedEvents: List[String] = ConnektConfig.getList[String]("sms.metrics.publish.excluded.eventsList").map(_.toLowerCase)
+
+      ConnektLogger(LogFile.SERVICE).trace(s"Ingesting Metrics.LatencyMetrics for $messageId with cargo : ${sce.cargo}.")
+      if (!excludedEvents.contains(sce.eventType.toLowerCase)) {
+        val tryCargoMap = Try(sce.cargo.getObj[Map[String, String]])
+        tryCargoMap match {
+          case Success(cargoMap) if Try(cargoMap("provider")).isSuccess && Try(cargoMap("deliveredTS")).isSuccess =>
+            val providerName = cargoMap("provider")
+            meter(s"${sce.appName}.$providerName.${sce.eventType}").mark()
+            if (sce.eventType.equalsIgnoreCase(SmsResponseStatus.Delivered) && publishSMSLatency && cargoMap.nonEmpty) {
+              val deliveredTS: Long = try {
+                cargoMap("deliveredTS").toLong
+              } catch {
+                case ex: Exception =>
+                  meter(s"${sce.appName}.$providerName.errored").mark()
+                  ConnektLogger(LogFile.SERVICE).error(s"Erroneous DeliveredTS value being sent by provider: $providerName for messageId:$messageId ${ex.getMessage}")
+                  -1L
+              }
+              if (deliveredTS >= 0L) {
+                val minTimestamp: Long = sce.timestamp - 86400000L
+                val maxTimestamp: Long = sce.timestamp + 1800000L
+
+                ServiceFactory.getCallbackService.fetchCallbackEventByMId(messageId, Channel.SMS, Some(Tuple2(minTimestamp, maxTimestamp))) match {
+                  case Success(details) if details.nonEmpty =>
+                    val eventDetails = details.get(sce.receiver)
+                    eventDetails.foreach(eventDetail => {
+                      val receivedEvent = eventDetail.filter(_.eventType.equalsIgnoreCase(SmsResponseStatus.Received))
+                      if (receivedEvent.nonEmpty) {
+                        val receivedTs = receivedEvent.head.asInstanceOf[SmsCallbackEvent].timestamp
+                        val diff = deliveredTS - receivedTs
+                        slidingTimer(getMetricName(s"sms.latency.${receivedEvent.head.appName}.$providerName")).update(diff, TimeUnit.MILLISECONDS)
+                        ConnektLogger(LogFile.SERVICE).trace(s"Metrics.LatencyMetrics for $messageId is ingested into cosmos")
+                      }
+                    })
+                  case Success(details) =>
+                    ConnektLogger(LogFile.SERVICE).trace(s"Events not available: fetchCallbackEventByMId for messageId : $messageId")
+                  case Failure(f) =>
+                    ConnektLogger(LogFile.SERVICE).trace(s"Events fetch failed fetchCallbackEventByMId for messageId : $messageId with error : ", f)
+                }
+              }
             }
-          }
+          case Success(cargoMap) =>
+            ConnektLogger(LogFile.SERVICE).trace(s"Events fetch null providerName for cargo: ${sce.cargo} messageId : $messageId")
+          case Failure(f) =>
+            ConnektLogger(LogFile.SERVICE).error(s"Erroneous cargo value for messageId : $messageId with error : ", f)
         }
       }
       else {
         ConnektLogger(LogFile.SERVICE).trace(s"Event: ${sce.eventType} is in the exclusion list for metrics publish, messageID: $messageId")
       }
-    case _ => ConnektLogger(LogFile.SERVICE).trace(s"LatencyMetrics for channel callback event not implemented yet.")
+    case _ => ConnektLogger(LogFile.SERVICE).info(s"LatencyMetrics for channel callback event not implemented yet.")
   }
-
 }

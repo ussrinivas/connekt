@@ -46,7 +46,7 @@ class LatencyMetricsTopologyTest extends TopologyUTSpec with Instrumented {
       clientId = "affordability",
       appName = "flipkart",
       contextId = "",
-      cargo = "{\"provider\": \"sinfini\"}",
+      cargo = "{}",
       timestamp = 1509800169441L,
       eventId = "iaUAuOefuD")
 
