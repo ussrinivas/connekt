@@ -28,6 +28,7 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
+
 class LatencyMetrics extends Instrumented {
 
   private def publishSMSLatency: Boolean = ConnektConfig.getBoolean("publish.sms.latency").getOrElse(false)
@@ -43,7 +44,6 @@ class LatencyMetrics extends Instrumented {
   def sink: Sink[CallbackEvent, Future[Done]] = Sink.foreach[CallbackEvent] {
     case sce: SmsCallbackEvent =>
       val messageId = sce.messageId
-
       def excludedEvents: List[String] = ConnektConfig.getList[String]("sms.metrics.publish.excluded.eventsList").map(_.toLowerCase)
 
       if (!excludedEvents.contains(sce.eventType.toLowerCase)) {
@@ -85,7 +85,7 @@ class LatencyMetrics extends Instrumented {
               }
             }
           case Failure(f) =>
-            ConnektLogger(LogFile.SERVICE).trace(s"Events fetch null providerName for messageId : $messageId with error : ", f)
+            ConnektLogger(LogFile.SERVICE).trace(s"Events fetch null providerName for eventType: ${sce.eventType} messageId : $messageId with error : ", f)
         }
 
 
