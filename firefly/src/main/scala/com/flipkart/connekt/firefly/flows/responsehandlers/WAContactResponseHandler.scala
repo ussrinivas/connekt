@@ -49,19 +49,19 @@ class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) e
                 BigfootService.ingestEntity(result.wa_username, waContactEntity.toPublishFormat, waContactEntity.namespace).get
               })
               ConnektLogger(LogFile.PROCESSORS).trace(s"WAResponseHandler contacts updated in hbase : $results")
-              meter(s"check.contact.${WAResponseStatus.ContactHTTP}")
+              meter(s"check.contact.${WAResponseStatus.ContactHTTP}").mark()
             case w =>
               ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler received http response : ${response.getJson} , with status code $w and tracker ${responseTrackerPair.getJson}")
-              meter(s"check.contact.failed.${WAResponseStatus.ContactError}")
+              meter(s"check.contact.failed.${WAResponseStatus.ContactError}").mark()
           }
         } catch {
           case e: Exception =>
             ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler failed processing http response body for: $r", e)
-            meter(s"check.contact.failed.${WAResponseStatus.ContactSystemError}")
+            meter(s"check.contact.failed.${WAResponseStatus.ContactSystemError}").mark()
         }
       case Failure(e2) =>
         ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler send failure for: $requestTracker", e2)
-        meter(s"check.contact.failed.${WAResponseStatus.ContactHTTP}")
+        meter(s"check.contact.failed.${WAResponseStatus.ContactHTTP}").mark()
     }
     List.empty[Nothing]
   })(m.executionContext)
