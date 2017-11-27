@@ -116,12 +116,12 @@ object WATopology {
     val waHttpPoolFlow = b.add(HttpDispatcher.waPoolClientFlow.timedAs("waRTT"))
 
     val waResponseHandler = b.add(new WAResponseHandler()(ioMat,ioDispatcher).flow)
+    tracking ~> mediaPartitioner
+                mediaPartitioner.out(0) ~> waMediaDispatcher ~> waHttpPoolMediaFlow ~> waMediaResponseHandler ~> merge.in(0)
+                mediaPartitioner.out(1) ~>                                                                       merge.in(1)
+                                                                                                                 merge.out ~> waPrepare ~> waHttpPoolFlow ~> waResponseHandler
 
-    mediaPartitioner.out(0) ~> waMediaDispatcher ~> waHttpPoolMediaFlow ~> waMediaResponseHandler ~> merge.in(0)
-    mediaPartitioner.out(1) ~>                                                                       merge.in(1)
-                                                                                                     merge.out ~> tracking ~> waPrepare ~> waHttpPoolFlow ~> waResponseHandler
-
-    FlowShape(mediaPartitioner.in, waResponseHandler.out)
+    FlowShape(tracking.in, waResponseHandler.out)
   })
 
 }
