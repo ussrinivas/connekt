@@ -43,7 +43,7 @@ class MessageService(requestDao: TRequestDao, userConfigurationDao: TUserConfigu
           schedulerService.client.add(ScheduledRequest(reqWithId, requestBucket), scheduleTime)
           ConnektLogger(LogFile.SERVICE).info(s"Scheduled request ${reqWithId.id} at $scheduleTime to $requestBucket")
         case _ =>
-          queueProducer.writeMessages(requestBucket, Tuple2(reqWithId.destinations.toString.sha256.hash.hex, reqWithId.getJson))
+          queueProducer.writeMessages(requestBucket, Tuple2(reqWithId.kafkaKey, reqWithId.getJson))
           ConnektLogger(LogFile.SERVICE).debug(s"Saved request ${reqWithId.id} to $requestBucket")
       }
 

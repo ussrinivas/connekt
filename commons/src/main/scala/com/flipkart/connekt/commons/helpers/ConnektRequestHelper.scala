@@ -13,6 +13,7 @@
 package com.flipkart.connekt.commons.helpers
 
 import com.flipkart.connekt.commons.iomodels._
+import com.roundeights.hasher.Implicits._
 
 object ConnektRequestHelper {
 
@@ -29,6 +30,12 @@ object ConnektRequestHelper {
       case wa: WARequestInfo => wa.destinations
       case _ => null
     }
+
+    def kafkaKey: String = request.channelInfo match {
+      case _: WARequestInfo => destinations.toString.sha256.hash.hex
+      case _ => request.id
+    }
+
 
     def appName: String = request.channelInfo match {
       case pn: PNRequestInfo => pn.appName
