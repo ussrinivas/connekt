@@ -32,7 +32,7 @@ class WAHttpDispatcherPrepare extends MapFlowStage[Seq[ContactPayload], (HttpReq
       val requestEntity = HttpEntity(ContentTypes.`application/json`, waPayload.getJson)
       val requestHeaders = scala.collection.immutable.Seq.empty[HttpHeader]
       val httpRequest = HttpRequest(HttpMethods.POST, sendUri, requestHeaders, requestEntity)
-      val requestTrace = WAContactTracker(contactList, contacts.head.appName)
+      val requestTrace = WAContactTracker(contactList, contacts.head.appName, contacts)
       List(httpRequest -> requestTrace)
     } catch {
       case e: Throwable =>

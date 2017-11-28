@@ -29,7 +29,6 @@ class HttpDispatcher(actorSystemConf: Config) {
   implicit val httpSystem: ActorSystem = ActorSystem("http-out", actorSystemConf)
   implicit val httpMat: ActorMaterializer = ActorMaterializer()
   implicit val ec: ExecutionContextExecutor = httpSystem.dispatcher
-  private lazy val certPath = ConnektConfig.getString("wa.certPath").getOrElse("/etc/default/wa.cer")
 
   private val gcmPoolClientFlow = Http().superPool[GCMRequestTracker]()(httpMat)
 
@@ -38,17 +37,15 @@ class HttpDispatcher(actorSystemConf: Config) {
   private val smsPoolClientFlow = Http().superPool[SmsRequestTracker]()(httpMat)
 
   private val waPoolInsecureClientFlow = {
-    
-//    TODO: Remove this code once move to signed certified certs
+    //    TODO: Remove this code once move to signed certified certs
+    val certPath = ConnektConfig.getString("wa.certificate.path").get
     val trustStoreConfig = TrustStoreConfig(None, Some(certPath)).withStoreType("PEM")
     val trustManagerConfig = TrustManagerConfig().withTrustStoreConfigs(List(trustStoreConfig))
-
     val badSslConfig = AkkaSSLConfig().mapSettings(s => s.withLoose(s.loose
       .withAcceptAnyCertificate(true)
       .withDisableHostnameVerification(true)
     ).withTrustManagerConfig(trustManagerConfig))
     val badCtx = Http().createClientHttpsContext(badSslConfig)
-
     Http().superPool[RequestTracker](badCtx)(httpMat)
   }
 
@@ -63,7 +60,7 @@ object HttpDispatcher {
   private var instance: Option[HttpDispatcher] = None
 
   def init(actorSystemConf: Config) = {
-    if(instance.isEmpty) {
+    if (instance.isEmpty) {
       ConnektLogger(LogFile.SERVICE).info(s"Creating HttpDispatcher actor-system with conf: ${actorSystemConf.toString}")
       instance = Some(new HttpDispatcher(actorSystemConf))
     }
@@ -77,9 +74,9 @@ object HttpDispatcher {
 
   def wnsPoolClientFlow = instance.map(_.wnsPoolClientFlow).get
 
-  def openWebPoolClientFlow =  instance.map(_.openWebPoolClientFlow).get
+  def openWebPoolClientFlow = instance.map(_.openWebPoolClientFlow).get
 
-  def emailPoolClientFlow =  instance.map(_.emailPoolClientFlow).get
+  def emailPoolClientFlow = instance.map(_.emailPoolClientFlow).get
 
 
 }
