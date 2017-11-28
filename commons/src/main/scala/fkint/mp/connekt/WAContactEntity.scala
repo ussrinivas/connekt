@@ -19,7 +19,6 @@ case class WAContactEntity(
                             userName: String,
                             appName: String,
                             exists: String,
-                            lastContacted: String,
                             lastCheckContactTS: String
                           ) extends TPublishRequest {
   override def validate(): Boolean = true

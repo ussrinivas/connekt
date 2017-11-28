@@ -25,7 +25,7 @@ case class WAContactEntity(destination: String,
   override def namespace: String = "fkint/mp/connekt/WAContactEntity"
 
   override def toPublishFormat: fkint.mp.connekt.WAContactEntity = {
-    fkint.mp.connekt.WAContactEntity(destination = destination, userName = userName, appName = appName, exists = exists, lastContacted = lastContacted.map(_.toString).orNull, lastCheckContactTS = DateTimeUtils.getStandardFormatted(lastCheckContactTS))
+    fkint.mp.connekt.WAContactEntity(destination = destination, userName = userName, appName = appName, exists = exists, lastCheckContactTS = DateTimeUtils.getStandardFormatted(lastCheckContactTS))
   }
 
 }
