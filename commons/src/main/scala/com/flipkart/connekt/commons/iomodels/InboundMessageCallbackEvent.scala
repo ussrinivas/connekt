@@ -60,7 +60,7 @@ case class InboundMessageCallbackEvent(clientId: String,
 
   override def toPublishFormat: fkint.mp.connekt.InboundMessageCallbackEvent = {
     fkint.mp.connekt.InboundMessageCallbackEvent(clientId = clientId, sender = sender, eventType = eventType, appName = appName,
-      contextId = contextId, message = message, providerMessageId = providerMessageId.getOrElse(""), messageMeta = messageMeta.getOrElse(""), media = null, cargo = cargo, timestamp = DateTimeUtils.getStandardFormatted(timestamp))
+      contextId = contextId, message = message, providerMessageId = providerMessageId.getOrElse(""), messageMeta = messageMeta.getOrElse(""), media = List.empty, cargo = cargo, timestamp = DateTimeUtils.getStandardFormatted(timestamp))
   }
 
   override def messageId: String = throw new NotImplementedError(s"`messageId` undefined for InboundMessageCallbackEvent")

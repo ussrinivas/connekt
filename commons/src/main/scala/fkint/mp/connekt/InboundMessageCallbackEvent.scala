@@ -22,7 +22,7 @@ case class InboundMessageCallbackEvent(clientId: String,
                                        message: String,
                                        providerMessageId: String,
                                        messageMeta: String,
-                                       media: String,
+                                       media: List[String],
                                        cargo: String,
                                        timestamp: String
                                       ) extends TPublishRequest {
