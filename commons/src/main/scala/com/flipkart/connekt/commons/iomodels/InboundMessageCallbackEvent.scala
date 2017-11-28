@@ -56,7 +56,7 @@ case class InboundMessageCallbackEvent(clientId: String,
 
   override def contactId: String = s"${appName.toLowerCase}$sender"
 
-  override def namespace: String = throw new NotImplementedError(s"`namespace` undefined for InboundMessageCallbackEvent")
+  override def namespace: String = "fkint/mp/connekt/InboundMessageCallbackEvent"
 
   override def toPublishFormat: fkint.mp.connekt.InboundMessageCallbackEvent = {
     fkint.mp.connekt.InboundMessageCallbackEvent(clientId = clientId, sender = sender, eventType = eventType, appName = appName,
