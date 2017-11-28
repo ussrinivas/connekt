@@ -14,8 +14,8 @@ package com.flipkart.connekt.commons.iomodels
 
 import java.util.Optional
 
-import com.flipkart.concord.publisher.TPublishRequest
 import com.flipkart.connekt.commons.entities.bigfoot.PublishSupport
+import com.flipkart.connekt.commons.utils.DateTimeUtils
 import com.flipkart.connekt.commons.utils.StringUtils._
 import org.apache.commons.lang.RandomStringUtils
 
@@ -58,7 +58,10 @@ case class InboundMessageCallbackEvent(clientId: String,
 
   override def namespace: String = throw new NotImplementedError(s"`namespace` undefined for InboundMessageCallbackEvent")
 
-  override def toPublishFormat: TPublishRequest = throw new NotImplementedError(s"`toPublishFormat` undefined for InboundMessageCallbackEvent")
+  override def toPublishFormat: fkint.mp.connekt.InboundMessageCallbackEvent = {
+    fkint.mp.connekt.InboundMessageCallbackEvent(clientId = clientId, sender = sender, eventType = eventType, appName = appName,
+      contextId = contextId, message = message, providerMessageId = providerMessageId.getOrElse(""), messageMeta = messageMeta.getOrElse(""), media = null, cargo = cargo, timestamp = DateTimeUtils.getStandardFormatted(timestamp))
+  }
 
   override def messageId: String = throw new NotImplementedError(s"`messageId` undefined for InboundMessageCallbackEvent")
 }
