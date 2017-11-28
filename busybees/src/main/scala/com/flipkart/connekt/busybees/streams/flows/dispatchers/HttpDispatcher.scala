@@ -14,6 +14,7 @@ package com.flipkart.connekt.busybees.streams.flows.dispatchers
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.stream._
 import com.flipkart.connekt.busybees.models._
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
@@ -38,7 +39,7 @@ class HttpDispatcher(actorSystemConf: Config) {
   private val smsPoolClientFlow = Http().superPool[SmsRequestTracker]()(httpMat)
 
   private val waPoolInsecureClientFlow = {
-    
+
 //    TODO: Remove this code once move to signed certified certs
     val trustStoreConfig = TrustStoreConfig(None, Some(certPath)).withStoreType("PEM")
     val trustManagerConfig = TrustManagerConfig().withTrustStoreConfigs(List(trustStoreConfig))
@@ -47,9 +48,13 @@ class HttpDispatcher(actorSystemConf: Config) {
       .withAcceptAnyCertificate(true)
       .withDisableHostnameVerification(true)
     ).withTrustManagerConfig(trustManagerConfig))
-    val badCtx = Http().createClientHttpsContext(badSslConfig)
 
-    Http().superPool[RequestTracker](badCtx)(httpMat)
+    val waMaxConnections = ConnektConfig.getInt("topology.wa.maxConnections").getOrElse(4)
+    val waMaxOpenRequests = ConnektConfig.getInt("topology.wa.maxOpenRequests").getOrElse(10)
+    Http().superPool[RequestTracker](
+      Http().createClientHttpsContext(badSslConfig),
+      ConnectionPoolSettings(httpSystem).withMaxOpenRequests(waMaxOpenRequests).withMaxConnections(waMaxConnections)
+    )(httpMat)
   }
 
   private val openWebPoolClientFlow = Http().superPool[OpenWebRequestTracker]()(httpMat)
