@@ -93,10 +93,10 @@ object WATopology {
     /**
       * Whatsapp Topology
       *
-      *                     +-------------------+         +---------------------+     +-------------------------+             +--------+       +------------+      +-------------------+      +-------------------+       +-----+
-      *  ConnektRequest --> |  MediaPartitioner | -+----> |  WAMediaDispatcher  | --> | WaMediaResponseHandler  |  --> +  --> | Merger | -->   |  Tracking  | -->  | WAProviderPrepare | -->  | WAResponseHandler |  -->  | out |
-      *                     +-------------------+  |      +---------------------+     +-------------------------+      |      +--------+       +------------+      +-------------------+      +-------------------+       +-----+
-      *                                            +-------------------------------------------------------------------+
+      *                     +------------+      +-------------------+         +---------------------+     +-------------------------+             +--------+      +-------------------+      +-------------------+       +-----+
+      *  ConnektRequest --> |  Tracking  | -->  |  MediaPartitioner | -+----> |  WAMediaDispatcher  | --> | WaMediaResponseHandler  |  --> +  --> | Merger | -->  | WAProviderPrepare | -->  | WAResponseHandler |  -->  | out |
+      *                     +------------+      +-------------------+  |      +---------------------+     +-------------------------+      |      +--------+      +-------------------+      +-------------------+       +-----+
+      *                                                                +-------------------------------------------------------------------+
       */
 
     val mediaPartitioner = b.add(Partition[ConnektRequest](2,
@@ -116,6 +116,7 @@ object WATopology {
     val waHttpPoolFlow = b.add(HttpDispatcher.waPoolClientFlow.timedAs("waRTT"))
 
     val waResponseHandler = b.add(new WAResponseHandler()(ioMat,ioDispatcher).flow)
+
     tracking ~> mediaPartitioner
                 mediaPartitioner.out(0) ~> waMediaDispatcher ~> waHttpPoolMediaFlow ~> waMediaResponseHandler ~> merge.in(0)
                 mediaPartitioner.out(1) ~>                                                                       merge.in(1)
