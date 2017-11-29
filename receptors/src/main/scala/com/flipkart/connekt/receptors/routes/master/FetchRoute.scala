@@ -82,6 +82,8 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                   case _ => r.getComputedChannelData
                                 }
                                 val pnRequestData = channelData.asInstanceOf[PNRequestData]
+                                //Pass Channel Id in payload if client is passing any Notification Channel Id
+                                r.channelInfo.asInstanceOf[PNRequestInfo].channelId foreach (chId => pnRequestData.data.put("channelId", chId))
                                 pnRequestData.data.put("contextId", r.contextId.orEmpty).put("messageId", r.id)
                               }
                             })(breakOut[Seq[ConnektRequest],(String, ObjectNode), ListMap[String, ObjectNode]])

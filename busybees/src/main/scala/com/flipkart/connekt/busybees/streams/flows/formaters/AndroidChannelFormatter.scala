@@ -51,6 +51,8 @@ abstract class AndroidChannelFormatter(parallelism: Int)(implicit ec: ExecutionC
         .put("messageId", message.id)
         .put("contextId", message.contextId.orEmpty)
 
+      pnInfo.channelId foreach (chId => appDataWithId.put("channelId", chId))
+
       val ttl = message.expiryTs.map(expiry => (expiry - System.currentTimeMillis) / 1000).getOrElse(6.hour.toSeconds)
 
       if (devicesInfo.nonEmpty && ttl > 0) {
