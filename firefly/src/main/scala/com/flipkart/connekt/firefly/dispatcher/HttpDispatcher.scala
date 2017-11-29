@@ -14,6 +14,7 @@ package com.flipkart.connekt.firefly.dispatcher
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.stream.ActorMaterializer
 import com.flipkart.connekt.busybees.models.WAContactTracker
 import com.flipkart.connekt.commons.services.ConnektConfig
@@ -29,21 +30,19 @@ class HttpDispatcher(actorSystemConf: Config) {
   implicit val httpSystem: ActorSystem = ActorSystem("firefly-http-out", actorSystemConf)
   implicit val httpMat: ActorMaterializer = ActorMaterializer()
   implicit val ec: ExecutionContextExecutor = httpSystem.dispatcher
-  private lazy val certPath = ConnektConfig.getString("wa.certPath").getOrElse("/etc/default/wa.cer")
 
   private val insecureHttpFlow = {
-
+    val certPath = ConnektConfig.getString("wa.certificate.path").get
     val trustStoreConfig = TrustStoreConfig(None, Some(certPath)).withStoreType("PEM")
+    val maxOpenRequests = ConnektConfig.getInt("wa.contact.check.max.open.requests").get
+    val maxConnections = ConnektConfig.getInt("wa.contact.check.max.parallel.connections").get
     val trustManagerConfig = TrustManagerConfig().withTrustStoreConfigs(List(trustStoreConfig))
-
     val badSslConfig = AkkaSSLConfig().mapSettings(s => s.withLoose(s.loose
       .withAcceptAnyCertificate(true)
       .withDisableHostnameVerification(true)
     ).withTrustManagerConfig(trustManagerConfig))
-
     val badCtx = Http().createClientHttpsContext(badSslConfig)
-
-    Http().superPool[WAContactTracker](badCtx)(httpMat)
+    Http().superPool[WAContactTracker](badCtx, ConnectionPoolSettings(httpSystem).withMaxOpenRequests(maxOpenRequests).withMaxConnections(maxConnections))(httpMat)
   }
 
   val httpPoolFlow = Http().superPool[HttpRequestTracker]()(httpMat)
@@ -55,7 +54,7 @@ object HttpDispatcher {
   var dispatcher: Option[HttpDispatcher] = None
 
   def apply(config: Config) = {
-    if(dispatcher.isEmpty) {
+    if (dispatcher.isEmpty) {
       dispatcher = Some(new HttpDispatcher(config))
     }
   }

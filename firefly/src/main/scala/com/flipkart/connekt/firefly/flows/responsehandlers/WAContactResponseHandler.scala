@@ -16,7 +16,7 @@ import akka.http.scaladsl.model._
 import akka.stream.Materializer
 import com.flipkart.connekt.busybees.models.WAContactTracker
 import com.flipkart.connekt.commons.entities.WAContactEntity
-import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
+import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels.MessageStatus.WAResponseStatus
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.metrics.Instrumented
@@ -28,13 +28,14 @@ import scala.util.{Failure, Success, Try}
 
 class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends WAProviderResponseHandler[(Try[HttpResponse], WAContactTracker)](1) with Instrumented {
 
-  val waContactService = WAContactService()
+  private val contactService = ServiceFactory.getContactService
 
   override implicit val map: ((Try[HttpResponse], WAContactTracker)) => Future[List[Nothing]] = responseTrackerPair => Future(profile("map") {
 
     val httpResponse = responseTrackerPair._1
     val requestTracker = responseTrackerPair._2
 
+    // TODO : check where re-queue is required.
     httpResponse match {
       case Success(r) =>
         try {
@@ -45,7 +46,7 @@ class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) e
             case 200 if response.error.equalsIgnoreCase("false") =>
               results.map(result => {
                 val waContactEntity = WAContactEntity(result.input_number, result.wa_username, requestTracker.appName, result.wa_exists, None)
-                waContactService.add(waContactEntity)
+                WAContactService().add(waContactEntity)
                 BigfootService.ingestEntity(result.wa_username, waContactEntity.toPublishFormat, waContactEntity.namespace).get
               })
               ConnektLogger(LogFile.PROCESSORS).trace(s"WAResponseHandler contacts updated in hbase : $results")
@@ -53,6 +54,7 @@ class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) e
             case w =>
               ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler received http response : ${response.getJson} , with status code $w and tracker ${responseTrackerPair.getJson}")
               meter(s"check.contact.failed.${WAResponseStatus.ContactError}").mark()
+              requestTracker.contactPayload.foreach(contactService.enqueueContactEvents)
           }
         } catch {
           case e: Exception =>
