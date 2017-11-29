@@ -50,7 +50,7 @@ class HttpDispatcher(actorSystemConf: Config) {
     ).withTrustManagerConfig(trustManagerConfig))
 
     val waMaxConnections = ConnektConfig.getInt("topology.wa.maxConnections").getOrElse(4)
-    val waMaxOpenRequests = ConnektConfig.getInt("topology.wa.maxOpenRequests").getOrElse(10)
+    val waMaxOpenRequests = ConnektConfig.getInt("topology.wa.maxOpenRequests").getOrElse(16)
     Http().superPool[RequestTracker](
       Http().createClientHttpsContext(badSslConfig),
       ConnectionPoolSettings(httpSystem).withMaxOpenRequests(waMaxOpenRequests).withMaxConnections(waMaxConnections)
