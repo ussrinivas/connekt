@@ -68,3 +68,30 @@ class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) e
     List.empty[Nothing]
   })(m.executionContext)
 }
+class DemoContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends WAProviderResponseHandler[(Try[HttpResponse], Int)](1) with Instrumented {
+
+  private val contactService = ServiceFactory.getContactService
+
+  override implicit val map: ((Try[HttpResponse], Int)) => Future[List[Nothing]] = responseTrackerPair => Future(profile("map") {
+
+    val httpResponse = responseTrackerPair._1
+    val requestTracker = responseTrackerPair._2
+
+    // TODO : check where re-queue is required.
+    httpResponse match {
+      case Success(r) =>
+        try {
+          val response = r.entity.getString
+          println("Received response: " + response)
+        } catch {
+          case e: Exception =>
+            ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler failed processing http response body for: $r", e)
+            meter(s"check.contact.failed.${WAResponseStatus.ContactSystemError}").mark()
+        }
+      case Failure(e2) =>
+        ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler send failure for: $requestTracker", e2)
+        meter(s"check.contact.failed.${WAResponseStatus.ContactHTTP}").mark()
+    }
+    List.empty[Nothing]
+  })(m.executionContext)
+}

@@ -13,6 +13,7 @@
 package com.flipkart.connekt.firefly.flows.dispatchers
 
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.RawHeader
 import com.flipkart.connekt.busybees.models.WAContactTracker
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels.{ContactPayload, Payload, WAContactRequest}
@@ -42,4 +43,20 @@ class WAHttpDispatcherPrepare extends MapFlowStage[Seq[ContactPayload], (HttpReq
   }
 
   private val sendUri = Uri(s"${ConnektConfig.getString("wa.base.uri").get}/api/check_contacts.php")
+}
+
+class DemoHttpDispatcherPrepare extends MapFlowStage[Int, (HttpRequest, Int)] {
+
+  override implicit val map: Int => List[(HttpRequest, Int)] = input => {
+    try {
+      val httpRequest = HttpRequest(HttpMethods.GET, sendUri).withHeaders(RawHeader("x-api-key","connekt-insomnia"))
+      List(httpRequest -> input)
+    } catch {
+      case e: Throwable =>
+        ConnektLogger(LogFile.PROCESSORS).error(s"WAHttpDispatcherPrepare failed with ${e.getMessage}", e)
+        List.empty
+    }
+  }
+
+  private val sendUri = Uri("http://localhost:28000/v1/whatsapp/checkcontact/flipkart/123412")
 }

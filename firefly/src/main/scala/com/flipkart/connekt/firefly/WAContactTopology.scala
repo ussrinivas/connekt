@@ -24,8 +24,8 @@ import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels.ContactPayload
 import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.firefly.dispatcher.HttpDispatcher
-import com.flipkart.connekt.firefly.flows.dispatchers.WAHttpDispatcherPrepare
-import com.flipkart.connekt.firefly.flows.responsehandlers.WAContactResponseHandler
+import com.flipkart.connekt.firefly.flows.dispatchers.{DemoHttpDispatcherPrepare, WAHttpDispatcherPrepare}
+import com.flipkart.connekt.firefly.flows.responsehandlers.{DemoContactResponseHandler, WAContactResponseHandler}
 import com.typesafe.config.Config
 
 import scala.concurrent.Future
@@ -44,12 +44,13 @@ class WAContactTopology(kafkaConsumerConnConf: Config, topicName: String, kafkaG
     val waKafkaThrottle = ConnektConfig.getOrElse("wa.contact.throttle.rps", 2)
 
     val waKafkaSource = new KafkaSource[ContactPayload](kafkaConsumerConnConf, topicName, kafkaGroupName)
-    val source = Source.fromGraph(waKafkaSource)
-      .via(killSwitch.flow)
-      .watchTermination() { case (_, completed) => streamCompleted = completed }
-      .groupedWithin(waContactSize, waContactTimeLimit.second)
-      .throttle(waKafkaThrottle, 1.second, waKafkaThrottle, ThrottleMode.Shaping)
-      .via(waContactTransformFlow)
+
+    val s = Source(1 to 100)
+    val source = s
+//
+//
+
+      .via(demoTransformFlow)
       .runWith(Sink.ignore)
 
     ConnektLogger(LogFile.SERVICE).info(s"Started WAContactTopology for topic $topicName")
@@ -57,15 +58,26 @@ class WAContactTopology(kafkaConsumerConnConf: Config, topicName: String, kafkaG
 
   }
 
-  def waContactTransformFlow: Flow[Seq[ContactPayload], String, NotUsed] = Flow.fromGraph(GraphDSL.create() { implicit b =>
+  def demoTransformFlow: Flow[Int, String, NotUsed] = Flow.fromGraph(GraphDSL.create() { implicit b =>
 
-    val dispatcherPrepFlow = b.add(new WAHttpDispatcherPrepare().flow)
+    val dispatcherPrepFlow = b.add(new DemoHttpDispatcherPrepare().flow)
     val httpCachedClient = b.add(HttpDispatcher.insecureHttpFlow)
-    val waContactResponseFormatter = b.add(new WAContactResponseHandler().flow)
+    val waContactResponseFormatter = b.add(new DemoContactResponseHandler().flow)
 
     dispatcherPrepFlow ~> httpCachedClient ~> waContactResponseFormatter
 
     FlowShape(dispatcherPrepFlow.in, waContactResponseFormatter.out)
   })
+
+//  def waContactTransformFlow: Flow[Seq[ContactPayload], String, NotUsed] = Flow.fromGraph(GraphDSL.create() { implicit b =>
+//
+//    val dispatcherPrepFlow = b.add(new WAHttpDispatcherPrepare().flow)
+//    val httpCachedClient = b.add(HttpDispatcher.insecureHttpFlow)
+//    val waContactResponseFormatter = b.add(new WAContactResponseHandler().flow)
+//
+//    dispatcherPrepFlow ~> httpCachedClient ~> waContactResponseFormatter
+//
+//    FlowShape(dispatcherPrepFlow.in, waContactResponseFormatter.out)
+//  })
 
 }

@@ -64,10 +64,13 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                           complete {
                             Future {
                               profile(s"whatsapp.get.checkcontact.$appName") {
-                                WAContactService.instance.get(appName, destination).get match {
-                                  case Some(wa) => GenericResponse(StatusCodes.OK.intValue, null, Response(s"WACheckContactService for destination $destination", wa))
-                                  case None => GenericResponse(StatusCodes.NotFound.intValue, null, Response(s"No mapping found for destination $destination", null))
-                                }
+                                Thread.sleep(2000)
+                                GenericResponse(StatusCodes.OK.intValue, null, Response(s"WACheckContactService for destination $destination", appName))
+
+//                                WAContactService.instance.get(appName, destination).get match {
+//                                  case Some(wa) => GenericResponse(StatusCodes.OK.intValue, null, Response(s"WACheckContactService for destination $destination", wa))
+//                                  case None => GenericResponse(StatusCodes.NotFound.intValue, null, Response(s"No mapping found for destination $destination", null))
+//                                }
                               }
                             }(ioDispatcher)
                           }
