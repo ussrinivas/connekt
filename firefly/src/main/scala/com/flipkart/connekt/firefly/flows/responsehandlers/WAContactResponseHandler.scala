@@ -26,11 +26,20 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
-class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends WAProviderResponseHandler[(Try[HttpResponse], WAContactTracker)](1) with Instrumented {
+object Status extends Enumeration {
+  type Status = Value
+  val Success = Value("success")
+  val Failed = Value("failed")
+}
+
+case class WAContactResponseStatus(responseStatus: Status.Status)
+
+
+class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends WAProviderResponseHandler[(Try[HttpResponse], WAContactTracker)](96) with Instrumented {
 
   private val contactService = ServiceFactory.getContactService
 
-  override implicit val map: ((Try[HttpResponse], WAContactTracker)) => Future[List[Nothing]] = responseTrackerPair => Future(profile("map") {
+  override implicit val map: ((Try[HttpResponse], WAContactTracker)) => Future[List[WAContactResponseStatus]] = responseTrackerPair => Future(profile("map") {
 
     val httpResponse = responseTrackerPair._1
     val requestTracker = responseTrackerPair._2
@@ -39,32 +48,38 @@ class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) e
     httpResponse match {
       case Success(r) =>
         try {
-          val response = r.entity.getString.getObj[WAResponse]
-          val results = response.payload.results
-          ConnektLogger(LogFile.PROCESSORS).debug(s"WAResponseHandler received http response for: $results")
+          val strResponse = r.entity.getString
+          val isSuccess = Try(strResponse.getObj[WASuccessResponse]).isSuccess
           r.status.intValue() match {
-            case 200 if response.error.equalsIgnoreCase("false") =>
+            case 200 if isSuccess =>
+              val response = strResponse.getObj[WASuccessResponse]
+              val results = response.payload.results
+              ConnektLogger(LogFile.PROCESSORS).debug(s"WAResponseHandler received http response for: ")
               results.map(result => {
                 val waContactEntity = WAContactEntity(result.input_number, result.wa_username, requestTracker.appName, result.wa_exists, None)
                 WAContactService().add(waContactEntity)
                 BigfootService.ingestEntity(result.wa_username, waContactEntity.toPublishFormat, waContactEntity.namespace).get
               })
-              ConnektLogger(LogFile.PROCESSORS).trace(s"WAResponseHandler contacts updated in hbase : $results")
+              ConnektLogger(LogFile.PROCESSORS).debug(s"WAResponseHandler contacts updated in hbase : $results")
               meter(s"check.contact.${WAResponseStatus.ContactHTTP}").mark()
+              List(WAContactResponseStatus(Status.Success))
             case w =>
-              ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler received http response : ${response.getJson} , with status code $w and tracker ${responseTrackerPair.getJson}")
+              val response = strResponse.getObj[WAErrorResponse]
+              ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler received http response : ${response.getJson} , with status code $w.")
               meter(s"check.contact.failed.${WAResponseStatus.ContactError}").mark()
-              requestTracker.contactPayload.foreach(contactService.enqueueContactEvents)
+              List(WAContactResponseStatus(Status.Failed))
           }
         } catch {
           case e: Exception =>
             ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler failed processing http response body for: $r", e)
             meter(s"check.contact.failed.${WAResponseStatus.ContactSystemError}").mark()
+            List(WAContactResponseStatus(Status.Failed))
         }
       case Failure(e2) =>
-        ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler send failure for: $requestTracker", e2)
+        ConnektLogger(LogFile.PROCESSORS).debug(s"WAResponseHandler send failure for: $requestTracker", e2)
+        ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler send failure with error : ", e2)
         meter(s"check.contact.failed.${WAResponseStatus.ContactHTTP}").mark()
+        List(WAContactResponseStatus(Status.Failed))
     }
-    List.empty[Nothing]
   })(m.executionContext)
 }

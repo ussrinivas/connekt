@@ -12,12 +12,15 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
-import com.fasterxml.jackson.annotation.{JsonIgnore, JsonIgnoreProperties, JsonProperty}
 import com.fasterxml.jackson.databind.node.ObjectNode
 
 trait WAGeneratedEvent
 
-case class WAResponse(meta: ObjectNode, payload: Results, error: String) extends WAGeneratedEvent
+case class ErrorMeta(errorcode: String, errortext: String)
+
+case class WAErrorResponse(meta: ObjectNode, payload: Results, error: ErrorMeta) extends WAGeneratedEvent
+
+case class WASuccessResponse(meta: ObjectNode, payload: Results, error: String) extends WAGeneratedEvent
 
 case class Results(results: List[WAContact])
 

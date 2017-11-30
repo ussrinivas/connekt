@@ -16,4 +16,4 @@ import com.flipkart.connekt.firefly.flows.MapAsyncFlowStage
 
 trait ProviderResponseHandler
 
-abstract class WAProviderResponseHandler[I](parallelism: Int = 128) extends MapAsyncFlowStage[I, Nothing](parallelism) with ProviderResponseHandler
+abstract class WAProviderResponseHandler[I](parallelism: Int = 128) extends MapAsyncFlowStage[I, WAContactResponseStatus](parallelism) with ProviderResponseHandler

@@ -12,6 +12,8 @@
  */
 package com.flipkart.connekt.firefly.flows.dispatchers
 
+import java.util.UUID
+
 import akka.http.scaladsl.model._
 import com.flipkart.connekt.busybees.models.WAContactTracker
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
@@ -20,19 +22,18 @@ import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.firefly.flows.MapFlowStage
 
-class WAHttpDispatcherPrepare extends MapFlowStage[Seq[ContactPayload], (HttpRequest, WAContactTracker)] {
+class WAContactHttpDispatcherPrepare extends MapFlowStage[Seq[ContactPayload], (HttpRequest, WAContactTracker)] {
 
   override implicit val map: Seq[ContactPayload] => List[(HttpRequest, WAContactTracker)] = contacts => {
     try {
-      ConnektLogger(LogFile.PROCESSORS).debug("WAHttpDispatcherPrepare received message: {}", supplier(contacts.getJson))
-
+      val uuid = generateUUID
+      ConnektLogger(LogFile.PROCESSORS).debug(s"WAHttpDispatcherPrepare received with messageId : $uuid  message: {}", "")
       val contactList = contacts.map(_.user_identifier).toSet
       val waPayload = WAContactRequest(Payload(users = contactList))
-
       val requestEntity = HttpEntity(ContentTypes.`application/json`, waPayload.getJson)
       val requestHeaders = scala.collection.immutable.Seq.empty[HttpHeader]
       val httpRequest = HttpRequest(HttpMethods.POST, sendUri, requestHeaders, requestEntity)
-      val requestTrace = WAContactTracker(contactList, contacts.head.appName, contacts)
+      val requestTrace = WAContactTracker(contactList, contacts.head.appName, contacts, uuid)
       List(httpRequest -> requestTrace)
     } catch {
       case e: Throwable =>
@@ -42,4 +43,7 @@ class WAHttpDispatcherPrepare extends MapFlowStage[Seq[ContactPayload], (HttpReq
   }
 
   private val sendUri = Uri(s"${ConnektConfig.getString("wa.base.uri").get}/api/check_contacts.php")
+
+  private def generateUUID: String = UUID.randomUUID().toString
+
 }

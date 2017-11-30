@@ -34,7 +34,7 @@ class HttpDispatcher(actorSystemConf: Config) {
   private val insecureHttpFlow = {
     val certPath = ConnektConfig.getString("wa.certificate.path").get
     val trustStoreConfig = TrustStoreConfig(None, Some(certPath)).withStoreType("PEM")
-    val maxOpenRequests = ConnektConfig.getInt("wa.contact.check.max.open.requests").get
+    val pipelineLimit = ConnektConfig.getInt("wa.contact.check.pipeline.limit").get
     val maxConnections = ConnektConfig.getInt("wa.contact.check.max.parallel.connections").get
     val trustManagerConfig = TrustManagerConfig().withTrustStoreConfigs(List(trustStoreConfig))
     val badSslConfig = AkkaSSLConfig().mapSettings(s => s.withLoose(s.loose
@@ -42,7 +42,7 @@ class HttpDispatcher(actorSystemConf: Config) {
       .withDisableHostnameVerification(true)
     ).withTrustManagerConfig(trustManagerConfig))
     val badCtx = Http().createClientHttpsContext(badSslConfig)
-    Http().superPool[WAContactTracker](badCtx, ConnectionPoolSettings(httpSystem).withMaxOpenRequests(maxOpenRequests).withMaxConnections(maxConnections))(httpMat)
+    Http().superPool[WAContactTracker](badCtx, ConnectionPoolSettings(httpSystem).withPipeliningLimit(pipelineLimit).withMaxConnections(maxConnections))(httpMat)
   }
 
   val httpPoolFlow = Http().superPool[HttpRequestTracker]()(httpMat)

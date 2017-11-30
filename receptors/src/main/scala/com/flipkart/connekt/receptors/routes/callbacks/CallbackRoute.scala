@@ -186,7 +186,7 @@ class CallbackRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with
                                       ConnektLogger(LogFile.SERVICE).error(s"Whatsapp callback events failed", f)
                                       complete(GenericResponse(StatusCodes.InternalServerError.intValue, null, Response("Whatsapp callback events failed", f.getCause)))
                                   }
-                                case waResponse: WAResponse =>
+                                case waResponse: WAGeneratedEvent =>
                                   ConnektLogger(LogFile.SERVICE).error(s"Whatsapp response is not Callback event. Error occurred.", supplier(waResponse.getJson))
                                   complete(GenericResponse(StatusCodes.InternalServerError.intValue, null, Response(s"${channel.toUpperCase} Whatsapp response is not Callback event. Error occurred.", waResponse)))
                               }
