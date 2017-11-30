@@ -54,13 +54,15 @@ class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) e
             case 200 if isSuccess =>
               val response = strResponse.getObj[WASuccessResponse]
               val results = response.payload.results
-              ConnektLogger(LogFile.PROCESSORS).debug(s"WAResponseHandler received http response for: ")
+              ConnektLogger(LogFile.PROCESSORS).debug(s"WAResponseHandler received http response for messageId : ${requestTracker.messageId}")
+              ConnektLogger(LogFile.PROCESSORS).trace(s"WAResponseHandler received http response for: $results")
               results.map(result => {
                 val waContactEntity = WAContactEntity(result.input_number, result.wa_username, requestTracker.appName, result.wa_exists, None)
                 WAContactService().add(waContactEntity)
                 BigfootService.ingestEntity(result.wa_username, waContactEntity.toPublishFormat, waContactEntity.namespace).get
               })
-              ConnektLogger(LogFile.PROCESSORS).debug(s"WAResponseHandler contacts updated in hbase : $results")
+              ConnektLogger(LogFile.PROCESSORS).debug(s"WAResponseHandler contacts updated in hbase for messageId : ${requestTracker.messageId}")
+              ConnektLogger(LogFile.PROCESSORS).trace(s"WAResponseHandler contacts updated in hbase : $results")
               meter(s"check.contact.${WAResponseStatus.ContactHTTP}").mark()
               List(WAContactResponseStatus(Status.Success))
             case w =>
@@ -77,7 +79,7 @@ class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) e
         }
       case Failure(e2) =>
         ConnektLogger(LogFile.PROCESSORS).debug(s"WAResponseHandler send failure for: $requestTracker", e2)
-        ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler send failure with error : ", e2)
+        ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler send failure for messageId : ${requestTracker.messageId} with error : ", e2)
         meter(s"check.contact.failed.${WAResponseStatus.ContactHTTP}").mark()
         List(WAContactResponseStatus(Status.Failed))
     }
