@@ -69,18 +69,21 @@ class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) e
               val response = strResponse.getObj[WAErrorResponse]
               ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler received http response : ${response.getJson} , with status code $w.")
               meter(s"check.contact.failed.${WAResponseStatus.ContactError}").mark()
+              requestTracker.contactPayload.foreach(contactService.enqueueContactEvents)
               List(WAContactResponseStatus(Status.Failed))
           }
         } catch {
           case e: Exception =>
             ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler failed processing http response body for: $r", e)
             meter(s"check.contact.failed.${WAResponseStatus.ContactSystemError}").mark()
+            requestTracker.contactPayload.foreach(contactService.enqueueContactEvents)
             List(WAContactResponseStatus(Status.Failed))
         }
       case Failure(e2) =>
         ConnektLogger(LogFile.PROCESSORS).debug(s"WAResponseHandler send failure for: $requestTracker", e2)
         ConnektLogger(LogFile.PROCESSORS).error(s"WAResponseHandler send failure for messageId : ${requestTracker.messageId} with error : ", e2)
         meter(s"check.contact.failed.${WAResponseStatus.ContactHTTP}").mark()
+        requestTracker.contactPayload.foreach(contactService.enqueueContactEvents)
         List(WAContactResponseStatus(Status.Failed))
     }
   })(m.executionContext)
