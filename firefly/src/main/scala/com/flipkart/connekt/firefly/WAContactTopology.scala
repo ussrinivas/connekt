@@ -45,9 +45,13 @@ class WAContactTopology(kafkaConsumerConnConf: Config, topicName: String, kafkaG
 
     val waKafkaSource = new KafkaSource[ContactPayload](kafkaConsumerConnConf, topicName, kafkaGroupName)
 
-    val s = Source(1 to 100)
-    val source = s
-//
+    val s = Source(1 to 100000)
+    val source = Source.fromGraph(waKafkaSource)
+      .via(killSwitch.flow)
+      .watchTermination() { case (_, completed) => streamCompleted = completed }
+      .throttle(waKafkaThrottle, 1.second, waKafkaThrottle, ThrottleMode.Shaping)
+
+      //
 //
 
       .via(demoTransformFlow)
@@ -58,7 +62,7 @@ class WAContactTopology(kafkaConsumerConnConf: Config, topicName: String, kafkaG
 
   }
 
-  def demoTransformFlow: Flow[Int, String, NotUsed] = Flow.fromGraph(GraphDSL.create() { implicit b =>
+  def demoTransformFlow: Flow[ContactPayload, String, NotUsed] = Flow.fromGraph(GraphDSL.create() { implicit b =>
 
     val dispatcherPrepFlow = b.add(new DemoHttpDispatcherPrepare().flow)
     val httpCachedClient = b.add(HttpDispatcher.insecureHttpFlow)

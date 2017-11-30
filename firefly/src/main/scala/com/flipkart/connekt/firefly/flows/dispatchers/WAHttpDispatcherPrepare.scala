@@ -45,12 +45,12 @@ class WAHttpDispatcherPrepare extends MapFlowStage[Seq[ContactPayload], (HttpReq
   private val sendUri = Uri(s"${ConnektConfig.getString("wa.base.uri").get}/api/check_contacts.php")
 }
 
-class DemoHttpDispatcherPrepare extends MapFlowStage[Int, (HttpRequest, Int)] {
+class DemoHttpDispatcherPrepare extends MapFlowStage[ContactPayload, (HttpRequest, Int)] {
 
-  override implicit val map: Int => List[(HttpRequest, Int)] = input => {
+  override implicit val map: ContactPayload => List[(HttpRequest, Int)] = input => {
     try {
-      val httpRequest = HttpRequest(HttpMethods.GET, sendUri).withHeaders(RawHeader("x-api-key","connekt-insomnia"))
-      List(httpRequest -> input)
+      val httpRequest = HttpRequest(HttpMethods.POST, sendUri).withHeaders(RawHeader("x-api-key","connekt-insomnia"))
+      List(httpRequest -> 1)
     } catch {
       case e: Throwable =>
         ConnektLogger(LogFile.PROCESSORS).error(s"WAHttpDispatcherPrepare failed with ${e.getMessage}", e)

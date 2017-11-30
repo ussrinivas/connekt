@@ -34,8 +34,8 @@ class HttpDispatcher(actorSystemConf: Config) {
   private val insecureHttpFlow = {
     val certPath = ConnektConfig.getString("wa.certificate.path").get
     val trustStoreConfig = TrustStoreConfig(None, Some(certPath)).withStoreType("PEM")
-    val maxOpenRequests = ConnektConfig.getInt("wa.contact.check.max.open.requests").getOrElse(1)
-    val maxConnections = ConnektConfig.getInt("wa.contact.check.max.parallel.connections").getOrElse(1)
+    val maxOpenRequests = ConnektConfig.getInt("wa.contact.check.max.open.requests").getOrElse(16)
+    val maxConnections = ConnektConfig.getInt("wa.contact.check.max.parallel.connections").getOrElse(16)
     val trustManagerConfig = TrustManagerConfig().withTrustStoreConfigs(List(trustStoreConfig))
     val badSslConfig = AkkaSSLConfig().mapSettings(s => s.withLoose(s.loose
       .withAcceptAnyCertificate(true)
@@ -44,7 +44,7 @@ class HttpDispatcher(actorSystemConf: Config) {
     val badCtx = Http().createClientHttpsContext(badSslConfig)
     Http().superPool[Int](
       badCtx,
-      ConnectionPoolSettings(httpSystem).withMaxOpenRequests(maxOpenRequests).withMaxConnections(maxConnections).withPipeliningLimit(1)
+      ConnectionPoolSettings(httpSystem).withMaxOpenRequests(2).withMaxConnections(2).withPipeliningLimit(1)
     )(httpMat)
   }
 

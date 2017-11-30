@@ -58,7 +58,7 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
               } ~ pathPrefix(Segment) {
                 (destination: String) =>
                   pathEndOrSingleSlash {
-                    get {
+                    post {
                       meteredResource("checkcontact") {
                         authorize(user, "CHECK_CONTACT", s"CHECK_CONTACT_$appName") {
                           complete {
