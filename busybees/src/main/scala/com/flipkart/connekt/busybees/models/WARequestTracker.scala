@@ -20,9 +20,12 @@ case class WARequestTracker(
                              destination: String,
                              appName: String,
                              contextId: String,
-                             meta: Map[String, Any]
+                             meta: Map[String, Any],
+                             override val provider: String = "whatsapp"
                             ) extends RequestTracker
 
 case class WAMediaRequestTracker(
-                             request: ConnektRequest
+                                  override val messageId: String,
+                                  request: ConnektRequest,
+                                  override val provider: String = "whatsapp"
                             ) extends RequestTracker
