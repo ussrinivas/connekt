@@ -44,7 +44,6 @@ class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) e
     val httpResponse = responseTrackerPair._1
     val requestTracker = responseTrackerPair._2
 
-    // TODO : check where re-queue is required.
     httpResponse match {
       case Success(r) =>
         try {
