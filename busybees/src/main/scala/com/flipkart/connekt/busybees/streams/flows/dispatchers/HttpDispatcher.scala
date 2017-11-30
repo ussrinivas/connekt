@@ -47,12 +47,13 @@ class HttpDispatcher(actorSystemConf: Config) {
       .withDisableHostnameVerification(true)
     ).withTrustManagerConfig(trustManagerConfig))
 
-    val maxConnections = ConnektConfig.getInt("topology.wa.maxConnections").getOrElse(4)
-    val maxOpenRequests = ConnektConfig.getInt("topology.wa.maxOpenRequests").getOrElse(16)
+    val maxConnections = ConnektConfig.getInt("wa.topology.max.parallel.connections").get
+    val maxOpenRequests = ConnektConfig.getInt("wa.topology.max.open.requests").get
+    val maxPipelineLimit = ConnektConfig.getInt("wa.topology.max.pipeline.limit").get
 
     Http().superPool[RequestTracker](
       Http().createClientHttpsContext(badSslConfig),
-      ConnectionPoolSettings(httpSystem).withMaxOpenRequests(maxOpenRequests).withMaxConnections(maxConnections)
+      ConnectionPoolSettings(httpSystem).withMaxOpenRequests(maxOpenRequests).withMaxConnections(maxConnections).withPipeliningLimit(maxPipelineLimit)
     )(httpMat)
   }
 
