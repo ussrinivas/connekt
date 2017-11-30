@@ -46,8 +46,9 @@ class HttpDispatcher(actorSystemConf: Config) {
       .withAcceptAnyCertificate(true)
       .withDisableHostnameVerification(true)
     ).withTrustManagerConfig(trustManagerConfig))
-    val maxOpenRequests = ConnektConfig.getInt("wa.topology.max.open.requests").get
-    val maxConnections = ConnektConfig.getInt("wa.topology.max.parallel.connections").get
+
+    val maxConnections = ConnektConfig.getInt("topology.wa.maxConnections").getOrElse(4)
+    val maxOpenRequests = ConnektConfig.getInt("topology.wa.maxOpenRequests").getOrElse(16)
 
     Http().superPool[RequestTracker](
       Http().createClientHttpsContext(badSslConfig),
