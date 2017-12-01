@@ -26,6 +26,7 @@ import com.flipkart.connekt.commons.services._
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.receptors.directives.MPlatformSegment
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
+import com.flipkart.connekt.receptors.routes.helper.PhoneNumberHelper
 import com.flipkart.connekt.receptors.wire.ResponseUtils._
 import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
@@ -300,7 +301,6 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                         }
                                       })
 
-                                      //TODO: do an exclusion check
                                       val excludedNumbers = validNumbers.filterNot { number => ExclusionService.lookup(request.channel, appName, number).getOrElse(true) }
                                       val nonExcludedNumbers = validNumbers.diff(excludedNumbers)
 
@@ -417,20 +417,17 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
                                       val waRequestInfo = request.channelInfo.asInstanceOf[WARequestInfo]
 
-                                      //TODO : try to reduce if else
-
                                       if (waRequestInfo.destinations != null && waRequestInfo.destinations.nonEmpty) {
                                         if (isTestRequest) {
                                           GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse(s"Whatsapp Perf Send Request Received. Skipped sending.", Map("fake_message_id" -> r.destinations), List.empty)).respond
                                         } else {
                                           waRequestInfo.destinations.foreach(r => {
-                                            val validateNum = Try(phoneUtil.parse(r, appDefaultCountryCode.get("localRegion").asText.trim.toUpperCase))
-                                            if (validateNum.isSuccess && phoneUtil.isValidNumber(validateNum.get)) {
-                                              validNumbers += phoneUtil.format(validateNum.get, PhoneNumberFormat.E164)
-                                            } else {
-                                              ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatup invalid numbers: $r")
-                                              ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.WA, appName, InternalStatus.Rejected)
-                                              invalidNumbers += r
+                                            PhoneNumberHelper.validateNFormatNumber(appName, r) match {
+                                              case Some(n) => validNumbers += n
+                                              case None =>
+                                                ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatsapp invalid numbers: $r")
+                                                ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.WA, appName, InternalStatus.Rejected)
+                                                invalidNumbers += r
                                             }
                                           })
                                           val waUserName = ListBuffer[String]()
