@@ -55,14 +55,14 @@ class WAMediaResponseHandler(implicit m: Materializer, ec: ExecutionContext) ext
             case 200 =>
               val responseBody = stringResponse.getObj[ObjectNode]
               responseBody match {
-                case _ if responseBody.findValue("payload").asText() == "null" =>
+                case _ if responseBody.findValue("payload") != null && responseBody.findValue("payload").asText() == "null" =>
                   val error = responseBody.get("error")
                   val errorText = error.findValue("errortext").asText()
                   ServiceFactory.getReportingService.recordChannelStatsDelta(clientId, contextId, stencilId, Channel.WA, appName, WAResponseStatus.MediaUploadError)
                   events += WACallbackEvent(messageId, None, destination, errorText, clientId, appName, contextId.getOrElse(""), stringResponse, eventTS)
                   ConnektLogger(LogFile.PROCESSORS).error(s"WAMediaResponseHandler received error response for: $messageId, error: ${stringResponse}")
                   counter(s"whatsapp.mediaupload.${WAResponseStatus.MediaUploadError}")
-                case _ if responseBody.findValue("error").asText() == "false" =>
+                case _ if responseBody.findValue("error") != null && responseBody.findValue("error").asText() == "false" =>
                   response += requestTracker.request
                   ServiceFactory.getReportingService.recordChannelStatsDelta(clientId, contextId, stencilId, Channel.WA, appName, WAResponseStatus.MediaUploaded)
                   events += WACallbackEvent(messageId, None, destination, WAResponseStatus.MediaUploaded, clientId, appName, contextId.getOrElse(""), stringResponse, eventTS)
