@@ -65,7 +65,7 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                               val toCheckNumbers = formattedDestination.diff(checkedNumbers)
 
                               GenericResponse(StatusCodes.OK.intValue, null, Response(s"Invalid contacts : ${invalidDestinations.mkString(",")} ,No data found for contacts : ${toCheckNumbers.mkString(",")} enqueued for check" +
-                                s" ,Details for contacts ${checkedNumbers.mkString(",")}", WAContactService.instance.gets(appName, destinations).get))
+                                s" ,Details for contacts ${checkedNumbers.mkString(",")}", details))
                             }
                           }(ioDispatcher)
                         }
