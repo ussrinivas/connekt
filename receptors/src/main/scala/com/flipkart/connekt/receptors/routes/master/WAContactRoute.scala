@@ -32,7 +32,6 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
   private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
 
   private lazy implicit val stencilService = ServiceFactory.getStencilService
-  private lazy val messageService = ServiceFactory.getMessageService(Channel.PUSH)
   private lazy val contactService = ServiceFactory.getContactService
 
   val route =
