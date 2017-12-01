@@ -56,12 +56,12 @@ class LatencyMetricsTopologyTest extends TopologyUTSpec with Instrumented {
 
   "HbaseLookupTopology Test" should "cargo excssep" in {
     val smsCallback = SmsCallbackEvent(messageId = "1c4f3564-3687-4f72-a43d-f75dd111d0",
-      eventType = "sms_delivered",
+      eventType = "sms_received",
       receiver = "+918885472168",
       clientId = "affordability",
       appName = "flipkart",
       contextId = "",
-      cargo = "{\"deliveredTS\":\"1511773103000\",\"externalId\":\"3458299854161064066-166744\",\"provider\":\"gupshup-v2\",\"errCode\":\"000\"}",
+      cargo = "{\"externalId\":\"3458299854161064066-166744\",\"provider\":\"gupshup-v2\",\"errCode\":\"000\"}",
       timestamp = 1509614097879L,
       eventId = "iaUAuOefuD")
 

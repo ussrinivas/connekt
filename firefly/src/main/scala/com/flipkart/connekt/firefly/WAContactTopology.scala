@@ -59,7 +59,6 @@ class WAContactTopology(kafkaConsumerConnConf: Config, topicName: String, kafkaG
       }
       .to(sink)
 
-    // Running the topology
     source.run()
 
     ConnektLogger(LogFile.SERVICE).info(s"Started WAContactTopology for topic $topicName")

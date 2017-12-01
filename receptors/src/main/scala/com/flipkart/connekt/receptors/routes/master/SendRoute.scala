@@ -15,7 +15,7 @@ package com.flipkart.connekt.receptors.routes.master
 import akka.connekt.AkkaHelpers._
 import akka.http.scaladsl.model.StatusCodes
 import akka.stream.ActorMaterializer
-import com.fasterxml.jackson.databind.node.ObjectNode
+import com.fasterxml.jackson.databind.node.{ArrayNode, ObjectNode}
 import com.flipkart.connekt.commons.entities.MobilePlatform.MobilePlatform
 import com.flipkart.connekt.commons.entities.{Channel, MobilePlatform}
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
@@ -35,6 +35,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.DurationDouble
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success, Try}
+import scala.collection.JavaConverters._
 
 class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
@@ -62,6 +63,8 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                   r.channelInfo.asInstanceOf[PNRequestInfo].copy(appName = appName.toLowerCase)
                                 )
                                 request.validate
+
+                                request.channelInfo.asInstanceOf[PNRequestInfo].validateChannel(request.clientId)
 
                                 ConnektLogger(LogFile.SERVICE).debug(s"Received PN request with payload: ${request.toString}")
 
@@ -137,6 +140,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                   r.channelInfo.asInstanceOf[PNRequestInfo].copy(appName = appName.toLowerCase)
                                 )
                                 request.validate
+                                request.channelInfo.asInstanceOf[PNRequestInfo].validateChannel(request.clientId)
 
                                 ConnektLogger(LogFile.SERVICE).debug(s"Received PN request sent for user : $userId with payload: {}", supplier(request))
 
@@ -274,6 +278,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                     r.channelInfo.asInstanceOf[SmsRequestInfo].copy(appName = appName.toLowerCase)
                                   )
                                   request.validate
+
 
                                   val appLevelConfigService = ServiceFactory.getUserProjectConfigService
                                   ConnektLogger(LogFile.SERVICE).debug(s"Received SMS request with payload: ${request.toString}")
