@@ -132,8 +132,11 @@ object BusyBeesBoot extends BaseApp {
         smsTopology = new SmsTopology(kafkaConnConf)
         smsTopology.run
       }
-              waTopology = new WATopology(kafkaConnConf)
-              waTopology.run
+
+      if(Option(System.getProperty("topology.wa.enabled")).forall(_.toBoolean)) {
+        waTopology = new WATopology(kafkaConnConf)
+        waTopology.run
+      }
 
       ConnektLogger(LogFile.SERVICE).info("Started `Busybees` app")
     }
