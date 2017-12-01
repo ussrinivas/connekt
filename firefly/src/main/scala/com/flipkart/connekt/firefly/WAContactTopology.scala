@@ -22,11 +22,9 @@ import akka.{Done, NotUsed}
 import com.flipkart.connekt.busybees.streams.flows.FlowMetrics
 import com.flipkart.connekt.busybees.streams.flows.profilers.TimedFlowOps._
 import com.flipkart.connekt.busybees.streams.sources.KafkaSource
-import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels.ContactPayload
 import com.flipkart.connekt.commons.services.ConnektConfig
-import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.firefly.dispatcher.HttpDispatcher
 import com.flipkart.connekt.firefly.flows.dispatchers.WAContactHttpDispatcherPrepare
 import com.flipkart.connekt.firefly.flows.responsehandlers.{WAContactResponseHandler, WAContactResponseStatus}
@@ -71,7 +69,7 @@ class WAContactTopology(kafkaConsumerConnConf: Config, topicName: String, kafkaG
   def waContactTransformFlow: Flow[Seq[ContactPayload], WAContactResponseStatus, NotUsed] = Flow.fromGraph(GraphDSL.create() { implicit b =>
 
     val dispatcherPrepFlow = b.add(new WAContactHttpDispatcherPrepare().flow)
-    val httpCachedClient = b.add(HttpDispatcher.insecureHttpFlow.timedAs("waRTT"))
+    val httpCachedClient = b.add(HttpDispatcher.insecureHttpFlow.timedAs("waContactRTT"))
     val waContactResponseFormatter = b.add(new WAContactResponseHandler().flow)
 
     dispatcherPrepFlow ~> httpCachedClient ~> waContactResponseFormatter
@@ -81,7 +79,7 @@ class WAContactTopology(kafkaConsumerConnConf: Config, topicName: String, kafkaG
 
 
   def sink: Sink[WAContactResponseStatus, NotUsed] = Sink.fromGraph(GraphDSL.create() { implicit b =>
-    val metrics = b.add(new FlowMetrics[WAContactResponseStatus](Channel.WA).flow)
+    val metrics = b.add(new FlowMetrics[WAContactResponseStatus]("wa.contact").flow)
     metrics ~> Sink.ignore
     SinkShape(metrics.in)
   })
