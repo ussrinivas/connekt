@@ -77,7 +77,7 @@ class WAContactDao(tableName: String, hTableFactory: THTableFactory) extends Dao
     val rawData = fetchRow(rowKeys, List(columnFamily))
     val reqProps: Option[HbaseDao.ColumnData] = rawData.get(columnFamily)
     hTableConnFactory.releaseTableInterface(hTableInterface)
-    val wE = reqProps.map(fields => {
+    reqProps.map(fields => {
       WAContactEntity(
         fields.get("destination").map(v => v.getString).orNull,
         fields.get("userName").map(v => v.getString).orNull,
@@ -87,7 +87,6 @@ class WAContactDao(tableName: String, hTableFactory: THTableFactory) extends Dao
         fields.getL("lastCheckContactTS").asInstanceOf[Long]
       )
     })
-    wE
   }
 
   @Timed("gets")
@@ -98,7 +97,7 @@ class WAContactDao(tableName: String, hTableFactory: THTableFactory) extends Dao
     hTableConnFactory.releaseTableInterface(hTableInterface)
     rawDataList.values.flatMap(rowData => {
       val reqProps: Option[HbaseDao.ColumnData] = rowData.get(columnFamily)
-      val wE = reqProps.map(fields => {
+      reqProps.map(fields => {
         WAContactEntity(
           fields.get("destination").map(v => v.getString).orNull,
           fields.get("userName").map(v => v.getString).orNull,
@@ -108,7 +107,6 @@ class WAContactDao(tableName: String, hTableFactory: THTableFactory) extends Dao
           fields.getL("lastCheckContactTS").asInstanceOf[Long]
         )
       })
-      wE
     }).toList
   }
 
@@ -120,8 +118,7 @@ class WAContactDao(tableName: String, hTableFactory: THTableFactory) extends Dao
     val colAppTuple = (columnFamily.getBytes, "appName".getBytes)
     scan.addColumn(colDestTuple._1, colDestTuple._2)
     scan.addColumn(colAppTuple._1, colAppTuple._2)
-    val resultScanner = hTableInterface.getScanner(scan)
-    resultScanner.iterator().toIterator.map(r =>
+    hTableInterface.getScanner(scan).iterator().toIterator.map(r =>
       ContactPayload(
         Bytes.toString(r.getValue(colDestTuple._1, colDestTuple._2)),
         Bytes.toString(r.getValue(colAppTuple._1, colAppTuple._2))
