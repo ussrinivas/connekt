@@ -44,7 +44,7 @@ class AdminRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                         complete(GenericResponse(StatusCodes.Created.intValue, null, Response(s"Registration cache warm-up started", Map("appName" -> appName, "jobId" -> jobId))))
                       }
                   }
-              } ~ pathPrefix("wa" / "warmup") {
+              } ~ pathPrefix("whatsapp" / "warmup") {
                 get {
                   WAContactService.instance.refreshWAContacts
                   complete(GenericResponse(StatusCodes.Created.intValue, null, Response("Wa Contact warm-up started", null)))
