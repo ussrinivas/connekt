@@ -51,14 +51,14 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends 
             case 200 =>
               val responseBody = stringResponse.getObj[ObjectNode]
               responseBody match {
-                case _ if responseBody.findValue("payload").asText() == "null" =>
+                case _ if responseBody.findValue("payload") != null && responseBody.findValue("payload").asText() == "null" =>
                   val error = responseBody.get("error")
                   val errorText = error.findValue("errortext").asText()
                   ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.Error)
                   events += WACallbackEvent(messageId, None, requestTracker.destination, errorText, requestTracker.clientId, appName, requestTracker.contextId, error.asText(), eventTS)
                   meter(s"send.failed.${WAResponseStatus.Error}").mark()
                   ConnektLogger(LogFile.PROCESSORS).error(s"WaResponseHandler received http failure for: $messageId with error: $error")
-                case _ if !responseBody.findValue("error").asBoolean() =>
+                case _ if responseBody.findValue("error") != null && responseBody.findValue("error").asText() == "false" =>
                   val payload = responseBody.get("payload")
                   val providerMessageId = payload.get("message_id").asText()
                   WAMessageIdMappingService.add(WAMessageIdMappingEntity(
