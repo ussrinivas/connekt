@@ -14,17 +14,23 @@ object PhoneNumberHelper {
   val phoneUtil: PhoneNumberUtil = PhoneNumberUtil.getInstance()
 
   def validateNumber(appName: String, number: String): Boolean = {
-    val appDefaultCountryCode = appLevelConfigService.getProjectConfiguration(appName.toLowerCase, "app-local-country-code").get.get.value.getObj[ObjectNode]
-    val validateNum = Try(phoneUtil.parse(number, appDefaultCountryCode.get("localRegion").asText.trim.toUpperCase))
+    val validateNum = Try(phoneUtil.parse(number, getLocalRegion(appName)))
     validateNum.isSuccess && phoneUtil.isValidNumber(validateNum.get)
   }
 
   def validateNFormatNumber(appName: String, number: String): Option[String] = {
-    val appDefaultCountryCode = appLevelConfigService.getProjectConfiguration(appName.toLowerCase, "app-local-country-code").get.get.value.getObj[ObjectNode]
-    val validateNum = Try(phoneUtil.parse(number, appDefaultCountryCode.get("localRegion").asText.trim.toUpperCase))
-    if (validateNum.isSuccess && phoneUtil.isValidNumber(validateNum.get)) {
-      Some(phoneUtil.format(validateNum.get, PhoneNumberFormat.E164))
-    } else
-      None
+    Try(phoneUtil.parse(number, getLocalRegion(appName))) match {
+      case number if number.isSuccess && phoneUtil.isValidNumber(number.get) =>
+        Some(phoneUtil.format(number.get, PhoneNumberFormat.E164))
+      case _ => None
+    }
+  }
+
+  private def getLocalRegion(appName: String) = {
+    appLevelConfigService.getProjectConfiguration(appName.toLowerCase, "app-local-country-code")
+      .get.get.value
+      .getObj[ObjectNode]
+      .get("localRegion")
+      .asText.trim.toUpperCase
   }
 }
