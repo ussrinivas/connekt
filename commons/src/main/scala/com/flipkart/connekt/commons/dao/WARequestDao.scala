@@ -22,11 +22,10 @@ class WARequestDao(tableName: String, hTableFactory: THTableFactory) extends Req
   override protected def channelRequestInfoMap(channelRequestInfo: ChannelRequestInfo): Map[String, Array[Byte]] = {
     val waRequestInfo = channelRequestInfo.asInstanceOf[WARequestInfo]
 
-    val m = scala.collection.mutable.Map[String, Array[Byte]](
+    scala.collection.mutable.Map[String, Array[Byte]](
       "destinations" -> waRequestInfo.destinations.mkString(",").getUtf8Bytes,
       "appName" -> waRequestInfo.appName.getUtf8Bytes
-    )
-    m.toMap
+    ).toMap
   }
 
   override protected def getChannelRequestInfo(reqInfoProps: Map[String, Array[Byte]]): ChannelRequestInfo = WARequestInfo(
