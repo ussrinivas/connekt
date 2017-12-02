@@ -12,16 +12,14 @@
  */
 package com.flipkart.connekt.commons.utils
 
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import com.flipkart.concord.guardrail.TGuardrailService
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Success, Try}
 
 class DefaultGuardrailService extends TGuardrailService {
 
-  override def guard(params: AnyRef*): Try[Boolean] = Success(true)
+  override def guard(params: AnyRef*): Unit = ???
 
-  override def entryViaHttp(httpRequest: HttpRequest)(implicit ec : ExecutionContext): Future[HttpResponse] = Future(null)
+  override def isGuarded(params: AnyRef*): Try[Boolean] = Success(true)
 
 }

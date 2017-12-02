@@ -451,12 +451,10 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                           }
                                           }
                                           val prefCheckedContacts = checkedContacts.map(c => {
-                                            val prefValidator = ValidatorService.validate(appName, Channel.WA, c)
-                                            val isValid = Await.result(prefValidator, ConnektConfig.getInt("user.preference.service.timeout").getOrElse(5).seconds) match {
+                                            GuardrailService.isGuarded(appName, Channel.WA, c) match {
                                               case Success(s) => c -> true
                                               case Failure(f) => c -> false
                                             }
-                                            isValid
                                           }).filter(_._2)
 
                                           val rejectedContacts = prefCheckedContacts.map(_._1).diff(validNumbers)

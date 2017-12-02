@@ -19,20 +19,19 @@ import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.DefaultGuardrailService
 import com.flipkart.metrics.Timed
 
-import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.Try
 
-object ValidatorService extends Instrumented {
+object GuardrailService extends Instrumented {
 
   lazy private val projectConfigService = ServiceFactory.getUserProjectConfigService
 
-  @Timed("validate")
-  def validate(appName: String, channel: Channel, params: AnyRef*)(implicit ec: ExecutionContextExecutor): Future[Try[Boolean]] = {
+  @Timed("isGuarded")
+  def isGuarded(appName: String, channel: Channel, params: AnyRef*): Try[Boolean] = {
     try {
       ConnektLogger(LogFile.PROCESSORS).debug("ValidatorService received message")
       val validatorClassName = projectConfigService.getProjectConfiguration(appName, s"validator-service-${channel.toString.toLowerCase}").get.map(_.value).getOrElse(classOf[DefaultGuardrailService].getName)
       val validator: TGuardrailService = Class.forName(validatorClassName).newInstance().asInstanceOf[TGuardrailService]
-      Future(validator.guard(params))
+      validator.isGuarded(params: _*)
     } catch {
       case e: Throwable =>
         ConnektLogger(LogFile.PROCESSORS).error(s"ValidatorService error", e)
