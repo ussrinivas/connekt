@@ -54,7 +54,7 @@ class WAProviderPrepare extends MapFlowStage[ConnektRequest, (HttpRequest, WAReq
     }
     catch {
       case e: Exception =>
-        ConnektLogger(LogFile.PROCESSORS).error(s"WaChannelFormatter error for ${connektRequest.id}", e)
+        ConnektLogger(LogFile.PROCESSORS).error(s"WAProviderPrepare error for ${connektRequest.id}", e)
         throw ConnektStageException(
           connektRequest.id,
           connektRequest.clientId,

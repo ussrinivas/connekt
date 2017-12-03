@@ -29,7 +29,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
-class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends  WAProviderResponseHandler[(Try[HttpResponse], RequestTracker)](90) with Instrumented {
+class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends WAProviderResponseHandler[(Try[HttpResponse], RequestTracker)](90) with Instrumented {
   override val map: ((Try[HttpResponse], RequestTracker)) => Future[List[WACallbackEvent]] = responseTrackerPair => Future(profile("map") {
 
     val httpResponse = responseTrackerPair._1
@@ -41,9 +41,9 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends 
     val events = ListBuffer[WACallbackEvent]()
     val eventTS = System.currentTimeMillis()
 
-    httpResponse match {
-      case Success(r) =>
-        try {
+    try {
+      httpResponse match {
+        case Success(r) =>
           val stringResponse = r.entity.getString(m)
           ConnektLogger(LogFile.PROCESSORS).debug(s"WaResponseHandler received http response for: $messageId")
           ConnektLogger(LogFile.PROCESSORS).trace(s"WaResponseHandler received http response for: $messageId http response body: $stringResponse")
@@ -62,12 +62,12 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends 
                   val payload = responseBody.get("payload")
                   val providerMessageId = payload.get("message_id").asText()
                   WAMessageIdMappingService.add(WAMessageIdMappingEntity(
-                                                                          providerMessageId,
-                                                                          requestTracker.messageId,
-                                                                          requestTracker.clientId,
-                                                                          requestTracker.appName,
-                                                                          requestTracker.contextId
-                                                                        ))
+                    providerMessageId,
+                    requestTracker.messageId,
+                    requestTracker.clientId,
+                    requestTracker.appName,
+                    requestTracker.contextId
+                  ))
                   ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.SendHTTP)
                   events += WACallbackEvent(messageId, Some(providerMessageId), requestTracker.destination, WAResponseStatus.SendHTTP, requestTracker.clientId, appName, requestTracker.contextId, responseBody.toString, eventTS)
                   meter(s"send.${WAResponseStatus.SendHTTP}").mark()
@@ -79,18 +79,18 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends 
               ConnektLogger(LogFile.PROCESSORS).error(s"WaResponseHandler received http failure for: $messageId with error: $stringResponse")
               meter(s"send.failed.${WAResponseStatus.Error}").mark()
           }
-        } catch {
-          case e: Exception =>
-            ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.Error)
-            events += WACallbackEvent(messageId, None, requestTracker.destination, WAResponseStatus.Error, requestTracker.clientId, appName, requestTracker.contextId, e.getMessage, eventTS)
-            ConnektLogger(LogFile.PROCESSORS).error(s"WaResponseHandler: failed due to an exception: $messageId", e)
-            meter(s"send.failed.${WAResponseStatus.SendSystemError}").mark()
-        }
-      case Failure(e2) =>
+        case Failure(e2) =>
+          ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.Error)
+          events += WACallbackEvent(messageId, None, requestTracker.destination, WAResponseStatus.Error, requestTracker.clientId, appName, requestTracker.contextId, e2.getMessage, eventTS)
+          ConnektLogger(LogFile.PROCESSORS).error(s"WaResponseHandler received http failure for: $messageId", e2)
+          meter(s"send.failed.${WAResponseStatus.Error}").mark()
+      }
+    } catch {
+      case e: Exception =>
         ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.Error)
-        events += WACallbackEvent(messageId, None, requestTracker.destination, WAResponseStatus.Error, requestTracker.clientId, appName, requestTracker.contextId, e2.getMessage, eventTS)
-        ConnektLogger(LogFile.PROCESSORS).error(s"WaResponseHandler received http failure for: $messageId", e2)
-        meter(s"send.failed.${WAResponseStatus.Error}").mark()
+        events += WACallbackEvent(messageId, None, requestTracker.destination, WAResponseStatus.Error, requestTracker.clientId, appName, requestTracker.contextId, e.getMessage, eventTS)
+        ConnektLogger(LogFile.PROCESSORS).error(s"WaResponseHandler: failed due to an exception: $messageId", e)
+        meter(s"send.failed.${WAResponseStatus.SendSystemError}").mark()
     }
     events.enqueue
     events.toList
