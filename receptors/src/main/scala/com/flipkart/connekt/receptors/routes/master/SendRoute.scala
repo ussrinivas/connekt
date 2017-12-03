@@ -451,7 +451,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                           }
                                           }
                                           val prefCheckedContacts = checkedContacts.map(c => {
-                                            GuardrailService.isGuarded(appName, Channel.WA, c) match {
+                                            GuardrailService.isGuarded(appName, Channel.WA, c, request.meta) match {
                                               case Success(s) => c -> true
                                               case Failure(f) => c -> false
                                             }
