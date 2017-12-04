@@ -70,9 +70,9 @@ object FireflyBoot extends BaseApp {
       ServiceFactory.initCallbackService(eventsDao, null, null)
 
       val kafkaConsumerConnConf = ConnektConfig.getConfig("connections.kafka.consumerConnProps").getOrElse(ConfigFactory.empty())
-      val kafkaConnConf = ConnektConfig.getConfig("connections.kafka.producerConnProps").getOrElse(ConfigFactory.empty())
+      val kafkaProducerConnConf = ConnektConfig.getConfig("connections.kafka.producerConnProps").getOrElse(ConfigFactory.empty())
       val kafkaProducerPoolConf = ConnektConfig.getConfig("connections.kafka.producerPool").getOrElse(ConfigFactory.empty())
-      val kafkaProducerHelper = KafkaProducerHelper.init(kafkaConnConf, kafkaProducerPoolConf)
+      val kafkaProducerHelper = KafkaProducerHelper.init(kafkaProducerConnConf, kafkaProducerPoolConf)
       ServiceFactory.initContactSyncService(kafkaProducerHelper)
 
       val requestDao = RequestDaoContainer(smsRequestDao = DaoFactory.getSmsRequestDao, pnRequestDao = DaoFactory.getPNRequestDao, emailRequestDao = DaoFactory.getEmailRequestDao, pullRequestDao = DaoFactory.getPullRequestDao, waRequestDao = DaoFactory.getWARequestDao)
@@ -82,9 +82,9 @@ object FireflyBoot extends BaseApp {
 
       HttpDispatcher.apply(ConnektConfig.getConfig("react").get)
 
-      ClientTopologyManager(kafkaConnConf, ConnektConfig.getInt("firefly.retry.limit").get)
+      ClientTopologyManager(kafkaConsumerConnConf, ConnektConfig.getInt("firefly.retry.limit").get)
 
-      InternalTopologyManager(kafkaConnConf)
+      InternalTopologyManager(kafkaProducerConnConf)
       WAContactTopologyManager(kafkaConsumerConnConf)
 
       ConnektLogger(LogFile.SERVICE).info("Started `Firefly` app")
