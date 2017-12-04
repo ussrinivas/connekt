@@ -71,7 +71,7 @@ class WAMediaResponseHandler(implicit m: Materializer, ec: ExecutionContext) ext
             case _ =>
               ServiceFactory.getReportingService.recordChannelStatsDelta(clientId, contextId, stencilId, Channel.WA, appName, WAResponseStatus.MediaUploadError)
               events += WACallbackEvent(messageId, None, destination, WAResponseStatus.MediaUploadError, clientId, appName, contextId.getOrElse(""), stringResponse, eventTS)
-              ConnektLogger(LogFile.PROCESSORS).error(s"WAMediaResponseHandler received http failure for: $messageId with error: $stringResponse")
+              ConnektLogger(LogFile.PROCESSORS).error(s"WAMediaResponseHandler received http non 200 failure for: $messageId with error: $stringResponse")
               counter(s"whatsapp.mediaupload.${WAResponseStatus.MediaUploadError}")
           }
         case Failure(e2) =>
@@ -84,7 +84,7 @@ class WAMediaResponseHandler(implicit m: Materializer, ec: ExecutionContext) ext
       case e: Exception =>
         ServiceFactory.getReportingService.recordChannelStatsDelta(clientId, contextId, stencilId, Channel.WA, appName, WAResponseStatus.MediaUploadError)
         events += WACallbackEvent(messageId, None, destination, WAResponseStatus.MediaUploadError, clientId, appName, contextId.getOrElse(""), e.getMessage, eventTS)
-        ConnektLogger(LogFile.PROCESSORS).error(s"WAMediaResponseHandler received http failure for: $messageId", e)
+        ConnektLogger(LogFile.PROCESSORS).error(s"WAMediaResponseHandler Internal Error when handling http response for: $messageId", e)
         counter(s"whatsapp.mediaupload.${WAResponseStatus.MediaUploadSystemError}")
     }
     events.enqueue

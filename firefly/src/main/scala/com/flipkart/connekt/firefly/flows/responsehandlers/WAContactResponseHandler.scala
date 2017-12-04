@@ -73,7 +73,7 @@ class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) e
           }
         } catch {
           case e: Exception =>
-            ConnektLogger(LogFile.PROCESSORS).error(s"WAContactResponseHandler failed processing http response body for: $r", e)
+            ConnektLogger(LogFile.PROCESSORS).error(s"WAContactResponseHandler failed processing http response body for: $r due to internal error ", e)
             meter(s"check.contact.failed.${WAResponseStatus.ContactSystemError}").mark()
             requestTracker.contactPayload.foreach(contactService.enqueueContactEvents)
             List(WAContactResponseStatus(Status.Failed))
