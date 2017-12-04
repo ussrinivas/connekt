@@ -20,7 +20,7 @@ import com.typesafe.config.Config
 class WAContactTopologyManager(kafkaConsumerConnConf: Config)(implicit am: ActorMaterializer, sys: ActorSystem) extends TopologyManager {
 
   private lazy val WA_TOPIC = ConnektConfig.getString("wa.contact.topic.name").get
-  private val CONSUMER_NAME = "WA_CONTACT_CONSUMER"
+  private val CONSUMER_NAME = ConnektConfig.getString("wa.contact.check.consumer.name").get
 
   kafkaGroupNames = List(
     Map("name" -> CONSUMER_NAME, "topic" -> WA_TOPIC)
