@@ -16,11 +16,9 @@ import akka.connekt.AkkaHelpers._
 import akka.http.scaladsl.model.StatusCodes
 import akka.stream.ActorMaterializer
 import com.fasterxml.jackson.databind.node.{ArrayNode, ObjectNode}
-import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.services.WAContactService
-import com.flipkart.connekt.commons.utils.StringUtils.JSONMarshallFunctions
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
 import com.flipkart.connekt.receptors.routes.helper.PhoneNumberHelper
 
@@ -28,7 +26,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 
-case class WAContactResponse(contactExists: List[String], contactNotExists: List[String], invalidNumbers: List[String])
+case class WAContactResponse(contactExists: Any, contactNotExists: List[String], invalidNumbers: List[String])
 
 class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
@@ -65,7 +63,8 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                 d.destination
                               })
                               val toCheckNumbers = formattedDestination.diff(checkedNumbers)
-                              GenericResponse(StatusCodes.OK.intValue, null, Response(WAContactResponse(checkedNumbers, toCheckNumbers.toList, invalidDestinations.toList).getJson, details))
+                              toCheckNumbers.foreach(n => contactService.enqueueContactEvents(ContactPayload(n, appName)))
+                              GenericResponse(StatusCodes.OK.intValue, null, Response("Some message", WAContactResponse(details, toCheckNumbers.toList, invalidDestinations.toList)))
                             }
                           }(ioDispatcher)
                         }
