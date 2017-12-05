@@ -22,6 +22,6 @@ case class WAErrorResponse(meta: ObjectNode, payload: Results, error: ErrorMeta)
 
 case class WASuccessResponse(meta: ObjectNode, payload: Results, error: String) extends WAGeneratedEvent
 
-case class Results(results: List[WAContact])
+case class Results(results: Option[List[WAContact]], message_id: Option[String])
 
 case class WAContact(input_number: String, wa_exists: String, wa_username: String)

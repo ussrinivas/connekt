@@ -52,7 +52,7 @@ class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) e
           r.status.intValue() match {
             case 200 if isSuccess =>
               val response = strResponse.getObj[WASuccessResponse]
-              val results = response.payload.results
+              val results = response.payload.results.getOrElse(List.empty)
               ConnektLogger(LogFile.PROCESSORS).debug(s"WAContactResponseHandler received http response for messageId : ${requestTracker.messageId}")
               ConnektLogger(LogFile.PROCESSORS).trace(s"WAContactResponseHandler received http response for: $results")
               results.map(result => {

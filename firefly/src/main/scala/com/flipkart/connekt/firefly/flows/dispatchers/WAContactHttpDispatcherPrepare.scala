@@ -24,6 +24,7 @@ import com.flipkart.connekt.firefly.flows.MapFlowStage
 
 class WAContactHttpDispatcherPrepare extends MapFlowStage[Seq[ContactPayload], (HttpRequest, WAContactTracker)] {
 
+  private val baseUrl = ConnektConfig.getString("wa.base.uri").get
   override implicit val map: Seq[ContactPayload] => List[(HttpRequest, WAContactTracker)] = contacts => {
     try {
       val uuid = generateUUID
@@ -43,7 +44,7 @@ class WAContactHttpDispatcherPrepare extends MapFlowStage[Seq[ContactPayload], (
     }
   }
 
-  private val sendUri = Uri(s"${ConnektConfig.getString("wa.base.uri").get}/api/check_contacts.php")
+  private val sendUri = Uri(s"$baseUrl/api/check_contacts.php")
 
   private def generateUUID: String = UUID.randomUUID().toString
 

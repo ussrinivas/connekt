@@ -12,7 +12,7 @@
  */
 package com.flipkart.connekt.busybees.models
 
-import com.flipkart.connekt.commons.iomodels.ConnektRequest
+import com.flipkart.connekt.commons.iomodels.{ConnektRequest, Constants}
 
 case class WARequestTracker(
                              override val messageId: String,
@@ -21,11 +21,11 @@ case class WARequestTracker(
                              appName: String,
                              contextId: String,
                              meta: Map[String, Any],
-                             override val provider: String = "whatsapp"
-                            ) extends RequestTracker
+                             override val provider: String = Constants.WAConstants.WHATSAPP.toString
+                           ) extends RequestTracker
 
 case class WAMediaRequestTracker(
                                   override val messageId: String,
                                   request: ConnektRequest,
-                                  override val provider: String = "whatsapp"
-                            ) extends RequestTracker
+                                  override val provider: String = Constants.WAConstants.WHATSAPP.toString
+                                ) extends RequestTracker

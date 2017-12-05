@@ -14,14 +14,13 @@ package com.flipkart.connekt.busybees.streams.flows.reponsehandlers
 
 import akka.http.scaladsl.model.HttpResponse
 import akka.stream.Materializer
-import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
-import com.fasterxml.jackson.databind.node.ObjectNode
 import com.flipkart.connekt.busybees.models.{RequestTracker, WAMediaRequestTracker}
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
+import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.WAResponseStatus
-import com.flipkart.connekt.commons.iomodels.{ConnektRequest, WACallbackEvent}
+import com.flipkart.connekt.commons.iomodels.{ConnektRequest, WACallbackEvent, WAErrorResponse, WASuccessResponse}
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.StringUtils._
 
@@ -48,44 +47,40 @@ class WAMediaResponseHandler(implicit m: Materializer, ec: ExecutionContext) ext
     try {
       httpResponse match {
         case Success(r) =>
-          val stringResponse = r.entity.getString(m)
+          val stringResponse = r.entity.getString
+          val isSuccess = Try(stringResponse.getObj[WASuccessResponse]).isSuccess
           ConnektLogger(LogFile.PROCESSORS).debug(s"WAMediaResponseHandler received http response for: $messageId")
           ConnektLogger(LogFile.PROCESSORS).trace(s"WAMediaResponseHandler received http response for: $messageId http response body: $stringResponse")
           r.status.intValue() match {
-            case 200 =>
-              val responseBody = stringResponse.getObj[ObjectNode]
-              responseBody match {
-                case _ if responseBody.findValue("payload") != null && responseBody.findValue("payload").asText() == "null" =>
-                  val error = responseBody.get("error")
-                  val errorText = error.findValue("errortext").asText()
-                  ServiceFactory.getReportingService.recordChannelStatsDelta(clientId, contextId, stencilId, Channel.WA, appName, WAResponseStatus.MediaUploadError)
-                  events += WACallbackEvent(messageId, None, destination, errorText, clientId, appName, contextId.getOrElse(""), stringResponse, eventTS)
-                  ConnektLogger(LogFile.PROCESSORS).error(s"WAMediaResponseHandler received error response for: $messageId, error: ${stringResponse}")
-                  counter(s"whatsapp.mediaupload.${WAResponseStatus.MediaUploadError}")
-                case _ if responseBody.findValue("error") != null && responseBody.findValue("error").asText() == "false" =>
-                  response += requestTracker.request
-                  ServiceFactory.getReportingService.recordChannelStatsDelta(clientId, contextId, stencilId, Channel.WA, appName, WAResponseStatus.MediaUploaded)
-                  events += WACallbackEvent(messageId, None, destination, WAResponseStatus.MediaUploaded, clientId, appName, contextId.getOrElse(""), stringResponse, eventTS)
-                  counter(s"whatsapp.mediaupload.${WAResponseStatus.MediaUploaded}")
-              }
+            case 200 if isSuccess =>
+              response += requestTracker.request
+              ServiceFactory.getReportingService.recordChannelStatsDelta(clientId, contextId, stencilId, Channel.WA, appName, WAResponseStatus.MediaUploaded)
+              events += WACallbackEvent(messageId, None, destination, WAResponseStatus.MediaUploaded, clientId, appName, contextId.getOrElse(""), stringResponse, eventTS)
+              counter(s"whatsapp.media.upload.${WAResponseStatus.MediaUploaded}")
+            case 200 if !isSuccess =>
+              val responseBody = stringResponse.getObj[WAErrorResponse]
+              ServiceFactory.getReportingService.recordChannelStatsDelta(clientId, contextId, stencilId, Channel.WA, appName, WAResponseStatus.MediaUploadError)
+              events += WACallbackEvent(messageId, None, destination, responseBody.error.errortext, clientId, appName, contextId.getOrElse(""), stringResponse, eventTS)
+              ConnektLogger(LogFile.PROCESSORS).error(s"WAMediaResponseHandler received error response for: $messageId, error: $stringResponse")
+              counter(s"whatsapp.media.upload.${WAResponseStatus.MediaUploadError}")
             case _ =>
               ServiceFactory.getReportingService.recordChannelStatsDelta(clientId, contextId, stencilId, Channel.WA, appName, WAResponseStatus.MediaUploadError)
               events += WACallbackEvent(messageId, None, destination, WAResponseStatus.MediaUploadError, clientId, appName, contextId.getOrElse(""), stringResponse, eventTS)
               ConnektLogger(LogFile.PROCESSORS).error(s"WAMediaResponseHandler received http non 200 failure for: $messageId with error: $stringResponse")
-              counter(s"whatsapp.mediaupload.${WAResponseStatus.MediaUploadError}")
+              counter(s"whatsapp.media.upload.${WAResponseStatus.MediaUploadError}")
           }
         case Failure(e2) =>
           ServiceFactory.getReportingService.recordChannelStatsDelta(clientId, contextId, stencilId, Channel.WA, appName, WAResponseStatus.MediaUploadError)
           events += WACallbackEvent(messageId, None, destination, WAResponseStatus.MediaUploadError, clientId, appName, contextId.getOrElse(""), e2.getMessage, eventTS)
           ConnektLogger(LogFile.PROCESSORS).error(s"WAMediaResponseHandler received http failure for: $messageId", e2)
-          counter(s"whatsapp.mediaupload.${WAResponseStatus.MediaUploadError}")
+          counter(s"whatsapp.media.upload.${WAResponseStatus.MediaUploadError}")
       }
     } catch {
       case e: Exception =>
         ServiceFactory.getReportingService.recordChannelStatsDelta(clientId, contextId, stencilId, Channel.WA, appName, WAResponseStatus.MediaUploadError)
         events += WACallbackEvent(messageId, None, destination, WAResponseStatus.MediaUploadError, clientId, appName, contextId.getOrElse(""), e.getMessage, eventTS)
         ConnektLogger(LogFile.PROCESSORS).error(s"WAMediaResponseHandler Internal Error when handling http response for: $messageId", e)
-        counter(s"whatsapp.mediaupload.${WAResponseStatus.MediaUploadSystemError}")
+        counter(s"whatsapp.media.upload.${WAResponseStatus.MediaUploadSystemError}")
     }
     events.enqueue
     response.toList

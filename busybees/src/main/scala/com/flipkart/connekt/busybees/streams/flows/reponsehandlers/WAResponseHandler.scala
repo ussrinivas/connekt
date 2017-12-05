@@ -14,13 +14,12 @@ package com.flipkart.connekt.busybees.streams.flows.reponsehandlers
 
 import akka.http.scaladsl.model.HttpResponse
 import akka.stream.Materializer
-import com.fasterxml.jackson.databind.node.ObjectNode
 import com.flipkart.connekt.busybees.models.{RequestTracker, WARequestTracker}
 import com.flipkart.connekt.commons.entities.{Channel, WAMessageIdMappingEntity}
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.WAResponseStatus
-import com.flipkart.connekt.commons.iomodels.WACallbackEvent
+import com.flipkart.connekt.commons.iomodels.{WACallbackEvent, WAErrorResponse, WASuccessResponse}
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.services.WAMessageIdMappingService
 import com.flipkart.connekt.commons.utils.StringUtils._
@@ -44,35 +43,30 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends 
     try {
       httpResponse match {
         case Success(r) =>
-          val stringResponse = r.entity.getString(m)
+          val stringResponse = r.entity.getString
+          val isSuccess = Try(stringResponse.getObj[WASuccessResponse]).isSuccess
           ConnektLogger(LogFile.PROCESSORS).debug(s"WaResponseHandler received http response for: $messageId")
           ConnektLogger(LogFile.PROCESSORS).trace(s"WaResponseHandler received http response for: $messageId http response body: $stringResponse")
           r.status.intValue() match {
-            case 200 =>
-              val responseBody = stringResponse.getObj[ObjectNode]
-              responseBody match {
-                case _ if responseBody.findValue("payload") != null && responseBody.findValue("payload").asText() == "null" =>
-                  val error = responseBody.get("error")
-                  val errorText = error.findValue("errortext").asText()
-                  ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.Error)
-                  events += WACallbackEvent(messageId, None, requestTracker.destination, errorText, requestTracker.clientId, appName, requestTracker.contextId, error.asText(), eventTS)
-                  meter(s"send.failed.${WAResponseStatus.Error}").mark()
-                  ConnektLogger(LogFile.PROCESSORS).error(s"WaResponseHandler received Whatsapp http error for: $messageId with error: $error")
-                case _ if responseBody.findValue("error") != null && responseBody.findValue("error").asText() == "false" =>
-                  val payload = responseBody.get("payload")
-                  val providerMessageId = payload.get("message_id").asText()
-                  WAMessageIdMappingService.add(WAMessageIdMappingEntity(
-                    providerMessageId,
-                    requestTracker.messageId,
-                    requestTracker.clientId,
-                    requestTracker.appName,
-                    requestTracker.contextId
-                  ))
-                  ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.SendHTTP)
-                  events += WACallbackEvent(messageId, Some(providerMessageId), requestTracker.destination, WAResponseStatus.SendHTTP, requestTracker.clientId, appName, requestTracker.contextId, responseBody.toString, eventTS)
-                  meter(s"send.${WAResponseStatus.SendHTTP}").mark()
-                  ConnektLogger(LogFile.PROCESSORS).info(s"WaResponseHandler received for: $messageId and waMessageId : $providerMessageId")
-              }
+            case 200 if isSuccess =>
+              val responseBody = stringResponse.getObj[WASuccessResponse]
+              WAMessageIdMappingService.add(WAMessageIdMappingEntity(
+                responseBody.payload.message_id.getOrElse(""),
+                requestTracker.messageId,
+                requestTracker.clientId,
+                requestTracker.appName,
+                requestTracker.contextId
+              ))
+              ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.SendHTTP)
+              events += WACallbackEvent(messageId, Some(responseBody.payload.message_id.getOrElse("")), requestTracker.destination, WAResponseStatus.SendHTTP, requestTracker.clientId, appName, requestTracker.contextId, responseBody.toString, eventTS)
+              meter(s"send.${WAResponseStatus.SendHTTP}").mark()
+              ConnektLogger(LogFile.PROCESSORS).info(s"WaResponseHandler received for: $messageId and waMessageId : ${responseBody.payload.message_id}")
+            case 200 if !isSuccess =>
+              val responseBody = stringResponse.getObj[WAErrorResponse]
+              ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.Error)
+              events += WACallbackEvent(messageId, None, requestTracker.destination, responseBody.error.errortext, requestTracker.clientId, appName, requestTracker.contextId, responseBody.error.getJson, eventTS)
+              meter(s"send.failed.${WAResponseStatus.Error}").mark()
+              ConnektLogger(LogFile.PROCESSORS).error(s"WaResponseHandler received Whatsapp http error for: $messageId with error: ${responseBody.error}")
             case _ =>
               ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.Error)
               events += WACallbackEvent(messageId, None, requestTracker.destination, WAResponseStatus.Error, requestTracker.clientId, appName, requestTracker.contextId, stringResponse, eventTS)

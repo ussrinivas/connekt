@@ -12,11 +12,11 @@
  */
 package com.flipkart.connekt.busybees.models
 
-import com.flipkart.connekt.commons.iomodels.ContactPayload
+import com.flipkart.connekt.commons.iomodels.{Constants, ContactPayload}
 
 case class WAContactTracker(contacts: Set[String],
                             appName: String,
                             contactPayload: Seq[ContactPayload],
                             override val messageId: String,
-                            override val provider: String = "whatsapp"
+                            override val provider: String = Constants.WAConstants.WHATSAPP.toString
                            ) extends RequestTracker
