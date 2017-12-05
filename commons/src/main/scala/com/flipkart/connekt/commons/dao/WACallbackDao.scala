@@ -15,6 +15,7 @@ package com.flipkart.connekt.commons.dao
 import com.flipkart.connekt.commons.dao.HbaseDao._
 import com.flipkart.connekt.commons.factories.THTableFactory
 import com.flipkart.connekt.commons.iomodels._
+import com.flipkart.connekt.commons.utils.StringUtils.ByteArrayHandyFunctions
 
 class WACallbackDao(tableName: String, hTableFactory: THTableFactory) extends CallbackDao(tableName: String, hTableFactory: THTableFactory) {
   override def channelEventPropsMap(channelCallbackEvent: CallbackEvent): Map[String, Array[Byte]] = {
@@ -27,7 +28,7 @@ class WACallbackDao(tableName: String, hTableFactory: THTableFactory) extends Ca
       "clientId" -> waCallbackEvent.clientId.getUtf8Bytes,
       "contextId" -> waCallbackEvent.contextId.getUtf8Bytes,
       "appName" -> waCallbackEvent.appName.getUtf8Bytes,
-      "cargo" -> waCallbackEvent.cargo.getUtf8Bytes,
+      "cargo" -> waCallbackEvent.cargo.getUtf8BytesNullWrapped,
       "timestamp" -> waCallbackEvent.timestamp.getBytes
     )
     waCallbackEvent.providerMessageId.foreach(m += "providerMessageId" -> _.getUtf8Bytes)
@@ -44,7 +45,7 @@ class WACallbackDao(tableName: String, hTableFactory: THTableFactory) extends Ca
       clientId = channelEventPropsMap.getS("clientId"),
       contextId = channelEventPropsMap.getS("contextId"),
       appName = channelEventPropsMap.getS("appName"),
-      cargo = channelEventPropsMap.getS("cargo"),
+      cargo = channelEventPropsMap.get("cargo").map(v => v.getStringNullable).orNull,
       timestamp = channelEventPropsMap.getL("timestamp").asInstanceOf[Long]
     )
   }
