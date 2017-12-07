@@ -61,7 +61,7 @@ object FireflyBoot extends BaseApp {
       DaoFactory.initMysqlTableDaoFactory(mysqlConf)
 
       ServiceFactory.initStencilService(DaoFactory.getStencilDao)
-
+      ServiceFactory.initStorageService(DaoFactory.getKeyChainDao)
 
       //Callbacks write
       val hConfig = ConnektConfig.getConfig("connections.hbase")

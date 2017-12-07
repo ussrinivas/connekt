@@ -17,7 +17,7 @@ import java.util.UUID
 import akka.http.scaladsl.model._
 import com.flipkart.connekt.busybees.models.WAContactTracker
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
-import com.flipkart.connekt.commons.iomodels.{ContactPayload, Payload, WAContactRequest}
+import com.flipkart.connekt.commons.iomodels.{Constants, ContactPayload, Payload, WAContactRequest}
 import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.firefly.flows.MapFlowStage
@@ -44,7 +44,7 @@ class WAContactHttpDispatcherPrepare extends MapFlowStage[Seq[ContactPayload], (
     }
   }
 
-  private val sendUri = Uri(s"$baseUrl/api/check_contacts.php")
+  private val sendUri = Uri(s"$baseUrl${Constants.WAConstants.WHATSAPP_CHECK_CONTACT_URI}")
 
   private def generateUUID: String = UUID.randomUUID().toString
 

@@ -15,7 +15,8 @@ package com.flipkart.connekt.receptors.routes.master
 import akka.connekt.AkkaHelpers._
 import akka.http.scaladsl.model.StatusCodes
 import akka.stream.ActorMaterializer
-import com.fasterxml.jackson.databind.node.{ArrayNode, ObjectNode}
+import com.fasterxml.jackson.databind.node.ObjectNode
+import com.flipkart.concord.guardrail.{TGuardrailEntity, TGuardrailEntityMetadata}
 import com.flipkart.connekt.commons.entities.MobilePlatform.MobilePlatform
 import com.flipkart.connekt.commons.entities.{Channel, MobilePlatform}
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
@@ -32,10 +33,8 @@ import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.duration.DurationDouble
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
-import scala.collection.JavaConverters._
 
 class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
@@ -450,10 +449,18 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                             }
                                           }
                                           }
+
+                                          // User Pref Check
                                           val prefCheckedContacts = checkedContacts.map(c => {
-                                            GuardrailService.isGuarded(appName, Channel.WA, c, request.meta) match {
-                                              case Success(s) => c -> true
-                                              case Failure(f) => c -> false
+                                            val gEntity = new TGuardrailEntity[String] {
+                                              override def entity: String = c
+                                            }
+                                            val gMeta = new TGuardrailEntityMetadata {
+                                              override def meta: Map[String, AnyRef] = request.meta
+                                            }
+                                            GuardrailService.isGuarded[String, Boolean](appName, Channel.WA, gEntity, gMeta) match {
+                                              case Success(_) => c -> true
+                                              case Failure(_) => c -> false
                                             }
                                           }).filter(_._2)
 

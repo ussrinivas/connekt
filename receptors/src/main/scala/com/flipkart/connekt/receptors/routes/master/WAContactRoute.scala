@@ -13,20 +13,21 @@
 package com.flipkart.connekt.receptors.routes.master
 
 import akka.connekt.AkkaHelpers._
-import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.model._
 import akka.stream.ActorMaterializer
 import com.fasterxml.jackson.databind.node.{ArrayNode, ObjectNode}
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels._
-import com.flipkart.connekt.commons.services.WAContactService
+import com.flipkart.connekt.commons.services.{ConnektConfig, WAContactService}
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
-import com.flipkart.connekt.receptors.routes.helper.PhoneNumberHelper
+import com.flipkart.connekt.receptors.routes.helper.{PhoneNumberHelper, WAContactCheckHelper}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
+import scala.concurrent.duration._
 
-case class WAContactResponse(contactExists: Any, contactNotExists: List[String], invalidNumbers: List[String])
+case class WAContactResponse(contactDetails: Any, invalidNumbers: List[String])
 
 class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
@@ -34,6 +35,8 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
   private lazy implicit val stencilService = ServiceFactory.getStencilService
   private lazy val contactService = ServiceFactory.getContactService
+  private val baseUrl = ConnektConfig.getString("wa.base.uri").get
+  private val checkContactInterval = ConnektConfig.getInt("wa.check.contact.interval.days").get
 
   val route =
     authenticate {
@@ -58,13 +61,14 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                   case None => invalidDestinations += d
                                 }
                               })
-                              val details = WAContactService.instance.gets(appName, formattedDestination.toSet).get
-                              val checkedNumbers = details.map(d => {
-                                d.destination
+                              val allDetails = WAContactService.instance.gets(appName, formattedDestination.toSet).get
+                              val ttlCheckedNumbers = allDetails.filter(d => {
+                                val lastCheckInterval = System.currentTimeMillis() - d.lastCheckContactTS
+                                lastCheckInterval < checkContactInterval.days.toMillis
                               })
-                              val toCheckNumbers = formattedDestination.diff(checkedNumbers)
-                              toCheckNumbers.foreach(n => contactService.enqueueContactEvents(ContactPayload(n, appName)))
-                              GenericResponse(StatusCodes.OK.intValue, null, Response("Some message", WAContactResponse(details, toCheckNumbers.toList, invalidDestinations.toList)))
+                              val toCheckNumbers = formattedDestination.diff(ttlCheckedNumbers.map(_.destination))
+                              val contactWAStatus = WAContactCheckHelper.checkContactViaWAApi(toCheckNumbers.toList, appName)
+                              GenericResponse(StatusCodes.OK.intValue, null, Response("Some message", WAContactResponse(ttlCheckedNumbers ::: contactWAStatus, invalidDestinations.toList)))
                             }
                           }(ioDispatcher)
                         }
@@ -84,14 +88,21 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                 PhoneNumberHelper.validateNFormatNumber(appName, destination) match {
                                   case Some(n) =>
                                     WAContactService.instance.get(appName, n).get match {
-                                      case Some(wa) => GenericResponse(StatusCodes.OK.intValue, null, Response(s"WACheckContactService for destination $destination", wa))
+                                      case Some(wa) =>
+                                        val lastCheckInterval = System.currentTimeMillis() - wa.lastCheckContactTS
+                                        if (lastCheckInterval < checkContactInterval.days.toMillis)
+                                          GenericResponse(StatusCodes.OK.intValue, null, Response(s"WA status for destination $destination", wa))
+                                        else {
+                                          val contactWAStatus = WAContactCheckHelper.checkContactViaWAApi(List(n), appName)
+                                          GenericResponse(StatusCodes.OK.intValue, null, Response(s"WA status for destination $destination", contactWAStatus.head))
+                                        }
                                       case None =>
-                                        contactService.enqueueContactEvents(ContactPayload(n, appName))
-                                        GenericResponse(StatusCodes.NotFound.intValue, null, Response(s"No mapping found for destination $destination enqueued for whatsapp check.", null))
+                                        val contactWAStatus = WAContactCheckHelper.checkContactViaWAApi(List(n), appName)
+                                        GenericResponse(StatusCodes.OK.intValue, null, Response(s"WA status for destination $destination", contactWAStatus.head))
                                     }
                                   case None =>
                                     ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatsapp invalid numbers: $destination")
-                                    complete(GenericResponse(StatusCodes.BadRequest.intValue, null, Response(s"Dropping whatsapp invalid numbers $destination", null)))
+                                    GenericResponse(StatusCodes.BadRequest.intValue, null, Response(s"Dropping whatsapp invalid numbers $destination", null))
                                 }
                               }
                             }(ioDispatcher)

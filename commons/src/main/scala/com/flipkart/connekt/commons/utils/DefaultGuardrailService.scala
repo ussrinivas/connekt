@@ -12,14 +12,14 @@
  */
 package com.flipkart.connekt.commons.utils
 
-import com.flipkart.concord.guardrail.TGuardrailService
+import com.flipkart.concord.guardrail.{TGuardrailEntity, TGuardrailEntityMetadata, TGuardrailResponse, TGuardrailService}
 
 import scala.util.{Success, Try}
 
-class DefaultGuardrailService extends TGuardrailService {
+class DefaultGuardrailService extends TGuardrailService[String, AnyRef] {
 
-  override def guard(params: AnyRef*): Unit = ???
+  override def isGuarded(entity: TGuardrailEntity[String], meta: TGuardrailEntityMetadata): Try[Boolean] = Success(true)
 
-  override def isGuarded(params: AnyRef*): Try[Boolean] = Success(true)
+  override def guard(entity: TGuardrailEntity[String], meta: TGuardrailEntityMetadata): Try[TGuardrailResponse[AnyRef]] = ???
 
 }

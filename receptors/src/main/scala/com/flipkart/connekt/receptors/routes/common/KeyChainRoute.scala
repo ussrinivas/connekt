@@ -16,12 +16,13 @@ import java.io.File
 
 import _root_.akka.stream.ActorMaterializer
 import akka.http.scaladsl.model.StatusCodes
+import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.entities.MobilePlatform.{MobilePlatform, _}
 import com.flipkart.connekt.commons.entities._
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels.{GenericResponse, Response}
 import com.flipkart.connekt.commons.services.KeyChainManager
-import com.flipkart.connekt.receptors.directives.{FileDirective, MPlatformSegment}
+import com.flipkart.connekt.receptors.directives.{ChannelSegment, FileDirective, MPlatformSegment}
 import com.flipkart.connekt.receptors.routes.BaseHandler
 import com.flipkart.connekt.receptors.wire.ResponseUtils._
 
@@ -30,13 +31,13 @@ import scala.util.{Failure, Success}
 class KeyChainRoute(implicit am: ActorMaterializer) extends BaseHandler with FileDirective {
 
   /**
-   * formFields doesn't work now.
-   *
-   * Issue : https://github.com/akka/akka/issues/18591
-   * Issue : https://github.com/akka/akka/issues/19506
-   *
-   * When the issues get resolved,  extractFormData for simple fields can be removed, and moved to formFields, which also adds in validation.
-   */
+    * formFields doesn't work now.
+    *
+    * Issue : https://github.com/akka/akka/issues/18591
+    * Issue : https://github.com/akka/akka/issues/19506
+    *
+    * When the issues get resolved,  extractFormData for simple fields can be removed, and moved to formFields, which also adds in validation.
+    */
 
   val route =
     authenticate {
@@ -130,6 +131,40 @@ class KeyChainRoute(implicit am: ActorMaterializer) extends BaseHandler with Fil
                     } ~ get {
                       KeyChainManager.getMicrosoftCredential(appName) match {
                         case Some(x) =>
+                          complete(GenericResponse(StatusCodes.OK.intValue, null, Response("Credentials Found.", x)))
+                        case None =>
+                          complete(GenericResponse(StatusCodes.NotFound.intValue, null, Response("Not Found.", null)))
+                      }
+                    }
+                  case _ =>
+                    post {
+                      complete(GenericResponse(StatusCodes.NotImplemented.intValue, null, Response("Not Supported.", null)))
+                    } ~ get {
+                      complete(GenericResponse(StatusCodes.NotImplemented.intValue, null, Response("Not Supported.", null)))
+                    }
+                }
+            } ~ path(Segment / ChannelSegment) {
+              (appName: String, channel: Channel) =>
+                channel match {
+                  case Channel.WA =>
+                    post {
+                      extractFormData { postMap =>
+                        val fileInfo = postMap("file").right.get
+                        fileInfo.status match {
+                          case Success(x) =>
+                            val credential = WhatsAppCredential(new File(fileInfo.tmpFilePath))
+                            KeyChainManager.addWhatsAppCredential(appName, credential)
+                            complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Succesfully stored certificate for WA / $appName", credential)))
+                          case Failure(e) =>
+                            //There was some isse processing the fileupload.
+                            ConnektLogger(LogFile.SERVICE).error("Credentials Upload File Error", e)
+                            complete(GenericResponse(StatusCodes.InternalServerError.intValue, null, Response("There was some error processing your request", Map("debug" -> e.getMessage))))
+                        }
+                      }
+                    } ~ get {
+                      KeyChainManager.getWhatsAppCredentials(appName) match {
+                        case Some(x) =>
+                          //TODO : Serve the file here.
                           complete(GenericResponse(StatusCodes.OK.intValue, null, Response("Credentials Found.", x)))
                         case None =>
                           complete(GenericResponse(StatusCodes.NotFound.intValue, null, Response("Not Found.", null)))

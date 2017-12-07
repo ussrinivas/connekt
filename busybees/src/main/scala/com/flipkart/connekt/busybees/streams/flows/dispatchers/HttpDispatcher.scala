@@ -18,7 +18,7 @@ import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.stream._
 import com.flipkart.connekt.busybees.models._
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
-import com.flipkart.connekt.commons.services.ConnektConfig
+import com.flipkart.connekt.commons.services.{ConnektConfig, KeyChainManager}
 import com.typesafe.config.Config
 import com.typesafe.sslconfig.akka.AkkaSSLConfig
 import com.typesafe.sslconfig.ssl.{TrustManagerConfig, TrustStoreConfig}
@@ -38,9 +38,9 @@ class HttpDispatcher(actorSystemConf: Config) {
   private val smsPoolClientFlow = Http().superPool[SmsRequestTracker]()(httpMat)
 
   private val waPoolInsecureClientFlow = {
-    //    TODO: Remove this code once move to signed certified certs
-    val certPath = ConnektConfig.getString("wa.certificate.path").get
-    val trustStoreConfig = TrustStoreConfig(None, Some(certPath)).withStoreType("PEM")
+    // TODO :: Appname
+    val certificate = KeyChainManager.getWhatsAppCredentials("flipkart").get.getCertificateStr
+    val trustStoreConfig = TrustStoreConfig(Some(certificate), None).withStoreType("PEM")
     val trustManagerConfig = TrustManagerConfig().withTrustStoreConfigs(List(trustStoreConfig))
     val badSslConfig = AkkaSSLConfig().mapSettings(s => s.withLoose(s.loose
       .withAcceptAnyCertificate(true)

@@ -17,7 +17,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.stream.ActorMaterializer
 import com.flipkart.connekt.busybees.models.WAContactTracker
-import com.flipkart.connekt.commons.services.ConnektConfig
+import com.flipkart.connekt.commons.services.{ConnektConfig, KeyChainManager}
 import com.flipkart.connekt.firefly.sinks.http.HttpRequestTracker
 import com.typesafe.config.Config
 import com.typesafe.sslconfig.akka.AkkaSSLConfig
@@ -32,8 +32,9 @@ class HttpDispatcher(actorSystemConf: Config) {
   implicit val ec: ExecutionContextExecutor = httpSystem.dispatcher
 
   private val insecureHttpFlow = {
-    val certPath = ConnektConfig.getString("wa.certificate.path").get
-    val trustStoreConfig = TrustStoreConfig(None, Some(certPath)).withStoreType("PEM")
+    // TODO :: Appname
+    val certificate = KeyChainManager.getWhatsAppCredentials("flipkart").get.getCertificateStr
+    val trustStoreConfig = TrustStoreConfig(Some(certificate), None).withStoreType("PEM")
     val pipelineLimit = ConnektConfig.getInt("wa.contact.check.pipeline.limit").get
     val maxConnections = ConnektConfig.getInt("wa.contact.check.max.parallel.connections").get
     val trustManagerConfig = TrustManagerConfig().withTrustStoreConfigs(List(trustStoreConfig))
