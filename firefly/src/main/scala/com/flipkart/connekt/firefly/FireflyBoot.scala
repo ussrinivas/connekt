@@ -62,6 +62,7 @@ object FireflyBoot extends BaseApp {
 
       ServiceFactory.initStencilService(DaoFactory.getStencilDao)
       ServiceFactory.initStorageService(DaoFactory.getKeyChainDao)
+      ServiceFactory.initProjectConfigService(DaoFactory.getUserProjectConfigDao)
 
       //Callbacks write
       val hConfig = ConnektConfig.getConfig("connections.hbase")

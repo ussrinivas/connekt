@@ -33,37 +33,41 @@ object WAContactCheckHelper extends Instrumented {
   private val baseUrl = ConnektConfig.getString("wa.base.uri").get
 
   def checkContactViaWAApi(destinations: List[String], appName: String)(implicit am: ActorMaterializer): List[WAContactEntity] = {
+    if (destinations.nonEmpty) {
+      val requestEntity = HttpEntity(ContentTypes.`application/json`, WAContactRequest(Payload(users = destinations.toSet)).getJson)
+      val httpRequest = HttpRequest(HttpMethods.POST, s"$baseUrl${Constants.WAConstants.WHATSAPP_CHECK_CONTACT_URI}", Nil, requestEntity)
 
-    val requestEntity = HttpEntity(ContentTypes.`application/json`, WAContactRequest(Payload(users = destinations.toSet)).getJson)
-    val httpRequest = HttpRequest(HttpMethods.POST, s"$baseUrl${Constants.WAConstants.WHATSAPP_CHECK_CONTACT_URI}", Nil, requestEntity)
-
-    val contactWAStatus = ListBuffer.empty[WAContactEntity]
-    Try(Await.result[HttpResponse](WebClient.instance.callHttpService(httpRequest,
-      Channel.WA, appName), ConnektConfig.getInt("wa.contact.api.timeout").get.seconds)) match {
-      case Success(r) =>
-        val strResponse = r.entity.getString
-        val isSuccess = Try(strResponse.getObj[WASuccessResponse]).isSuccess
-        r.status.intValue() match {
-          case 200 if isSuccess =>
-            val response = strResponse.getObj[WASuccessResponse]
-            val results = response.payload.results.getOrElse(List.empty)
-            ConnektLogger(LogFile.PROCESSORS).debug(s"WAContactCheckHelper received http response for destination : ${destinations.mkString(",")}")
-            results.map(result => {
-              val waContactEntity = WAContactEntity(result.input_number, result.wa_username, appName, result.wa_exists, None)
-              WAContactService().add(waContactEntity)
-              BigfootService.ingestEntity(result.wa_username, waContactEntity.toPublishFormat, waContactEntity.namespace).get
-              contactWAStatus += waContactEntity
-            })
-            ConnektLogger(LogFile.PROCESSORS).debug(s"WAContactCheckHelper contacts updated in hbase for destination : ${destinations.mkString(",")}")
-            meter(s"check.contact.${WAResponseStatus.ContactHTTP}").mark()
-          case w =>
-            val response = strResponse.getObj[WAErrorResponse]
-            ConnektLogger(LogFile.PROCESSORS).error(s"WAContactCheckHelper received http response : ${response.getJson} , with status code $w.")
-            meter(s"check.contact.failed.${WAResponseStatus.ContactError}").mark()
-        }
-      case Failure(f) =>
-        ConnektLogger(LogFile.PROCESSORS).error(s"WAContactCheckHelper failed processing http response body for destination : ${destinations.mkString(",")} due to internal error ", f)
+      val contactWAStatus = ListBuffer.empty[WAContactEntity]
+      Try(Await.result[HttpResponse](WebClient.instance.callHttpService(httpRequest,
+        Channel.WA, appName), ConnektConfig.getInt("wa.contact.api.timeout").get.seconds)) match {
+        case Success(r) =>
+          val strResponse = r.entity.getString
+          val isSuccess = Try(strResponse.getObj[WASuccessResponse]).isSuccess
+          r.status.intValue() match {
+            case 200 if isSuccess =>
+              val response = strResponse.getObj[WASuccessResponse]
+              val results = response.payload.results.getOrElse(List.empty)
+              ConnektLogger(LogFile.PROCESSORS).debug(s"WAContactCheckHelper received http response for destination : ${destinations.mkString(",")}")
+              results.map(result => {
+                val waContactEntity = WAContactEntity(result.input_number, result.wa_username, appName, result.wa_exists, None)
+                WAContactService().add(waContactEntity)
+                BigfootService.ingestEntity(result.wa_username, waContactEntity.toPublishFormat, waContactEntity.namespace).get
+                contactWAStatus += waContactEntity
+              })
+              ConnektLogger(LogFile.PROCESSORS).debug(s"WAContactCheckHelper contacts updated in hbase for destination : ${destinations.mkString(",")}")
+              meter(s"check.contact.${WAResponseStatus.ContactHTTP}").mark()
+            case w =>
+              val response = strResponse.getObj[WAErrorResponse]
+              ConnektLogger(LogFile.PROCESSORS).error(s"WAContactCheckHelper received http response : ${response.getJson} , with status code $w.")
+              meter(s"check.contact.failed.${WAResponseStatus.ContactError}").mark()
+          }
+        case Failure(f) =>
+          ConnektLogger(LogFile.PROCESSORS).error(s"WAContactCheckHelper failed processing http response body for destination : ${destinations.mkString(",")} due to internal error ", f)
+      }
+      contactWAStatus.toList
+    } else {
+      ConnektLogger(LogFile.PROCESSORS).error(s"WAContactCheckHelper no destination to check")
+      List.empty
     }
-    contactWAStatus.toList
   }
 }

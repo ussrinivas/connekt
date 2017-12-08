@@ -27,7 +27,7 @@ import com.flipkart.connekt.commons.services._
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.receptors.directives.MPlatformSegment
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
-import com.flipkart.connekt.receptors.routes.helper.PhoneNumberHelper
+import com.flipkart.connekt.receptors.routes.helper.{PhoneNumberHelper, WAContactCheckHelper}
 import com.flipkart.connekt.receptors.wire.ResponseUtils._
 import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
@@ -35,11 +35,13 @@ import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
+import scala.concurrent.duration._
 
 class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
   private lazy implicit val stencilService = ServiceFactory.getStencilService
   private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
+  private val checkContactInterval = ConnektConfig.getInt("wa.check.contact.interval.days").get
 
   val route =
     authenticate {
@@ -418,6 +420,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
                                       val validNumbers = ListBuffer[String]()
                                       val invalidNumbers = ListBuffer[String]()
+                                      val waNotExistsContacts = ListBuffer[String]()
 
                                       val waRequestInfo = request.channelInfo.asInstanceOf[WARequestInfo]
 
@@ -425,6 +428,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                         if (isTestRequest) {
                                           GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse(s"Whatsapp Perf Send Request Received. Skipped sending.", Map("fake_message_id" -> r.destinations), List.empty)).respond
                                         } else {
+                                          // Phone number validity check.
                                           waRequestInfo.destinations.foreach(r => {
                                             PhoneNumberHelper.validateNFormatNumber(appName, r) match {
                                               case Some(n) => validNumbers += n
@@ -434,21 +438,31 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                                 invalidNumbers += r
                                             }
                                           })
+
+                                          // WAContactService check.
                                           val waUserName = ListBuffer[String]()
-                                          val checkedContacts = validNumbers.filter { number => {
-                                            WAContactService.instance.get(appName, number).get match {
-                                              case Some(wa) =>
-                                                if (wa.exists.equalsIgnoreCase("true")) {
-                                                  waUserName += wa.userName
-                                                  true
-                                                } else {
-                                                  ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.WA, appName, WAResponseStatus.WANotExist)
-                                                  false
-                                                }
-                                              case _ => false
+                                          val existContactDetails = WAContactService.instance.gets(appName, validNumbers.toSet).get
+
+                                          val ttlCheckedNumbers = existContactDetails.filter(d => {
+                                            val lastCheckInterval = System.currentTimeMillis() - d.lastCheckContactTS
+                                            lastCheckInterval < checkContactInterval.days.toMillis
+                                          })
+
+                                          // Check for other number in via WA check contact api.
+                                          val toCheckNumbers = validNumbers.diff(ttlCheckedNumbers.map(_.destination))
+                                          val toCheckNumbersDetails = WAContactCheckHelper.checkContactViaWAApi(toCheckNumbers.toList, appName)
+                                          val allContactDetails = toCheckNumbersDetails ::: existContactDetails
+
+                                          val checkedContacts = allContactDetails.filter(wa => {
+                                            if (wa.exists.equalsIgnoreCase("true")) {
+                                              waUserName += wa.userName
+                                              true
+                                            } else {
+                                              ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.WA, appName, WAResponseStatus.WANotExist)
+                                              waNotExistsContacts += wa.destination
+                                              false
                                             }
-                                          }
-                                          }
+                                          }).map(_.destination)
 
                                           // User Pref Check
                                           val prefCheckedContacts = checkedContacts.map(c => {
@@ -459,20 +473,19 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                               override def meta: Map[String, AnyRef] = request.meta
                                             }
                                             GuardrailService.isGuarded[String, Boolean](appName, Channel.WA, gEntity, gMeta) match {
-                                              case Success(_) => c -> true
-                                              case Failure(_) => c -> false
+                                              case Success(pref) => c -> pref
+                                              case Failure(f) => c -> true
                                             }
-                                          }).filter(_._2)
+                                          }).filterNot(_._2)
 
-                                          val rejectedContacts = prefCheckedContacts.map(_._1).diff(validNumbers)
-
+                                          val userPrefRejectedContacts = prefCheckedContacts.map(_._1).diff(validNumbers)
                                           if (prefCheckedContacts.nonEmpty) {
                                             val waRequest = request.copy(channelInfo = waRequestInfo.copy(destinations = waUserName.toSet))
                                             val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(request, user)
                                             /* enqueue multiple requests into kafka */
                                             val (success, failure) = ServiceFactory.getMessageService(Channel.WA).saveRequest(waRequest, queueName, persistPayloadInDataStore = true) match {
                                               case Success(id) =>
-                                                (Map(id -> waUserName.toSet), invalidNumbers ++ rejectedContacts)
+                                                (Map(id -> waUserName.toSet), invalidNumbers ++ userPrefRejectedContacts ++ waNotExistsContacts)
                                               case Failure(t) =>
                                                 (Map(), waRequestInfo.destinations)
                                             }

@@ -19,23 +19,47 @@ import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.DefaultGuardrailService
 import com.flipkart.metrics.Timed
 
+import scala.collection.JavaConversions.mapAsScalaMap
 import scala.util.Try
+
+class GuardrailService
 
 object GuardrailService extends Instrumented {
 
-  lazy private val projectConfigService = ServiceFactory.getUserProjectConfigService
+  private val projectConfigService = ServiceFactory.getUserProjectConfigService
 
   @Timed("isGuarded")
   def isGuarded[E, R](appName: String, channel: Channel, entity: TGuardrailEntity[E], meta: TGuardrailEntityMetadata): Try[Boolean] = {
+    val validatorClassName = projectConfigService.getProjectConfiguration(appName, s"validator-service-${channel.toString.toLowerCase}").get.map(_.value).getOrElse(classOf[DefaultGuardrailService].getName)
     try {
-      ConnektLogger(LogFile.PROCESSORS).debug("ValidatorService received message")
-      val validatorClassName = projectConfigService.getProjectConfiguration(appName, s"validator-service-${channel.toString.toLowerCase}").get.map(_.value).getOrElse(classOf[DefaultGuardrailService].getName)
+      ConnektLogger(LogFile.PROCESSORS).debug(s"GuardrailService received message for appName : $appName and channel $channel with entity ${entity.entity}")
       val validator: TGuardrailService[E, R] = Class.forName(validatorClassName).newInstance().asInstanceOf[TGuardrailService[E, R]]
       validator.isGuarded(entity, meta)
     } catch {
       case e: Throwable =>
-        ConnektLogger(LogFile.PROCESSORS).error(s"ValidatorService error", e)
+        meter(s"guardrail.service.isGuarded.$validatorClassName.failure").mark()
+        ConnektLogger(LogFile.PROCESSORS).error(s"GuardrailService error", e)
         throw new Exception(e)
     }
   }
+
+  @Timed("guard")
+  def guard[E, R](appName: String, channel: Channel, entity: TGuardrailEntity[E], jMeta: java.util.LinkedHashMap[String, AnyRef]): Try[R] = {
+    val validatorClassName = projectConfigService.getProjectConfiguration(appName, s"validator-service-${channel.toString.toLowerCase}").get.map(_.value).getOrElse(classOf[DefaultGuardrailService].getName)
+    try {
+      ConnektLogger(LogFile.PROCESSORS).debug(s"GuardrailService received message for appName : $appName and channel $channel with entity ${entity.entity}")
+      val validator: TGuardrailService[E, R] = Class.forName(validatorClassName).newInstance().asInstanceOf[TGuardrailService[E, R]]
+      val metadata = new TGuardrailEntityMetadata {
+        override def meta = jMeta.toMap
+      }
+      val guardResponse = validator.guard(entity, metadata)
+      guardResponse.get.response
+    } catch {
+      case e: Throwable =>
+        meter(s"guardrail.service.guard.$validatorClassName.failure").mark()
+        ConnektLogger(LogFile.PROCESSORS).error(s"GuardrailService error", e)
+        throw new Exception(e)
+    }
+  }
+
 }
