@@ -31,6 +31,7 @@ import scala.util.{Failure, Success, Try}
 object WAContactCheckHelper extends Instrumented {
 
   private val baseUrl = ConnektConfig.getString("wa.base.uri").get
+  private val timeout = ConnektConfig.getInt("wa.contact.api.timeout").get.seconds
 
   def checkContactViaWAApi(destinations: List[String], appName: String)(implicit am: ActorMaterializer): List[WAContactEntity] = {
     if (destinations.nonEmpty) {
@@ -39,7 +40,7 @@ object WAContactCheckHelper extends Instrumented {
 
       val contactWAStatus = ListBuffer.empty[WAContactEntity]
       Try(Await.result[HttpResponse](WebClient.instance.callHttpService(httpRequest,
-        Channel.WA, appName), ConnektConfig.getInt("wa.contact.api.timeout").get.seconds)) match {
+        Channel.WA, appName), timeout)) match {
         case Success(r) =>
           val strResponse = r.entity.getString
           val isSuccess = Try(strResponse.getObj[WASuccessResponse]).isSuccess
@@ -55,7 +56,7 @@ object WAContactCheckHelper extends Instrumented {
                 contactWAStatus += waContactEntity
               })
               ConnektLogger(LogFile.PROCESSORS).debug(s"WAContactCheckHelper contacts updated in hbase for destination : ${destinations.mkString(",")}")
-              meter(s"check.contact.${WAResponseStatus.ContactHTTP}").mark()
+              meter(s"check.contact.${WAResponseStatus.ContactReceived}").mark()
             case w =>
               val response = strResponse.getObj[WAErrorResponse]
               ConnektLogger(LogFile.PROCESSORS).error(s"WAContactCheckHelper received http response : ${response.getJson} , with status code $w.")

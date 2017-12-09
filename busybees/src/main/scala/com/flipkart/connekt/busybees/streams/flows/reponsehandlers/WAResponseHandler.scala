@@ -57,9 +57,9 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends 
                 requestTracker.appName,
                 requestTracker.contextId
               ))
-              ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.SendHTTP)
-              events += WACallbackEvent(messageId, Some(responseBody.payload.message_id.getOrElse("")), requestTracker.destination, WAResponseStatus.SendHTTP, requestTracker.clientId, appName, requestTracker.contextId, responseBody.toString, eventTS)
-              meter(s"send.${WAResponseStatus.SendHTTP}").mark()
+              ServiceFactory.getReportingService.recordChannelStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Channel.WA, requestTracker.appName, WAResponseStatus.Received)
+              events += WACallbackEvent(messageId, Some(responseBody.payload.message_id.getOrElse("")), requestTracker.destination, WAResponseStatus.Received, requestTracker.clientId, appName, requestTracker.contextId, responseBody.toString, eventTS)
+              meter(s"send.${WAResponseStatus.Received}").mark()
               ConnektLogger(LogFile.PROCESSORS).info(s"WaResponseHandler received for: $messageId and waMessageId : ${responseBody.payload.message_id}")
             case 200 if !isSuccess =>
               val responseBody = stringResponse.getObj[WAErrorResponse]

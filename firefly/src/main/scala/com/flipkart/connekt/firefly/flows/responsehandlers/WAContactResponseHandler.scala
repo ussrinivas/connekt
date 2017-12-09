@@ -62,7 +62,7 @@ class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) e
               })
               ConnektLogger(LogFile.PROCESSORS).debug(s"WAContactResponseHandler contacts updated in hbase for messageId : ${requestTracker.messageId}")
               ConnektLogger(LogFile.PROCESSORS).trace(s"WAContactResponseHandler contacts updated in hbase : $results")
-              meter(s"check.contact.${WAResponseStatus.ContactHTTP}").mark()
+              meter(s"check.contact.${WAResponseStatus.ContactReceived}").mark()
               List(WAContactResponseStatus(Status.Success))
             case w =>
               val response = strResponse.getObj[WAErrorResponse]

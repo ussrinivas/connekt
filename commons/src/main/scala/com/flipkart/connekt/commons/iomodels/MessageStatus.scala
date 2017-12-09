@@ -92,14 +92,13 @@ object MessageStatus {
     val WANotExist = Value("wa_not_exists")
 
     val ContactError = Value("wa_contact_error")
-    val ContactHTTP = Value("wa_contact_http")
+    val ContactReceived = Value("wa_contact_received")
     val ContactSystemError = Value("wa_contact_system_error")
 
     val MediaUploadError = Value("wa_media_upload_error")
     val MediaUploadSystemError = Value("wa_media_upload_system_error")
     val MediaUploaded = Value("wa_media_uploaded")
 
-    val SendHTTP = Value("wa_send_http")
     val SendSystemError = Value("wa_send_system_error")
 
     val StencilNotFound = Value("wa_stencil_not_found")

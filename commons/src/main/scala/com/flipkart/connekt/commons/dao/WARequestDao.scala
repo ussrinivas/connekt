@@ -15,7 +15,8 @@ package com.flipkart.connekt.commons.dao
 import com.flipkart.connekt.commons.dao.HbaseDao._
 import com.flipkart.connekt.commons.factories.THTableFactory
 import com.flipkart.connekt.commons.iomodels._
-import com.flipkart.connekt.commons.utils.StringUtils.JSONMarshallFunctions
+import com.flipkart.connekt.commons.utils.StringUtils.{JSONMarshallFunctions, JSONUnMarshallFunctions}
+import scala.reflect.runtime.universe._
 
 class WARequestDao(tableName: String, hTableFactory: THTableFactory) extends RequestDao(tableName: String, hTableFactory: THTableFactory) {
 
@@ -48,7 +49,7 @@ class WARequestDao(tableName: String, hTableFactory: THTableFactory) extends Req
     WARequestData(
       WAType.valueOf(reqDataProps.getS("waType")),
       reqDataProps.get("message").map(new String(_)),
-      reqDataProps.get("attachment").map(_.asInstanceOf[Attachment])
+      Option(reqDataProps.getS("attachment")).map(_.getObj(typeTag[Attachment]))
     )
   }
 }
