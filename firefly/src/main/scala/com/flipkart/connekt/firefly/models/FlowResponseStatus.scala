@@ -8,4 +8,4 @@ object Status extends Enumeration {
   val Failed = Value("failed")
 }
 
-case class FlowResponseStatus(responseStatus: Status.Status) extends TopologyOutputDatatype
+private[firefly] case class FlowResponseStatus(responseStatus: Status.Status) extends TopologyOutputDatatype
