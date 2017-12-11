@@ -19,27 +19,40 @@ import akka.stream.{ActorMaterializer, ActorMaterializerSettings}
 import com.flipkart.connekt.busybees.streams.flows.StageSupervision
 import com.flipkart.connekt.commons.connections.ConnectionProvider
 import com.flipkart.connekt.commons.core.BaseApp
+import com.flipkart.connekt.commons.core.Wrappers.Try_#
 import com.flipkart.connekt.commons.dao.DaoFactory
+import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.KafkaProducerHelper
 import com.flipkart.connekt.commons.services.{ConnektConfig, EventsDaoContainer, RequestDaoContainer}
 import com.flipkart.connekt.commons.sync.SyncManager
 import com.flipkart.connekt.commons.utils.ConfigUtils
-import com.flipkart.connekt.firefly.dispatcher.HttpDispatcher
+import com.flipkart.connekt.firefly.flows.dispatchers.HttpDispatcher
+import com.flipkart.connekt.firefly.topology.{ClientTopologyManager, SmsLatencyMeteringTopology, WAContactTopology}
 import com.typesafe.config.ConfigFactory
+
+import scala.concurrent.duration.DurationLong
+import scala.concurrent.{Await, Future}
 
 object FireflyBoot extends BaseApp {
 
   private val initialized = new AtomicBoolean(false)
 
-  private implicit val system = ActorSystem("firefly")
+  implicit val system = ActorSystem("firefly")
 
   val settings = ActorMaterializerSettings(system)
     .withAutoFusing(enable = false)
     .withSupervisionStrategy(StageSupervision.decider)
 
-  private implicit val mat = ActorMaterializer(settings.withDispatcher("akka.actor.default-dispatcher"))
-  private implicit val ec = mat.executionContext
+  implicit val mat = ActorMaterializer(settings.withDispatcher("akka.actor.default-dispatcher"))
+  implicit val ec = mat.executionContext
+  lazy val ioMat = ActorMaterializer(settings.withDispatcher("akka.actor.io-dispatcher"))
+
+  var wAContactTopology: WAContactTopology = _
+  var smsLatencyMeteringTopology: SmsLatencyMeteringTopology = _
+
+  private lazy val WA_CONTACT_TOPIC = ConnektConfig.getString("wa.contact.topic.name").get
+  private lazy val CALLBACK_QUEUE_NAME = ConnektConfig.get("firefly.latency.metric.kafka.topic").getOrElse("ckt_callback_events_%s")
 
   def start() {
     if (!initialized.getAndSet(true)) {
@@ -85,8 +98,11 @@ object FireflyBoot extends BaseApp {
 
       ClientTopologyManager(kafkaConsumerConnConf, ConnektConfig.getInt("firefly.retry.limit").get)
 
-      InternalTopologyManager(kafkaProducerConnConf)
-      WAContactTopologyManager(kafkaConsumerConnConf)
+      smsLatencyMeteringTopology = new SmsLatencyMeteringTopology(kafkaConsumerConnConf, CALLBACK_QUEUE_NAME.format(Channel.SMS.toString.toLowerCase))
+      smsLatencyMeteringTopology.run
+
+      wAContactTopology = new WAContactTopology(kafkaConsumerConnConf, WA_CONTACT_TOPIC)
+      wAContactTopology.run
 
       ConnektLogger(LogFile.SERVICE).info("Started `Firefly` app")
     }
@@ -97,9 +113,9 @@ object FireflyBoot extends BaseApp {
     if (initialized.get()) {
       DaoFactory.shutdownHTableDaoFactory()
       Option(ClientTopologyManager.instance).foreach(_.stopAllTopologies())
+      val shutdownFutures = Option(wAContactTopology).map(_.shutdown()) :: Option(smsLatencyMeteringTopology).map(_.shutdown()) :: Nil
+      Try_#(message = "Topology Shutdown Didn't Complete")(Await.ready(Future.sequence(shutdownFutures.flatten), 20.seconds))
       ConnektLogger.shutdown()
-      Option(InternalTopologyManager.instance).foreach(_.stopAllTopologies())
-      Option(WAContactTopologyManager.instance).foreach(_.stopAllTopologies())
     }
   }
 

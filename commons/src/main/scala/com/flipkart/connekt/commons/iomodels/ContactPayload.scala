@@ -15,3 +15,5 @@ package com.flipkart.connekt.commons.iomodels
 import com.fasterxml.jackson.annotation.JsonProperty
 
 case class ContactPayload(@JsonProperty(required = true) user_identifier: String, appName: String)
+
+case class ContactPayloads(contacts: Seq[ContactPayload]) extends TopologyInputDatatype

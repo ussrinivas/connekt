@@ -10,26 +10,25 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.firefly.sinks.metrics
+package com.flipkart.connekt.firefly.flows.metrics
 
 import java.util.concurrent.TimeUnit
 
-import akka.Done
-import akka.stream.scaladsl.Sink
 import com.codahale.metrics.{SlidingTimeWindowReservoir, Timer}
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
-import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.iomodels.MessageStatus._
+import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.utils.StringUtils._
+import com.flipkart.connekt.firefly.flows.MapFlowStage
+import com.flipkart.connekt.firefly.models.FlowResponseStatus
+import com.flipkart.connekt.firefly.models.Status
 
-import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
-
-class LatencyMetrics extends Instrumented {
+class LatencyMetrics extends MapFlowStage[CallbackEvent, FlowResponseStatus] with Instrumented {
 
   private def publishSMSLatency: Boolean = ConnektConfig.getBoolean("publish.sms.latency").getOrElse(false)
 
@@ -41,7 +40,7 @@ class LatencyMetrics extends Instrumented {
     slidingTimer
   })
 
-  def sink: Sink[CallbackEvent, Future[Done]] = Sink.foreach[CallbackEvent] {
+  override implicit val map: CallbackEvent => List[FlowResponseStatus] = {
     case sce: SmsCallbackEvent =>
       val messageId = sce.messageId
 
@@ -95,6 +94,9 @@ class LatencyMetrics extends Instrumented {
       else {
         ConnektLogger(LogFile.SERVICE).debug(s"Event: ${sce.eventType} is in the exclusion list for metrics publish, messageID: $messageId")
       }
-    case _ => ConnektLogger(LogFile.SERVICE).info(s"LatencyMetrics for channel callback event not implemented yet.")
+      List(FlowResponseStatus(Status.Success))
+    case _ =>
+      ConnektLogger(LogFile.SERVICE).info(s"LatencyMetrics for channel callback event not implemented yet.")
+      List(FlowResponseStatus(Status.Failed))
   }
 }

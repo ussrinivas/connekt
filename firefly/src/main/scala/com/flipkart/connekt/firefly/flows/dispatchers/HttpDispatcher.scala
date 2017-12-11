@@ -10,7 +10,7 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.firefly.dispatcher
+package com.flipkart.connekt.firefly.flows.dispatchers
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http

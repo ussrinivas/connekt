@@ -10,7 +10,7 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.firefly
+package com.flipkart.connekt.firefly.topology
 
 import akka.stream.KillSwitch
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}

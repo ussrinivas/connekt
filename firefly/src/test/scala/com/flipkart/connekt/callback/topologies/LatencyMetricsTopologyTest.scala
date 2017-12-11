@@ -1,16 +1,13 @@
 package com.flipkart.connekt.callback.topologies
 
-import akka.stream.scaladsl.Source
+import akka.stream.scaladsl.{Sink, Source}
 import com.flipkart.connekt.busybees.tests.streams.TopologyUTSpec
-import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.iomodels.SmsCallbackEvent
-import com.flipkart.connekt.firefly.sinks.metrics.LatencyMetrics
+import com.flipkart.connekt.commons.metrics.Instrumented
+import com.flipkart.connekt.firefly.flows.metrics.LatencyMetrics
 
-/**
-  * Created by grishma.s on 11/10/17.
-  */
 class LatencyMetricsTopologyTest extends TopologyUTSpec with Instrumented {
-  val latency = new LatencyMetrics()
+  val latency = new LatencyMetrics().flow
   "HbaseLookupTopology Test" should "run" in {
     val smsCallback = SmsCallbackEvent(messageId = "3ce2de85-be4f-4ccb-a91b-1ce8b424ab4c",
       eventType = "sms_delivered",
@@ -22,7 +19,7 @@ class LatencyMetricsTopologyTest extends TopologyUTSpec with Instrumented {
       timestamp = 1509698165000L,
       eventId = "iaUAuOefuD")
 
-    Source.single(smsCallback).runWith(latency.sink)
+    Source.single(smsCallback).via(latency).runWith(Sink.ignore)
     Thread.sleep(15000)
   }
   "HbaseLookupTopology Test" should "cargo blank" in {
@@ -36,7 +33,7 @@ class LatencyMetricsTopologyTest extends TopologyUTSpec with Instrumented {
       timestamp = 1509625346666L,
       eventId = "iaUAuOefuD")
 
-    Source.single(smsCallback).runWith(latency.sink)
+    Source.single(smsCallback).via(latency).runWith(Sink.ignore)
     Thread.sleep(15000)
   }
   "HbaseLookupTopology Test" should "cargo any" in {
@@ -50,7 +47,7 @@ class LatencyMetricsTopologyTest extends TopologyUTSpec with Instrumented {
       timestamp = 1509800169441L,
       eventId = "iaUAuOefuD")
 
-    Source.single(smsCallback).runWith(latency.sink)
+    Source.single(smsCallback).via(latency).runWith(Sink.ignore)
     Thread.sleep(15000)
   }
 
@@ -65,7 +62,7 @@ class LatencyMetricsTopologyTest extends TopologyUTSpec with Instrumented {
       timestamp = 1509614097879L,
       eventId = "iaUAuOefuD")
 
-    Source.single(smsCallback).runWith(latency.sink)
+    Source.single(smsCallback).via(latency).runWith(Sink.ignore)
     Thread.sleep(15000)
   }
 
@@ -80,7 +77,7 @@ class LatencyMetricsTopologyTest extends TopologyUTSpec with Instrumented {
       timestamp = 1509698165000L,
       eventId = "iaUAuOefuD")
 
-    Source.single(smsCallback).runWith(latency.sink)
+    Source.single(smsCallback).via(latency).runWith(Sink.ignore)
     Thread.sleep(20000)
   }
 }

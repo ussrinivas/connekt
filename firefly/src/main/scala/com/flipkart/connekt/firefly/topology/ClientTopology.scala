@@ -10,7 +10,7 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.firefly
+package com.flipkart.connekt.firefly.topology
 
 import java.lang.Boolean
 import java.util.UUID

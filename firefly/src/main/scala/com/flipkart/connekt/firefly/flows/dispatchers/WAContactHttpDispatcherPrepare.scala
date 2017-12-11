@@ -17,25 +17,25 @@ import java.util.UUID
 import akka.http.scaladsl.model._
 import com.flipkart.connekt.busybees.models.WAContactTracker
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
-import com.flipkart.connekt.commons.iomodels.{Constants, ContactPayload, Payload, WAContactRequest}
+import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.firefly.flows.MapFlowStage
 
-class WAContactHttpDispatcherPrepare extends MapFlowStage[Seq[ContactPayload], (HttpRequest, WAContactTracker)] {
+class WAContactHttpDispatcherPrepare extends MapFlowStage[ContactPayloads, (HttpRequest, WAContactTracker)] {
 
   private val baseUrl = ConnektConfig.getString("wa.base.uri").get
-  override implicit val map: Seq[ContactPayload] => List[(HttpRequest, WAContactTracker)] = contacts => {
+  override implicit val map: ContactPayloads => List[(HttpRequest, WAContactTracker)] = contactPayloads => {
     try {
       val uuid = generateUUID
       ConnektLogger(LogFile.PROCESSORS).debug(s"WAHttpDispatcherPrepare received with messageId : $uuid")
-      ConnektLogger(LogFile.PROCESSORS).trace(s"WAHttpDispatcherPrepare received with messageId : $uuid and contacts : $contacts")
-      val contactList = contacts.map(_.user_identifier).toSet
+      ConnektLogger(LogFile.PROCESSORS).trace(s"WAHttpDispatcherPrepare received with messageId : $uuid and contacts : $contactPayloads")
+      val contactList = contactPayloads.contacts.map(_.user_identifier).toSet
       val waPayload = WAContactRequest(Payload(users = contactList))
       val requestEntity = HttpEntity(ContentTypes.`application/json`, waPayload.getJson)
       val requestHeaders = scala.collection.immutable.Seq.empty[HttpHeader]
       val httpRequest = HttpRequest(HttpMethods.POST, sendUri, requestHeaders, requestEntity)
-      val requestTrace = WAContactTracker(contactList, contacts.head.appName, contacts, uuid)
+      val requestTrace = WAContactTracker(contactList, contactPayloads.contacts.head.appName, contactPayloads, uuid)
       List(httpRequest -> requestTrace)
     } catch {
       case e: Throwable =>
