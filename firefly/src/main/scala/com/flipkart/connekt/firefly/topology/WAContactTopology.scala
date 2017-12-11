@@ -15,12 +15,10 @@ package com.flipkart.connekt.firefly.topology
 import akka.NotUsed
 import akka.stream._
 import akka.stream.scaladsl.GraphDSL.Implicits._
-import akka.stream.scaladsl.{Flow, GraphDSL, Merge, Sink, Source}
+import akka.stream.scaladsl.{Flow, GraphDSL, Sink, Source}
 import com.flipkart.connekt.busybees.streams.flows.FlowMetrics
 import com.flipkart.connekt.busybees.streams.flows.profilers.TimedFlowOps._
-import com.flipkart.connekt.busybees.streams.sources.KafkaSource
 import com.flipkart.connekt.commons.entities.Channel
-import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels.{ContactPayload, ContactPayloads}
 import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.utils.StringUtils._
@@ -36,21 +34,10 @@ class WAContactTopology(kafkaConsumerConfig: Config, topicName: String) extends 
   private val waContactSize: Int = ConnektConfig.getInt("wa.contact.batch.size").getOrElse(1000)
   private val waContactTimeLimit: Int = ConnektConfig.getInt("wa.contact.wait.time.limit.sec").getOrElse(2)
 
-  private def createMergedSource(checkpointGroup: CheckPointGroup, topics: Seq[String]): Source[ContactPayload, NotUsed] = Source.fromGraph(GraphDSL.create() { implicit b =>
-    val groupId = kafkaConsumerConfig.getString("group.id")
-    ConnektLogger(LogFile.PROCESSORS).info(s"Creating composite source for topics: ${topics.toString()}")
-    val merge = b.add(Merge[ContactPayload](topics.size))
-    for (portNum <- 0 until merge.n) {
-      val consumerGroup = s"${groupId}_$checkpointGroup"
-      new KafkaSource[ContactPayload](kafkaConsumerConfig, topic = topics(portNum), consumerGroup) ~> merge.in(portNum)
-    }
-    SourceShape(merge.out)
-  })
-
   override def sources: Map[CheckPointGroup, Source[ContactPayloads, NotUsed]] = {
     val waKafkaThrottle = ConnektConfig.getOrElse("wa.contact.throttle.rps", 2)
     Map(Channel.WA.toString ->
-      createMergedSource(Channel.WA, Seq(topicName))
+      createMergedSource[ContactPayload](Channel.WA, Seq(topicName), kafkaConsumerConfig)
         .groupedWithin(waContactSize, waContactTimeLimit.second)
         .throttle(waKafkaThrottle, 1.second, waKafkaThrottle, ThrottleMode.Shaping)
         .via(Flow[Seq[ContactPayload]].map {

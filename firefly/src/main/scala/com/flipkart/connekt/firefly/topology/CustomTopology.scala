@@ -14,19 +14,23 @@ package com.flipkart.connekt.firefly.topology
 
 import java.util.UUID
 
+import akka.{Done, NotUsed}
 import akka.event.Logging
 import akka.stream._
-import akka.stream.scaladsl.{Flow, RunnableGraph, Sink, Source}
-import akka.{Done, NotUsed}
+import akka.stream.scaladsl.GraphDSL.Implicits._
+import akka.stream.scaladsl.{Flow, GraphDSL, Merge, RunnableGraph, Sink, Source}
 import com.codahale.metrics.Gauge
+import com.flipkart.connekt.busybees.streams.sources.KafkaSource
 import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels.{TopologyInputDatatype, TopologyOutputDatatype}
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.firefly.FireflyBoot
+import com.typesafe.config.Config
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
+import scala.reflect.ClassTag
 
 trait CustomTopology[I <: TopologyInputDatatype, E <: TopologyOutputDatatype] extends Instrumented {
 
@@ -61,6 +65,17 @@ trait CustomTopology[I <: TopologyInputDatatype, E <: TopologyOutputDatatype] ex
         .withAttributes(Attributes.logLevels(onElement = Logging.InfoLevel, onFinish = Logging.InfoLevel, onFailure = Logging.ErrorLevel))
     }.toList
   }
+
+  def createMergedSource[In: ClassTag](checkpointGroup: CheckPointGroup, topics: Seq[String], kafkaConsumerConfig: Config): Source[In, NotUsed] = Source.fromGraph(GraphDSL.create() { implicit b =>
+    val groupId = kafkaConsumerConfig.getString("group.id")
+    ConnektLogger(LogFile.PROCESSORS).info(s"Creating composite source for topics: ${topics.toString()}")
+    val merge = b.add(Merge[In](topics.size))
+    for (portNum <- 0 until merge.n) {
+      val consumerGroup = s"${groupId}_$checkpointGroup"
+      new KafkaSource[In](kafkaConsumerConfig, topic = topics(portNum), consumerGroup) ~> merge.in(portNum)
+    }
+    SourceShape(merge.out)
+  })
 
   def run(implicit mat: Materializer): Unit = {
     ConnektLogger(LogFile.PROCESSORS).info(s"Starting Topology " + this.getClass.getSimpleName)
