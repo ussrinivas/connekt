@@ -93,6 +93,7 @@ object FireflyBoot extends BaseApp {
       ServiceFactory.initCallbackService(eventsDao, requestDao, null)
 
       ServiceFactory.initSMSMessageService(DaoFactory.getSmsRequestDao, DaoFactory.getUserConfigurationDao, null, kafkaConsumerConnConf, null)
+      ServiceFactory.initWAMessageService(DaoFactory.getWARequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConsumerConnConf, null)
 
       HttpDispatcher.apply(ConnektConfig.getConfig("react").get)
 
