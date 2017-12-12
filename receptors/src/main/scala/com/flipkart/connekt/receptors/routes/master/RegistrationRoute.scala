@@ -177,19 +177,23 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
             } ~ path("whatsapp" / Segment) {
               (appName: String) =>
                 extractTestRequestContext { isTestRequest =>
-                  authorize(user, "REGISTRATION_WA", s"REGISTRATION_WA_$appName") {
+                  authorize(user, "REGISTRATION", s"REGISTRATION_$appName") {
                     withRequestTimeout(registrationTimeout) {
                       put {
                         meteredResource(s"register.wa.contact.$appName") {
                           entity(as[ContactPayload]) { contact =>
-                            PhoneNumberHelper.validateNFormatNumber(appName, contact.user_identifier) match {
-                              case Some(n) =>
-                                val updatedContact = contact.copy(user_identifier = n, appName = appName)
-                                contactService.enqueueContactEvents(updatedContact)
-                                complete(GenericResponse(StatusCodes.Accepted.intValue, null, Response(s"Contact registration request received for destination : ${contact.user_identifier}", null)))
-                              case None =>
-                                ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatsapp invalid numbers: ${contact.user_identifier}")
-                                complete(GenericResponse(StatusCodes.BadRequest.intValue, null, Response(s"Dropping whatsapp invalid numbers ${contact.user_identifier}", null)))
+                            if (!isTestRequest) {
+                              PhoneNumberHelper.validateNFormatNumber(appName, contact.user_identifier) match {
+                                case Some(n) =>
+                                  val updatedContact = contact.copy(user_identifier = n, appName = appName)
+                                  contactService.enqueueContactEvents(updatedContact)
+                                  complete(GenericResponse(StatusCodes.Accepted.intValue, null, Response(s"Contact registration request received for destination : ${contact.user_identifier}", null)))
+                                case None =>
+                                  ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatsapp invalid numbers: ${contact.user_identifier}")
+                                  complete(GenericResponse(StatusCodes.BadRequest.intValue, null, Response(s"Dropping whatsapp invalid numbers ${contact.user_identifier}", null)))
+                              }
+                            } else {
+                              complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"DeviceDetails skipped for $contact.user_identifier", contact)))
                             }
                           }
                         }
