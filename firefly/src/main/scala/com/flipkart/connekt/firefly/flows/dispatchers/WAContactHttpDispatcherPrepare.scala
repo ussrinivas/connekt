@@ -28,7 +28,7 @@ class WAContactHttpDispatcherPrepare extends MapFlowStage[ContactPayloads, (Http
   override implicit val map: ContactPayloads => List[(HttpRequest, WAContactTracker)] = contactPayloads => {
     try {
       val uuid = generateUUID
-      ConnektLogger(LogFile.PROCESSORS).debug(s"WAHttpDispatcherPrepare received with messageId : $uuid")
+      ConnektLogger(LogFile.PROCESSORS).info(s"WAHttpDispatcherPrepare received with messageId : $uuid")
       ConnektLogger(LogFile.PROCESSORS).trace(s"WAHttpDispatcherPrepare received with messageId : $uuid and contacts : $contactPayloads")
       val contactList = contactPayloads.contacts.map(_.user_identifier).toSet
       val waPayload = WAContactRequest(Payload(users = contactList))
