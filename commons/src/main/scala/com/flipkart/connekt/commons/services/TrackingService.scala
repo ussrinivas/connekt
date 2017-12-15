@@ -18,12 +18,10 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.fasterxml.jackson.annotation.{JsonInclude, JsonProperty}
 import com.flipkart.concord.transformer.TURLTransformer
 import com.flipkart.connekt.commons.core.Wrappers._
-import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.CompressionUtils._
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.metrics.Timed
-import net.htmlparser.jericho.HTMLElementName
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 
@@ -46,7 +44,7 @@ object TrackingService extends Instrumented {
     }
   }
 
-  sealed case class TrackerOptions(domain: String, channel: Channel, messageId: String, contextId: Option[String], destination: String, clientId: String, appName: String) {
+  sealed case class TrackerOptions(domain: String, channel: String, messageId: String, contextId: Option[String], destination: String, clientId: String, appName: String) {
     def toMap: Map[String, AnyRef] = this.asMap.asInstanceOf[Map[String, AnyRef]]
   }
 
