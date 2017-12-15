@@ -18,7 +18,6 @@ import com.flipkart.connekt.commons.services.TrackingService
 import com.flipkart.connekt.commons.services.TrackingService.TrackerOptions
 import com.flipkart.connekt.commons.tests.ConnektUTSpec
 import com.flipkart.connekt.commons.utils.IdentityURLTransformer
-import com.flipkart.connekt.commons.utils.StringUtils._
 
 class TrackingServiceTest extends ConnektUTSpec with Instrumented {
 
