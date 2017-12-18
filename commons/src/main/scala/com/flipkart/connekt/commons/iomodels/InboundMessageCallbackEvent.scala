@@ -29,6 +29,8 @@ case class InboundMessageCallbackEvent(clientId: String,
                                        appName: String,
                                        contextId: String,
                                        message: String,
+                                       providerName: String,
+                                       channel: String,
                                        providerMessageId: Option[String],
                                        messageMeta: Option[String],
                                        media: List[Media],
@@ -39,12 +41,13 @@ case class InboundMessageCallbackEvent(clientId: String,
 
   //java-constructor
   def this(sender: String, eventType: String, contextId: String, message: String, providerMessageId: Optional[String], messageMeta: Optional[String], media: java.util.List[Media], cargo: String) {
-    this(clientId = null, sender = sender, eventType = eventType, appName = null, contextId = contextId,
-      message = message, providerMessageId = Option(providerMessageId.orElse(null)), messageMeta = Option(messageMeta.orElse(null)), media = media.asScala.toList, cargo = cargo)
+    this(clientId = null, sender = sender, eventType = eventType, appName = null, contextId = contextId, channel = null,
+      providerName = null, message = message, providerMessageId = Option(providerMessageId.orElse(null)),
+      messageMeta = Option(messageMeta.orElse(null)), media = media.asScala.toList, cargo = cargo)
   }
 
   def this(sender: String, eventType: String, contextId: String, message: String, providerMessageId: Option[String], messageMeta: Option[String], media: List[Media], cargo: String) {
-    this(clientId = null, sender = sender, eventType = eventType, appName = null, contextId = contextId,
+    this(clientId = null, sender = sender, eventType = eventType, appName = null, contextId = contextId, providerName = null, channel = null,
       message = message, providerMessageId = providerMessageId, messageMeta = messageMeta, media = media, cargo = cargo)
   }
 
@@ -59,7 +62,7 @@ case class InboundMessageCallbackEvent(clientId: String,
   override def namespace: String = "fkint/mp/connekt/InboundMessageCallbackEvent"
 
   override def toPublishFormat: fkint.mp.connekt.InboundMessageCallbackEvent = {
-    fkint.mp.connekt.InboundMessageCallbackEvent(clientId = clientId, sender = sender, eventType = eventType, appName = appName,
+    fkint.mp.connekt.InboundMessageCallbackEvent(clientId = clientId, sender = sender, eventType = eventType, appName = appName, providerName = providerName, channel = channel,
       contextId = contextId, message = message, providerMessageId = providerMessageId.getOrElse(""), messageMeta = messageMeta.getOrElse(""), media = List.empty, cargo = cargo, timestamp = DateTimeUtils.getStandardFormatted(timestamp))
   }
 
