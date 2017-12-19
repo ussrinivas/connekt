@@ -45,7 +45,7 @@ class InboundMessageRoute(implicit am: ActorMaterializer) extends BaseJsonHandle
                           case y => Map("post" -> y.getObj[BaseJsonNode]).getJsonNode
                         }
                         val stencil = stencilService.getStencilsByName(s"ckt-$channel-$providerName").find(_.component.equalsIgnoreCase("inbound")).get
-                        val event = stencilService.materialize(stencil, payload).asInstanceOf[InboundMessageCallbackEvent].copy(clientId = user.userId, appName = appName, channel = channel, providerName = providerName)
+                        val event = stencilService.materialize(stencil, payload).asInstanceOf[InboundMessageCallbackEvent].copy(clientId = user.userId, appName = appName, channel = channel, sender = providerName)
                         event.validate()
                         event.enqueue
                         ConnektLogger(LogFile.SERVICE).debug(s"Received inbound event {}", supplier(event.toString))
