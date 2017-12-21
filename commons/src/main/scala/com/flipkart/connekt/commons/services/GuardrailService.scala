@@ -50,20 +50,15 @@ object GuardrailService extends Instrumented {
   }
 
   @Timed("guard")
-  def guard[E, R](appName: String, channel: Channel, entity: TGuardrailEntity[E], meta: Map[String, AnyRef]): Try[R] = {
+  def guard[E, R](appName: String, channel: Channel, entity: TGuardrailEntity[E], inputMeta: Map[String, AnyRef]): Try[R] = {
     val validatorClassName = projectConfigService.getProjectConfiguration(appName, s"validator-service-${channel.toString.toLowerCase}").get.map(_.value).getOrElse(classOf[DefaultGuardrailService].getName)
     try {
       ConnektLogger(LogFile.PROCESSORS).debug(s"GuardrailService received megit ob ssage for appName : $appName and channel $channel with entity ${entity.entity}")
       val guardrailServiceImpl: TGuardrailService[E, R] = Class.forName(validatorClassName).newInstance().asInstanceOf[TGuardrailService[E, R]]
       val metadata = new TGuardrailEntityMetadata {
-        override def meta = meta
+        override def meta = inputMeta
       }
-      guardrailServiceImpl.guard(entity, metadata) match {
-        case Success(r) =>
-          println("Wow it came here " )
-          r.response
-      }
-
+      guardrailServiceImpl.guard(entity, metadata).response
     } catch {
       case e: Throwable =>
         meter(s"guardrail.service.guard.$validatorClassName.failure").mark()
