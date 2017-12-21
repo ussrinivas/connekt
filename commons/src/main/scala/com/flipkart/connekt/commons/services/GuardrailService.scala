@@ -45,7 +45,7 @@ object GuardrailService extends Instrumented {
   def guard[E, R](appName: String, channel: Channel, entity: TGuardrailEntity[E], inputMeta: Map[String, AnyRef]): Try[R] = {
     val validatorClassName = projectConfigService.getProjectConfiguration(appName, s"validator-service-${channel.toString.toLowerCase}").get.map(_.value).getOrElse(classOf[DefaultGuardrailService].getName)
     try {
-      ConnektLogger(LogFile.PROCESSORS).debug(s"GuardrailService received megit ob ssage for appName : $appName and channel $channel with entity ${entity.entity}")
+      ConnektLogger(LogFile.PROCESSORS).debug(s"GuardrailService received message for appName : $appName and channel $channel with entity ${entity.entity}")
       val guardrailServiceImpl: TGuardrailService[E, R] = Class.forName(validatorClassName).newInstance().asInstanceOf[TGuardrailService[E, R]]
       val metadata = new TGuardrailEntityMetadata {
         override def meta = inputMeta
