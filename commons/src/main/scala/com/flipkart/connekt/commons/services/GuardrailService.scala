@@ -18,21 +18,13 @@ import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFa
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.DefaultGuardrailService
 import com.flipkart.metrics.Timed
-
-import scala.collection.JavaConversions.mapAsScalaMap
 import scala.util.Try
-import scala.util.Success
-import scala.util.Failure
 
 class GuardrailService
 
 object GuardrailService extends Instrumented {
 
   private val projectConfigService = ServiceFactory.getUserProjectConfigService
-
-  def main(args: Array[String]): Unit = {
-
-  }
 
   @Timed("isGuarded")
   def isGuarded[E, R](appName: String, channel: Channel, entity: TGuardrailEntity[E], meta: TGuardrailEntityMetadata): Try[Boolean] = {
