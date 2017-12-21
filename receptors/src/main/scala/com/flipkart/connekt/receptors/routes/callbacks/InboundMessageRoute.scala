@@ -17,13 +17,18 @@ import akka.http.scaladsl.unmarshalling.PredefinedFromEntityUnmarshallers
 import akka.http.scaladsl.unmarshalling.Unmarshaller.messageUnmarshallerFromEntityUnmarshaller
 import akka.stream.ActorMaterializer
 import com.fasterxml.jackson.databind.node.{BaseJsonNode, ObjectNode}
+import com.flipkart.concord.guardrail.TGuardrailEntity
+import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
-import com.flipkart.connekt.commons.iomodels.{GenericResponse, InboundMessageCallbackEvent, Response}
+import com.flipkart.connekt.commons.iomodels.{ChannelRequestInfo, _}
 import com.flipkart.connekt.receptors.directives.ChannelSegment
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.commons.helpers.CallbackRecorder._
+import com.flipkart.connekt.commons.services.GuardrailService
+
+import scala.util.{Success, Try}
 
 class InboundMessageRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with PredefinedFromEntityUnmarshallers {
 
@@ -54,6 +59,37 @@ class InboundMessageRoute(implicit am: ActorMaterializer) extends BaseJsonHandle
                     }
                   }
                 }
+             } ~ path ("inbound" / "process" / Segment / Segment) {
+              (appName: String, providerName: String) => authorize(user, "PROCESS_INBOUND_EVENTS", s"PROCESS_INBOUND_EVENTS_$appName") {
+                post {
+                  entity(as[CallbackEvent]) { callbackEvent =>
+                    channel match {
+                      case Channel.WA =>
+                        val inboundEvent = callbackEvent.asInstanceOf[InboundMessageCallbackEvent]
+                        inboundEvent.message.toLowerCase match {
+                          case "stop" =>
+                            val guardrailEntity = new TGuardrailEntity[String] {
+                              override def entity: String = inboundEvent.sender
+                            }
+                            val guard = GuardrailService.guard[String, Boolean](appName, channel, guardrailEntity, Map("domain" -> "flipkart", "source" -> "Whatsapp"))
+                            guard match {
+                              case Success(r1) =>
+                                println("Wow it came here again and worked" )
+                            }
+                            val channelInfo = WARequestInfo(appName = appName, destinations = Set(inboundEvent.sender))
+                            val channelData = WARequestData(waType = WAType.text, message = Some("No More messages"))
+                            val connektRequest = new ConnektRequest(generateUUID, "whatspp", Some("UNSUBS"), channel.toString, "H", None, None, None, channelInfo, channelData, null)
+                            val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(connektRequest, user)
+                            ServiceFactory.getMessageService(Channel.WA).saveRequest(connektRequest, queueName, true)
+                          case _ =>
+                        }
+                        complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"InboundMessage event processed successfully for appName : $appName, providerName : $providerName", null)))
+                      case _ =>
+                        complete(GenericResponse(StatusCodes.NotAcceptable.intValue, null, Response(s"InboundMessage event for channel : $channel is not supported", null)))
+                    }
+                  }
+                }
+              }
             }
           }
         }
