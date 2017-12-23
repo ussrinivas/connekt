@@ -66,13 +66,15 @@ class InboundMessageRoute(implicit am: ActorMaterializer) extends BaseJsonHandle
                     channel match {
                       case Channel.WA =>
                         val inboundEvent = callbackEvent.asInstanceOf[InboundMessageCallbackEvent]
-                        inboundEvent.message.toLowerCase match {
+                        val text= inboundEvent.message.getObj[ObjectNode].get("text").asText("")
+                        val sender = inboundEvent.cargo.getObj[ObjectNode].get("from").asText("")
+                        text.toLowerCase match {
                           case "stop" =>
                             val guardrailEntity = new TGuardrailEntity[String] {
-                              override def entity: String = inboundEvent.sender
+                              override def entity: String = sender
                             }
                             GuardrailService.guard[String, Boolean](appName, channel, guardrailEntity, Map("domain" -> "flipkart", "source" -> "Whatsapp"))
-                            val channelInfo = WARequestInfo(appName = appName, destinations = Set(inboundEvent.sender))
+                            val channelInfo = WARequestInfo(appName = appName, destinations = Set(sender))
                             val channelData = WARequestData(waType = WAType.text, message = Some("No More messages"))
                             val connektRequest = new ConnektRequest(generateUUID, "whatspp", Some("UNSUBS"), channel.toString, "H", None, None, None, channelInfo, channelData, null)
                             val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(connektRequest, user)
