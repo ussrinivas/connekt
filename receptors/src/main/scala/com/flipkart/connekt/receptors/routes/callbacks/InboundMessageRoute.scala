@@ -69,19 +69,23 @@ class InboundMessageRoute(implicit am: ActorMaterializer) extends BaseJsonHandle
                         val inboundEvent = callbackEvent.asInstanceOf[InboundMessageCallbackEvent]
                         val text= inboundEvent.message.getObj[ObjectNode].get("text").asText("")
                         val sender = inboundEvent.cargo.getObj[ObjectNode].get("from").asText("")
+                        val channelInfo = WARequestInfo(appName = appName, destinations = Set(sender))
+                        val standardResponses = appLevelConfigService.getProjectConfiguration(appName.toLowerCase, "whatsapp-standard-responses").get.get.value.getObj[ObjectNode]
                         text.toLowerCase match {
                           case "stop" =>
                             val guardrailEntity = new TGuardrailEntity[String] {
                               override def entity: String = sender
                             }
                             GuardrailService.guard[String, Boolean](appName, channel, guardrailEntity, Map("domain" -> "flipkart", "source" -> "Whatsapp"))
-                            val channelInfo = WARequestInfo(appName = appName, destinations = Set(sender))
-                            val standardResponses = appLevelConfigService.getProjectConfiguration(appName.toLowerCase, "whatsapp-standard-responses").get.get.value.getObj[ObjectNode]
                             val channelData = WARequestData(waType = WAType.text, message = Some(standardResponses.get("stop").asText()))
                             val connektRequest = new ConnektRequest(generateUUID, "whatspp", Some("UNSUBS"), channel.toString, "H", None, None, None, channelInfo, channelData, null)
                             val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(connektRequest, user)
                             ServiceFactory.getMessageService(Channel.WA).saveRequest(connektRequest, queueName, true)
                           case _ =>
+                            val channelData = WARequestData(waType = WAType.text, message = Some(standardResponses.get("default").asText()))
+                            val connektRequest = new ConnektRequest(generateUUID, "whatspp", Some("WhatsAppReply"), channel.toString, "H", None, None, None, channelInfo, channelData, null)
+                            val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(connektRequest, user)
+                            ServiceFactory.getMessageService(Channel.WA).saveRequest(connektRequest, queueName, true)
                         }
                         complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"InboundMessage event processed successfully for appName : $appName, providerName : $providerName", null)))
                       case _ =>
