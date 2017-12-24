@@ -20,6 +20,6 @@ class DefaultGuardrailService extends TGuardrailService[String, AnyRef] {
 
   override def isGuarded(entity: TGuardrailEntity[String], meta: TGuardrailEntityMetadata): Try[Boolean] = Success(false)
 
-  override def guard(entity: TGuardrailEntity[String], meta: TGuardrailEntityMetadata): Try[TGuardrailResponse[AnyRef]] = ???
+  override def guard(entity: TGuardrailEntity[String], meta: TGuardrailEntityMetadata): TGuardrailResponse[AnyRef] = ???
 
 }

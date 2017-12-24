@@ -18,8 +18,6 @@ import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFa
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.DefaultGuardrailService
 import com.flipkart.metrics.Timed
-
-import scala.collection.JavaConversions.mapAsScalaMap
 import scala.util.Try
 
 class GuardrailService
@@ -33,8 +31,8 @@ object GuardrailService extends Instrumented {
     val validatorClassName = projectConfigService.getProjectConfiguration(appName, s"validator-service-${channel.toString.toLowerCase}").get.map(_.value).getOrElse(classOf[DefaultGuardrailService].getName)
     try {
       ConnektLogger(LogFile.PROCESSORS).debug(s"GuardrailService received message for appName : $appName and channel $channel with entity ${entity.entity}")
-      val validator: TGuardrailService[E, R] = Class.forName(validatorClassName).newInstance().asInstanceOf[TGuardrailService[E, R]]
-      validator.isGuarded(entity, meta)
+      val guardrailServiceImpl: TGuardrailService[E, R] = Class.forName(validatorClassName).newInstance().asInstanceOf[TGuardrailService[E, R]]
+      guardrailServiceImpl.isGuarded(entity, meta)
     } catch {
       case e: Throwable =>
         meter(s"guardrail.service.isGuarded.$validatorClassName.failure").mark()
@@ -44,16 +42,15 @@ object GuardrailService extends Instrumented {
   }
 
   @Timed("guard")
-  def guard[E, R](appName: String, channel: Channel, entity: TGuardrailEntity[E], jMeta: java.util.LinkedHashMap[String, AnyRef]): Try[R] = {
+  def guard[E, R](appName: String, channel: Channel, entity: TGuardrailEntity[E], inputMeta: Map[String, AnyRef]): Try[R] = {
     val validatorClassName = projectConfigService.getProjectConfiguration(appName, s"validator-service-${channel.toString.toLowerCase}").get.map(_.value).getOrElse(classOf[DefaultGuardrailService].getName)
     try {
       ConnektLogger(LogFile.PROCESSORS).debug(s"GuardrailService received message for appName : $appName and channel $channel with entity ${entity.entity}")
-      val validator: TGuardrailService[E, R] = Class.forName(validatorClassName).newInstance().asInstanceOf[TGuardrailService[E, R]]
+      val guardrailServiceImpl: TGuardrailService[E, R] = Class.forName(validatorClassName).newInstance().asInstanceOf[TGuardrailService[E, R]]
       val metadata = new TGuardrailEntityMetadata {
-        override def meta = jMeta.toMap
+        override def meta = inputMeta
       }
-      val guardResponse = validator.guard(entity, metadata)
-      guardResponse.get.response
+      guardrailServiceImpl.guard(entity, metadata).response
     } catch {
       case e: Throwable =>
         meter(s"guardrail.service.guard.$validatorClassName.failure").mark()
