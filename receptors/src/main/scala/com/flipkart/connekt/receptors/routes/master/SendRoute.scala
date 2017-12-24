@@ -465,18 +465,12 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                           }).map(_.destination)
 
                                           // User Pref Check
-                                          val prefCheckedContacts = checkedContacts.map(c => {
-                                            val gEntity = new TGuardrailEntity[String] {
-                                              override def entity: String = c
-                                            }
-                                            val gMeta = new TGuardrailEntityMetadata {
-                                              override def meta: Map[String, AnyRef] = request.meta
-                                            }
-                                            GuardrailService.isGuarded[String, Boolean](appName, Channel.WA, gEntity, gMeta) match {
+                                          val prefCheckedContacts = checkedContacts.map(c =>
+                                            GuardrailService.isGuarded[String, Boolean](appName, Channel.WA, c, request.meta) match {
                                               case Success(pref) => c -> pref
                                               case Failure(f) => c -> true
                                             }
-                                          }).filterNot(_._2)
+                                          ).filterNot(_._2)
 
                                           val userPrefRejectedContacts = prefCheckedContacts.map(_._1).diff(validNumbers)
                                           if (prefCheckedContacts.nonEmpty) {

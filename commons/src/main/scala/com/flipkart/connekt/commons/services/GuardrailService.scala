@@ -27,12 +27,18 @@ object GuardrailService extends Instrumented {
   private val projectConfigService = ServiceFactory.getUserProjectConfigService
 
   @Timed("isGuarded")
-  def isGuarded[E, R](appName: String, channel: Channel, entity: TGuardrailEntity[E], meta: TGuardrailEntityMetadata): Try[Boolean] = {
+  def isGuarded[E, R](appName: String, channel: Channel, inpEntity: E, inpMeta: Map[String, AnyRef]): Try[Boolean] = {
+    val gEntity = new TGuardrailEntity[E] {
+      override def entity = inpEntity
+    }
+    val gMeta = new TGuardrailEntityMetadata {
+      override def meta = inpMeta
+    }
     val validatorClassName = projectConfigService.getProjectConfiguration(appName, s"validator-service-${channel.toString.toLowerCase}").get.map(_.value).getOrElse(classOf[DefaultGuardrailService].getName)
     try {
-      ConnektLogger(LogFile.PROCESSORS).debug(s"GuardrailService received message for appName : $appName and channel $channel with entity ${entity.entity}")
+      ConnektLogger(LogFile.PROCESSORS).debug(s"GuardrailService received message for appName : $appName and channel $channel with entity ${inpEntity}")
       val guardrailServiceImpl: TGuardrailService[E, R] = Class.forName(validatorClassName).newInstance().asInstanceOf[TGuardrailService[E, R]]
-      guardrailServiceImpl.isGuarded(entity, meta)
+      guardrailServiceImpl.isGuarded(gEntity, gMeta)
     } catch {
       case e: Throwable =>
         meter(s"guardrail.service.isGuarded.$validatorClassName.failure").mark()

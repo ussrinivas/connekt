@@ -26,7 +26,7 @@ libraryDependencies ++= Seq(
 
 libraryDependencies ++= Seq(
   "org.scala-lang.modules" %% "scala-xml" % "1.0.6",
-  "com.flipkart.connekt" %% "connekt-concord" % "0.2.21-SNAPSHOT" excludeAll ExclusionRule(organization = "com.google.guava", name = "guava"),
+  "com.flipkart.connekt" %% "connekt-concord" % "0.2.22-SNAPSHOT" excludeAll ExclusionRule(organization = "com.google.guava", name = "guava"),
   /* Logging Dependencies.Since we want to use log4j2 */
   "com.lmax" % "disruptor" % "3.3.4",
   "org.apache.logging.log4j" % "log4j-api" % "2.5",
