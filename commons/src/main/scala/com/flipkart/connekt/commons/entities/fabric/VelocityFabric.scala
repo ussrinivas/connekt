@@ -77,7 +77,7 @@ class VelocityFabric(dataVtl: String) extends EngineFabric {
 
   def validateVtl(): Try[Boolean] = Try.apply(true)
 
-  def compute(id: String, context: ObjectNode): AnyRef = {
-    fabricate(id, context, dataVtl, s"$id").get
+  def compute(id: String, context: ObjectNode, logRef: Option[String]): AnyRef = {
+    fabricate(id, context, dataVtl, s"$id:${logRef.getOrElse("")}").get
   }
 }

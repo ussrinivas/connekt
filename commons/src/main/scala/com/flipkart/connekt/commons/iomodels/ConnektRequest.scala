@@ -58,13 +58,13 @@ case class ConnektRequest(@JsonProperty(required = false) id: String,
       Channel.withName(channel) match {
         case Channel.PUSH =>
           val pushType = if (channelData != null) channelData.asInstanceOf[PNRequestData].pushType else null
-          PNRequestData(pushType = pushType, data = stencilService.materialize(stencil.head, channelDataModel).asInstanceOf[String].getObj[ObjectNode])
+          PNRequestData(pushType = pushType, data = stencilService.materialize(stencil.head, channelDataModel, Some(id)).asInstanceOf[String].getObj[ObjectNode])
         case Channel.SMS =>
-          SmsRequestData(body = stencilService.materialize(stencil.head, channelDataModel).asInstanceOf[String])
+          SmsRequestData(body = stencilService.materialize(stencil.head, channelDataModel, Some(id)).asInstanceOf[String])
         case Channel.EMAIL =>
-          val subject = stencilService.materialize(stencil.filter(_.component.equalsIgnoreCase("subject")).head, channelDataModel).asInstanceOf[String]
-          val html = stencilService.materialize(stencil.filter(_.component.equalsIgnoreCase("html")).head, channelDataModel).asInstanceOf[String]
-          val txt = stencilService.materialize(stencil.filter(_.component.equalsIgnoreCase("text")).head, channelDataModel).asInstanceOf[String]
+          val subject = stencilService.materialize(stencil.filter(_.component.equalsIgnoreCase("subject")).head, channelDataModel, Some(id)).asInstanceOf[String]
+          val html = stencilService.materialize(stencil.filter(_.component.equalsIgnoreCase("html")).head, channelDataModel, Some(id)).asInstanceOf[String]
+          val txt = stencilService.materialize(stencil.filter(_.component.equalsIgnoreCase("text")).head, channelDataModel, Some(id)).asInstanceOf[String]
           EmailRequestData(subject = subject, html = html, text = txt, attachments = Option(channelData).map(_.asInstanceOf[EmailRequestData].attachments).orNull)
         case unsupportedChannel =>
           throw new Exception(s"`channelData` compute undefined for $unsupportedChannel")

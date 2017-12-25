@@ -18,7 +18,13 @@ import com.flipkart.connekt.commons.iomodels.{ConnektRequest, PNRequestInfo}
 import com.flipkart.connekt.commons.utils.CompressionUtils
 import com.flipkart.connekt.commons.utils.StringUtils._
 
-sealed case class XmppMessageId(@JsonProperty("dId") deviceId: String, @JsonProperty("mId") messageId: String, @JsonProperty("cId") clientId: String, @JsonInclude(Include.NON_NULL) @JsonProperty("ctx") contextId: Option[String], @JsonProperty("aN") appName: String)
+sealed case class XmppMessageId(
+                                 @JsonProperty("dId") deviceId: String,
+                                 @JsonProperty("mId") messageId: String,
+                                 @JsonProperty("cId") clientId: String,
+                                 @JsonInclude(Include.NON_NULL) @JsonProperty("ctx") contextId: Option[String],
+                                 @JsonProperty("aN") appName: String
+                               )
 
 object XmppMessageIdHelper {
 
