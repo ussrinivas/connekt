@@ -15,5 +15,5 @@ package com.flipkart.connekt.commons.entities.fabric
 import com.fasterxml.jackson.databind.node.ObjectNode
 
 trait EngineFabric {
-  def compute(id: String, context: ObjectNode, logRef: Option[String]) : AnyRef
+  def compute(id: String, context: ObjectNode) : AnyRef
 }
