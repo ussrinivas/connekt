@@ -62,7 +62,7 @@ class StencilService(stencilDao: TStencilDao) extends TStencilService with Instr
       }
       LocalCacheManager.getCache(LocalCacheType.EngineFabrics).put[EngineFabric](fabricCacheKey(stencil.id, stencil.component, stencil.version.toString), fabric)
       Option(fabric)
-    }.map(_.compute(stencil.id, req, logRef)).orNull
+    }.map(_.compute(s"${stencil.id} : ${logRef.getOrElse("")}", req)).orNull
   }
 
   @Timed("add")
