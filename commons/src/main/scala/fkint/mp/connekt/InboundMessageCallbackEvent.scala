@@ -29,5 +29,5 @@ case class InboundMessageCallbackEvent(clientId: String,
                                       ) extends TPublishRequest {
   override def validate(): Boolean = true
 
-  override def schemaVersion(): String = "1.0"
+  override def schemaVersion(): String = "1.1"
 }
