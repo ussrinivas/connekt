@@ -46,14 +46,14 @@ class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) e
             case 200 if isSuccess =>
               val response = strResponse.getObj[WASuccessResponse]
               val results = response.payload.results.getOrElse(List.empty)
-              ConnektLogger(LogFile.PROCESSORS).debug(s"WAContactResponseHandler received http response for messageId : ${requestTracker.messageId}")
+              ConnektLogger(LogFile.PROCESSORS).info(s"WAContactResponseHandler received http response for messageId : ${requestTracker.messageId}")
               ConnektLogger(LogFile.PROCESSORS).trace(s"WAContactResponseHandler received http response for: $results")
               results.map(result => {
                 val waContactEntity = WAContactEntity(result.input_number, result.wa_username, requestTracker.appName, result.wa_exists, None)
                 WAContactService().add(waContactEntity)
                 BigfootService.ingestEntity(result.wa_username, waContactEntity.toPublishFormat, waContactEntity.namespace).get
               })
-              ConnektLogger(LogFile.PROCESSORS).debug(s"WAContactResponseHandler contacts updated in hbase for messageId : ${requestTracker.messageId}")
+              ConnektLogger(LogFile.PROCESSORS).info(s"WAContactResponseHandler contacts updated in hbase for messageId : ${requestTracker.messageId}")
               ConnektLogger(LogFile.PROCESSORS).trace(s"WAContactResponseHandler contacts updated in hbase : $results")
               meter(s"check.contact.${WAResponseStatus.ContactReceived}").mark()
               List(FlowResponseStatus(Status.Success))

@@ -45,7 +45,7 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends 
         case Success(r) =>
           val stringResponse = r.entity.getString
           val isSuccess = Try(stringResponse.getObj[WASuccessResponse]).isSuccess
-          ConnektLogger(LogFile.PROCESSORS).debug(s"WaResponseHandler received http response for: $messageId")
+          ConnektLogger(LogFile.PROCESSORS).info(s"WaResponseHandler received http response for: $messageId")
           ConnektLogger(LogFile.PROCESSORS).trace(s"WaResponseHandler received http response for: $messageId http response body: $stringResponse")
           r.status.intValue() match {
             case 200 if isSuccess =>
