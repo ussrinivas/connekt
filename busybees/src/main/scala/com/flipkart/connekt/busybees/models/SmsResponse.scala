@@ -16,6 +16,16 @@ import java.util
 
 import org.apache.commons.lang.StringUtils
 
-case class SmsResponse(responseCode: Int, message: String = StringUtils.EMPTY, responsePerReceivers: util.ArrayList[ResponsePerReceiver])
+case class SmsResponse(
+                        responseCode: Int,
+                        message: String = StringUtils.EMPTY,
+                        responsePerReceivers: util.ArrayList[ResponsePerReceiver]
+                      )
 
-case class ResponsePerReceiver(receiverStatus: String, receiver: String, providerMessageId: String, cargo: String, receiverResponseCode: Int)
+case class ResponsePerReceiver(
+                                receiverStatus: String,
+                                receiver: String,
+                                providerMessageId: String,
+                                cargo: String,
+                                receiverResponseCode: Int
+                              )

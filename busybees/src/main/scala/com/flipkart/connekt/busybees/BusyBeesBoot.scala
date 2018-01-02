@@ -19,8 +19,7 @@ import akka.stream.{ActorMaterializer, ActorMaterializerSettings}
 import com.flipkart.connekt.busybees.discovery.DiscoveryManager
 import com.flipkart.connekt.busybees.streams.flows.StageSupervision
 import com.flipkart.connekt.busybees.streams.flows.dispatchers.HttpDispatcher
-import com.flipkart.connekt.busybees.streams.topologies.{EmailTopology, PushTopology, SmsTopology}
-import com.flipkart.connekt.busybees.streams.topologies.PushTopology
+import com.flipkart.connekt.busybees.streams.topologies.{EmailTopology, PushTopology, SmsTopology, WATopology}
 import com.flipkart.connekt.busybees.discovery.{DiscoveryManager, PathCacheZookeeper, ServiceHostsDiscovery}
 import com.flipkart.connekt.commons.connections.ConnectionProvider
 import com.flipkart.connekt.commons.core.BaseApp
@@ -53,6 +52,7 @@ object BusyBeesBoot extends BaseApp {
   var pushTopology: PushTopology = _
   var smsTopology: SmsTopology = _
   var emailTopology: EmailTopology = _
+  var waTopology: WATopology = _
 
   def start() {
 
@@ -97,13 +97,14 @@ object BusyBeesBoot extends BaseApp {
 
       ServiceFactory.initMessageQueueService(DaoFactory.getMessageQueueDao, aeroSpikeCf)
 
-      val eventsDao = EventsDaoContainer(pnEventsDao = DaoFactory.getPNCallbackDao, emailEventsDao = DaoFactory.getEmailCallbackDao, smsEventsDao = DaoFactory.getSmsCallbackDao, pullEventsDao = DaoFactory.getPullCallbackDao)
-      val requestDao = RequestDaoContainer(smsRequestDao = DaoFactory.getSmsRequestDao, pnRequestDao = DaoFactory.getPNRequestDao, emailRequestDao = DaoFactory.getEmailRequestDao, pullRequestDao = DaoFactory.getPullRequestDao)
+      val eventsDao = EventsDaoContainer(pnEventsDao = DaoFactory.getPNCallbackDao, emailEventsDao = DaoFactory.getEmailCallbackDao, smsEventsDao = DaoFactory.getSmsCallbackDao, pullEventsDao = DaoFactory.getPullCallbackDao, waEventsDao = DaoFactory.getWACallbackDao)
+      val requestDao = RequestDaoContainer(smsRequestDao = DaoFactory.getSmsRequestDao, pnRequestDao = DaoFactory.getPNRequestDao, emailRequestDao = DaoFactory.getEmailRequestDao, pullRequestDao = DaoFactory.getPullRequestDao, waRequestDao = DaoFactory.getWARequestDao)
       ServiceFactory.initCallbackService(eventsDao, requestDao, kafkaProducerHelper)
 
       ServiceFactory.initPNMessageService(DaoFactory.getPNRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf, null)
       ServiceFactory.initEmailMessageService(DaoFactory.getEmailRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf)
       ServiceFactory.initSMSMessageService(DaoFactory.getSmsRequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf, null)
+      ServiceFactory.initWAMessageService(DaoFactory.getWARequestDao, DaoFactory.getUserConfigurationDao, kafkaProducerHelper, kafkaConnConf, null)
       ServiceFactory.initPULLMessageService(DaoFactory.getPullRequestDao)
 
       ServiceFactory.initStatsReportingService(DaoFactory.getStatsReportingDao)
@@ -130,6 +131,11 @@ object BusyBeesBoot extends BaseApp {
       if(Option(System.getProperty("topology.sms.enabled")).forall(_.toBoolean)) {
         smsTopology = new SmsTopology(kafkaConnConf)
         smsTopology.run
+      }
+
+      if(Option(System.getProperty("topology.wa.enabled")).forall(_.toBoolean)) {
+        waTopology = new WATopology(kafkaConnConf)
+        waTopology.run
       }
 
       ConnektLogger(LogFile.SERVICE).info("Started `Busybees` app")

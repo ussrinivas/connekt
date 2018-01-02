@@ -21,6 +21,7 @@ import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.flipkart.connekt.commons.dao.HbaseDao._
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.services.ConnektConfig
+import com.flipkart.connekt.commons.utils.NullWrapper.NullWrap
 import com.flipkart.metrics.Timed
 import org.apache.commons.codec.CharEncoding
 import org.apache.hadoop.hbase.client._
@@ -188,6 +189,8 @@ object HbaseDao {
 
   implicit class stringHandyFunctions(val s: String) {
     def getUtf8Bytes = Bytes.toBytes(s)
+
+    def getUtf8BytesNullWrapped = Option(s).map(_.getUtf8Bytes).orNull.wrap
   }
 
   implicit class longHandyFunctions(val l: Long) {

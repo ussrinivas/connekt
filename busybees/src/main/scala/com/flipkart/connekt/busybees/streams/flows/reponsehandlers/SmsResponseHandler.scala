@@ -48,8 +48,8 @@ class SmsResponseHandler(parallelism: Int)(implicit m: Materializer, ec: Executi
 
     val maybeSmsCallbackEvent = tryResponse match {
       case Success(smsResponse) =>
-        meter(s"${requestTracker.provider}.${smsResponse.responseCode}").mark()
-        ConnektLogger(LogFile.PROCESSORS).debug(s"SmsResponseHandler received http response for: messageId : ${requestTracker.messageId}, code: ${smsResponse.responseCode}, provider: ${requestTracker.provider}")
+        meter(s"${requestTracker.appName}.${requestTracker.provider}.${smsResponse.responseCode}").mark()
+        ConnektLogger(LogFile.PROCESSORS).info(s"SmsResponseHandler received http response for: messageId : ${requestTracker.messageId}, code: ${smsResponse.responseCode}, provider: ${requestTracker.provider}")
         smsResponse.responseCode match {
           case s if 2 == (s / 100) =>
             Right(smsResponse.responsePerReceivers.asScala.map(r => {
@@ -84,7 +84,7 @@ class SmsResponseHandler(parallelism: Int)(implicit m: Materializer, ec: Executi
 
       case Failure(e) =>
         // Retrying in this case
-        meter(s"${requestTracker.provider}.exception").mark()
+        meter(s"${requestTracker.appName}.${requestTracker.provider}.exception").mark()
         ConnektLogger(LogFile.PROCESSORS).error(s"SmsResponseHandler failed to send sms for: ${requestTracker.messageId} due to: ${e.getClass.getSimpleName} with provider ${requestTracker.provider}, ${e.getMessage}", e)
         ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.SMS, appName = requestTracker.appName, event = InternalStatus.ProviderSendError, count = requestTracker.receivers.size)
         Left(receivers.map(SmsCallbackEvent(requestTracker.messageId, InternalStatus.ProviderSendError, _, requestTracker.clientId, requestTracker.appName, requestTracker.contextId, s"SmsResponseHandler-${e.getClass.getSimpleName}-${e.getMessage}")).toList)

@@ -14,9 +14,19 @@ package fkint.mp.connekt
 
 import com.flipkart.concord.publisher.TPublishRequest
 
-case class DeviceDetails(deviceId: String, userId: String, token: String, osName: String, osVersion: String,
-                         appName: String, appVersion: String, brand: String, model: String, state: String = "",
-                         ts: String, active: Boolean = true) extends TPublishRequest {
+case class DeviceDetails(deviceId: String,
+                         userId: String,
+                         token: String,
+                         osName: String,
+                         osVersion: String,
+                         appName: String,
+                         appVersion: String,
+                         brand: String,
+                         model: String,
+                         state: String = "",
+                         ts: String,
+                         active: Boolean = true
+                        ) extends TPublishRequest {
 
   override def validate(): Boolean = true
 

@@ -53,31 +53,31 @@ class VelocityFabric(dataVtl: String) extends EngineFabric {
 
   /**
    *
+   * @param logRef Reference to be logged in case of error
    * @param context velocity engine operation context
    * @param vtlFabric input string containing the VTL to be rendered
-   * @param errorTag identifier stencil name for log messages in case of error
    * @return output string of velocity rendering
    */
-  def fabricate(id: String, context: Context, vtlFabric: String, errorTag: String): Try[String] = {
+  def fabricate(logRef: String, context: Context, vtlFabric: String): Try[String] = {
     try {
       val w = new StringWriter()
       ec.attachToContext(context)
-      Velocity.evaluate(context, w, errorTag, vtlFabric)
+      Velocity.evaluate(context, w, logRef, vtlFabric)
       Success(w.toString)
     } catch {
       case e: Exception =>
-        ConnektLogger(LogFile.PROCESSORS).error(s"Velocity fabricate failed for [$id], ${e.getMessage}", e)
-        Failure(new Throwable(s"Velocity fabricate failed for [$id] error: ${e.getMessage}"))
+        ConnektLogger(LogFile.PROCESSORS).error(s"Velocity fabricate failed for [$logRef], ${e.getMessage}", e)
+        Failure(new Throwable(s"Velocity fabricate failed for [$logRef] error: ${e.getMessage}"))
     }
   }
 
-  def fabricate(id: String, context: ObjectNode, vtlFabric: String, errorTag: String): Try[String] = {
-    fabricate(id, VelocityUtils.convertToVelocityContext(context), vtlFabric, errorTag)
+  def fabricate(logRef: String, context: ObjectNode, vtlFabric: String): Try[String] = {
+    fabricate(logRef, VelocityUtils.convertToVelocityContext(context), vtlFabric)
   }
 
   def validateVtl(): Try[Boolean] = Try.apply(true)
 
-  def compute(id: String, context: ObjectNode): AnyRef = {
-    fabricate(id, context, dataVtl, s"$id").get
+  def compute(logRef: String, context: ObjectNode): AnyRef = {
+    fabricate(logRef, context, dataVtl).get
   }
 }

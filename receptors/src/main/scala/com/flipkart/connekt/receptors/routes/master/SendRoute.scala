@@ -15,17 +15,19 @@ package com.flipkart.connekt.receptors.routes.master
 import akka.connekt.AkkaHelpers._
 import akka.http.scaladsl.model.StatusCodes
 import akka.stream.ActorMaterializer
-import com.fasterxml.jackson.databind.node.{ArrayNode, ObjectNode}
+import com.fasterxml.jackson.databind.node.ObjectNode
+import com.flipkart.concord.guardrail.{TGuardrailEntity, TGuardrailEntityMetadata}
 import com.flipkart.connekt.commons.entities.MobilePlatform.MobilePlatform
 import com.flipkart.connekt.commons.entities.{Channel, MobilePlatform}
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
-import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
+import com.flipkart.connekt.commons.iomodels.MessageStatus.{InternalStatus, WAResponseStatus}
 import com.flipkart.connekt.commons.iomodels._
-import com.flipkart.connekt.commons.services.{DeviceDetailsService, ExclusionService}
+import com.flipkart.connekt.commons.services._
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.receptors.directives.MPlatformSegment
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
+import com.flipkart.connekt.receptors.routes.helper.{PhoneNumberHelper, WAContactCheckHelper}
 import com.flipkart.connekt.receptors.wire.ResponseUtils._
 import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
@@ -33,12 +35,13 @@ import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
-import scala.collection.JavaConverters._
+import scala.concurrent.duration._
 
 class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
   private lazy implicit val stencilService = ServiceFactory.getStencilService
   private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
+  private val checkContactInterval = ConnektConfig.getInt("wa.check.contact.interval.days").get
 
   val route =
     authenticate {
@@ -304,7 +307,6 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                         }
                                       })
 
-                                      //TODO: do an exclusion check
                                       val excludedNumbers = validNumbers.filterNot { number => ExclusionService.lookup(request.channel, appName, number).getOrElse(true) }
                                       val nonExcludedNumbers = validNumbers.diff(excludedNumbers)
 
@@ -385,6 +387,124 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                   }
                 }
               }
+            }
+          } ~ pathPrefix("send" / "whatsapp") {
+            path(Segment) {
+              (appName: String) =>
+                authorize(user, "SEND_WHATSAPP", "SEND_" + appName) {
+                  idempotentRequest(appName) {
+                    post {
+                      getXHeaders { headers =>
+                        entity(as[ConnektRequest]) { r =>
+                          extractTestRequestContext { isTestRequest =>
+                            complete {
+                              Future {
+                                profile("whatsapp") {
+                                  val request = r.copy(clientId = user.userId, channel = Channel.WA.toString, meta = {
+                                    Option(r.meta).getOrElse(Map.empty[String, String]) ++ headers
+                                  }, channelInfo =
+                                    r.channelInfo.asInstanceOf[WARequestInfo].copy(appName = appName.toLowerCase)
+                                  )
+                                  request.validate
+
+                                  request.validateStencilVariables match {
+                                    case Failure(f) =>
+                                      ConnektLogger(LogFile.SERVICE).error(s"Request Stencil Validation Failed, for stencilId : ${request.stencilId.get} and ChannelDataMode : ${request.channelDataModel}")
+                                      GenericResponse(StatusCodes.BadRequest.intValue, null, SendResponse(s"Request Stencil Validation Failed, for stencilId : ${request.stencilId.get} and ChannelDataMode : ${request.channelDataModel} with ERROR : ${f.getCause}", Map.empty, List.empty)).respond
+                                    case Success(_) =>
+                                      val appLevelConfigService = ServiceFactory.getUserProjectConfigService
+                                      ConnektLogger(LogFile.SERVICE).debug(s"Received whatsapp request with payload: ${request.toString}")
+
+                                      val appDefaultCountryCode = appLevelConfigService.getProjectConfiguration(appName.toLowerCase, "app-local-country-code").get.get.value.getObj[ObjectNode]
+                                      val phoneUtil: PhoneNumberUtil = PhoneNumberUtil.getInstance()
+
+                                      val validNumbers = ListBuffer[String]()
+                                      val invalidNumbers = ListBuffer[String]()
+                                      val waNotExistsContacts = ListBuffer[String]()
+
+                                      val waRequestInfo = request.channelInfo.asInstanceOf[WARequestInfo]
+
+                                      if (waRequestInfo.destinations != null && waRequestInfo.destinations.nonEmpty) {
+                                        if (isTestRequest) {
+                                          GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse(s"Whatsapp Perf Send Request Received. Skipped sending.", Map("fake_message_id" -> r.destinations), List.empty)).respond
+                                        } else {
+                                          // Phone number validity check.
+                                          waRequestInfo.destinations.foreach(r => {
+                                            PhoneNumberHelper.validateNFormatNumber(appName, r) match {
+                                              case Some(n) => validNumbers += n
+                                              case None =>
+                                                ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatsapp invalid numbers: $r")
+                                                ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.WA, appName, InternalStatus.Rejected)
+                                                invalidNumbers += r
+                                            }
+                                          })
+
+                                          // WAContactService check.
+                                          val waUserName = ListBuffer[String]()
+                                          val existContactDetails = WAContactService.instance.gets(appName, validNumbers.toSet).get
+
+                                          val ttlCheckedNumbers = existContactDetails.filter(d => {
+                                            val lastCheckInterval = System.currentTimeMillis() - d.lastCheckContactTS
+                                            lastCheckInterval < checkContactInterval.days.toMillis
+                                          })
+
+                                          // Check for other number in via WA check contact api.
+                                          val toCheckNumbers = validNumbers.diff(ttlCheckedNumbers.map(_.destination))
+                                          val toCheckNumbersDetails = WAContactCheckHelper.checkContactViaWAApi(toCheckNumbers.toList, appName)
+                                          val allContactDetails = toCheckNumbersDetails ::: existContactDetails
+
+                                          val checkedContacts = allContactDetails.filter(wa => {
+                                            if (wa.exists.equalsIgnoreCase("true")) {
+                                              waUserName += wa.userName
+                                              true
+                                            } else {
+                                              ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.WA, appName, WAResponseStatus.WANotExist)
+                                              waNotExistsContacts += wa.destination
+                                              false
+                                            }
+                                          }).map(_.destination)
+
+                                          // User Pref Check
+                                          val prefCheckedContacts = checkedContacts.map(c =>
+                                            GuardrailService.isGuarded[String, Boolean](appName, Channel.WA, c, request.meta) match {
+                                              case Success(pref) => c -> pref
+                                              case Failure(f) => c -> true
+                                            }
+                                          ).filterNot(_._2)
+
+                                          val userPrefRejectedContacts = prefCheckedContacts.map(_._1).diff(validNumbers)
+                                          if (prefCheckedContacts.nonEmpty) {
+                                            val waRequest = request.copy(channelInfo = waRequestInfo.copy(destinations = waUserName.toSet))
+                                            val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(request, user)
+                                            /* enqueue multiple requests into kafka */
+                                            val (success, failure) = ServiceFactory.getMessageService(Channel.WA).saveRequest(waRequest, queueName, persistPayloadInDataStore = true) match {
+                                              case Success(id) =>
+                                                (Map(id -> waUserName.toSet), invalidNumbers ++ userPrefRejectedContacts ++ waNotExistsContacts)
+                                              case Failure(t) =>
+                                                (Map(), waRequestInfo.destinations)
+                                            }
+                                            ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.WA, appName, InternalStatus.Received, checkedContacts.size)
+                                            val (responseCode, message) = if (success.nonEmpty) Tuple2(StatusCodes.Accepted, "Whatups Send Request Received") else Tuple2(StatusCodes.InternalServerError, "Whatups Send Request Failed")
+                                            GenericResponse(responseCode.intValue, null, SendResponse(message, success.toMap, failure.toList)).respond
+                                          } else {
+                                            GenericResponse(StatusCodes.BadRequest.intValue, null, SendResponse("No valid destinations found", Map.empty, waRequestInfo.destinations.toList)).respond
+                                          }
+                                        }
+                                      }
+                                      else {
+                                        ConnektLogger(LogFile.SERVICE).error(s"Request Validation Failed, $request ")
+                                        GenericResponse(StatusCodes.BadRequest.intValue, null, Response("Request Validation Failed, Please ensure mandatory field values.", null)).respond
+                                      }
+                                  }
+                                }
+                              }(ioDispatcher)
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
             }
           }
         }

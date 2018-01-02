@@ -10,7 +10,7 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.firefly
+package com.flipkart.connekt.firefly.topology
 
 import java.lang.Boolean
 import java.util.UUID
@@ -79,9 +79,10 @@ class ClientTopology(topic: String, retryLimit: Int, kafkaConsumerConnConf: Conf
   }
 
   def transform(event: CallbackEvent): SubscriptionEvent = {
-
-    SubscriptionEvent(header = eventHeaderTransformer.map(stencil => stencilService.materialize(stencil, event.getJsonNode).asInstanceOf[java.util.HashMap[String, String]].asScala.toMap).orNull,
+    SubscriptionEvent(
+      header = eventHeaderTransformer.map(stencil => stencilService.materialize(stencil, event.getJsonNode).asInstanceOf[java.util.HashMap[String, String]].asScala.toMap).orNull,
       payload = eventPayloadTransformer.map(stencil => stencilService.materialize(stencil, event.getJsonNode)).getOrElse(event.getJson),
-      destination = eventDestinationTransformer.map(stencil => stencilService.materialize(stencil, event.getJsonNode).asInstanceOf[String]).orNull)
+      destination = eventDestinationTransformer.map(stencil => stencilService.materialize(stencil, event.getJsonNode).asInstanceOf[String]).orNull
+    )
   }
 }

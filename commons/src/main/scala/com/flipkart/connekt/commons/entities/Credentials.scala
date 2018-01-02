@@ -73,6 +73,26 @@ object AppleCredential {
   def apply(file: File, passkey: String) = new AppleCredential(file, passkey)
 }
 
+case class WhatsAppCredential(certificate: Array[Byte]) extends Credential {
+
+  @FieldSerializer.Optional(value = "WhatsAppCredential.certificateFile")
+  @volatile
+  private var certificateFile: Option[File] = None
+  def this(file: File) = {
+    this({
+      IOUtils.toByteArray(new FileInputStream(file))
+    })
+    certificateFile = Some(file)
+  }
+  def getCertificateStr: String = new String(certificate)
+  def this() {
+    this(Array.emptyByteArray)
+  }
+}
+
+object WhatsAppCredential {
+  def apply(file: File) = new WhatsAppCredential(file)
+}
 
 case class MicrosoftCredential(clientId: String, clientSecret: String) extends Credential {
   def this() {
@@ -86,7 +106,7 @@ case class GoogleCredential(projectId: String, apiKey: String) extends Credentia
   }
 }
 
-case class KeyPairCredential(publicKey:String, privateKey:String) extends Credential{
+case class KeyPairCredential(publicKey: String, privateKey: String) extends Credential {
   def this() {
     this(null, null)
   }

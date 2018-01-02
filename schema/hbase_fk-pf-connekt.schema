@@ -9,6 +9,10 @@ hbase org.apache.hadoop.hbase.util.RegionSplitter 'fk-connekt-email-events' HexS
 hbase org.apache.hadoop.hbase.util.RegionSplitter 'fk-connekt-pn-info' HexStringSplit -c 64 -f r:t:c
 hbase org.apache.hadoop.hbase.util.RegionSplitter 'fk-connekt-pull-info' HexStringSplit -c 16 -f r:t:c
 hbase org.apache.hadoop.hbase.util.RegionSplitter 'fk-connekt-pull-events' HexStringSplit -c 16 -f e
+hbase org.apache.hadoop.hbase.util.RegionSplitter 'fk-connekt-wa-info' HexStringSplit -c 32 -f r:t:c
+hbase org.apache.hadoop.hbase.util.RegionSplitter 'fk-connekt-wa-events' HexStringSplit -c 32 -f e
+hbase org.apache.hadoop.hbase.util.RegionSplitter 'fk-connekt-wa-contact' HexStringSplit -c 32 -f d
+hbase org.apache.hadoop.hbase.util.RegionSplitter 'fk-connekt-wa-message-mapping' HexStringSplit -c 32 -f d
 
 $> hbase shell
 
@@ -46,3 +50,20 @@ enable 'fk-connekt-pull-info'
 disable 'fk-connekt-pull-events'
 alter 'fk-connekt-pull-events', {NAME => 'e', VERSIONS => '1', TTL => '7776000',  COMPRESSION => 'SNAPPY'}
 enable 'fk-connekt-pull-events'
+
+
+disable 'fk-connekt-wa-info'
+alter 'fk-connekt-wa-info', {NAME => 'r', TTL => '31536000', COMPRESSION => 'GZ'}, {NAME => 'c', TTL => '31536000', COMPRESSION => 'GZ'}, {NAME => 't', TTL => '31536000', COMPRESSION => 'GZ'}
+enable 'fk-connekt-wa-info'
+
+disable 'fk-connekt-wa-events'
+alter 'fk-connekt-wa-events', {NAME => 'e', VERSIONS => '1', TTL => '31536000',  COMPRESSION => 'GZ'}
+enable 'fk-connekt-wa-events'
+
+disable 'fk-connekt-wa-contact'
+alter 'fk-connekt-wa-contact', {NAME => 'd', VERSIONS => '1',  COMPRESSION => 'GZ'}
+enable 'fk-connekt-wa-contact'
+
+disable 'fk-connekt-wa-message-mapping'
+alter 'fk-connekt-wa-message-mapping', {NAME => 'd', VERSIONS => '1', TTL => '31536000',  COMPRESSION => 'GZ'}
+enable 'fk-connekt-wa-message-mapping'

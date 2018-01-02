@@ -62,6 +62,8 @@ object CallbackRecorder extends Instrumented {
             ServiceFactory.getCallbackService.enqueueCallbackEvents( events.toList, CALLBACK_QUEUE_NAME.format(Channel.SMS.toString.toLowerCase)).get
           case _:PullCallbackEvent =>
             ServiceFactory.getCallbackService.enqueueCallbackEvents( events.toList, CALLBACK_QUEUE_NAME.format(Channel.PULL.toString.toLowerCase)).get
+          case _:WACallbackEvent =>
+            ServiceFactory.getCallbackService.enqueueCallbackEvents( events.toList, CALLBACK_QUEUE_NAME.format(Channel.WA.toString.toLowerCase)).get
           case _:InboundMessageCallbackEvent =>
             ServiceFactory.getCallbackService.enqueueCallbackEvents(events.toList, ConnektConfig.get("inbound.messages.topic").getOrElse("inbound_messages"))
         }

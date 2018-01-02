@@ -23,7 +23,7 @@ import com.flipkart.connekt.commons.entities.{HTTPEventSink, Subscription, Subsc
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.StringUtils._
-import com.flipkart.connekt.firefly.dispatcher.HttpDispatcher
+import com.flipkart.connekt.firefly.flows.dispatchers.HttpDispatcher
 
 import scala.collection._
 import scala.concurrent.ExecutionContext

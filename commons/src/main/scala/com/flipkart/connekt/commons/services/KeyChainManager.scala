@@ -29,8 +29,6 @@ object KeyChainManager {
     storage.put(name, bytes)
   }
 
-
-
   @throws[Exception]
   def getSimpleCredential(name: String): Option[SimpleCredential] = {
     LocalCacheManager.getCache(LocalCacheType.AppCredential).get[SimpleCredential](name).orElse{
@@ -55,6 +53,22 @@ object KeyChainManager {
       credential
     }
   }
+
+  def addWhatsAppCredential(name: String, credential: WhatsAppCredential) = {
+    val bytes = KryoSerializer.serialize(credential)
+    storage.put(s"${Channel.WA}.${name.toLowerCase}", bytes)
+  }
+
+  @throws[Exception]
+  def getWhatsAppCredentials(name: String): Option[WhatsAppCredential] = {
+    val key = s"${Channel.WA}.${name.toLowerCase}"
+    LocalCacheManager.getCache(LocalCacheType.AppCredential).get[WhatsAppCredential](key).orElse{
+      val credential = storage.get(key).get.map(KryoSerializer.deserialize[WhatsAppCredential])
+      credential.foreach(LocalCacheManager.getCache(LocalCacheType.WhatsAppCredential).put[WhatsAppCredential](key, _))
+      credential
+    }
+  }
+
 
   def addMicrosoftCredential(name: String, credential: MicrosoftCredential) = {
     val bytes = KryoSerializer.serialize(credential)
