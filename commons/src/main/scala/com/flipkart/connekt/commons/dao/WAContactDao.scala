@@ -79,10 +79,10 @@ class WAContactDao(tableName: String, hTableFactory: THTableFactory) extends Dao
     hTableConnFactory.releaseTableInterface(hTableInterface)
     reqProps.map(fields => {
       WAContactEntity(
-        fields.get("destination").map(v => v.getString).orNull,
-        fields.get("userName").map(v => v.getString).orNull,
-        fields.get("appName").map(v => v.getString).orNull,
-        fields.get("exists").map(v => v.getString).orNull,
+        fields.get("destination").map(_.getString).orNull,
+        fields.get("userName").map(_.getString).orNull,
+        fields.get("appName").map(_.getString).orNull,
+        fields.get("exists").map(_.getString).orNull,
         Option(fields.getL("lastContacted")).map(_.asInstanceOf[Long]),
         fields.getL("lastCheckContactTS").asInstanceOf[Long]
       )
@@ -99,10 +99,10 @@ class WAContactDao(tableName: String, hTableFactory: THTableFactory) extends Dao
       val reqProps: Option[HbaseDao.ColumnData] = rowData.get(columnFamily)
       reqProps.map(fields => {
         WAContactEntity(
-          fields.get("destination").map(v => v.getString).orNull,
-          fields.get("userName").map(v => v.getString).orNull,
-          fields.get("appName").map(v => v.getString).orNull,
-          fields.get("exists").map(v => v.getString).orNull,
+          fields.get("destination").map(_.getString).orNull,
+          fields.get("userName").map(_.getString).orNull,
+          fields.get("appName").map(_.getString).orNull,
+          fields.get("exists").map(_.getString).orNull,
           Option(fields.getL("lastContacted")).map(_.asInstanceOf[Long]),
           fields.getL("lastCheckContactTS").asInstanceOf[Long]
         )

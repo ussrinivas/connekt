@@ -21,8 +21,6 @@ import com.typesafe.config.Config
 import org.apache.hadoop.hbase.client.Connection
 import scala.concurrent.duration._
 
-class ServiceFactory
-
 object ServiceFactory {
 
   var serviceCache = Map[ServiceType.Value, TService]()
