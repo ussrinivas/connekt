@@ -9,14 +9,14 @@ import com.flipkart.connekt.firefly.flows.metrics.LatencyMetrics
 class LatencyMetricsTopologyTest extends TopologyUTSpec with Instrumented {
   val latency = new LatencyMetrics().flow
   "HbaseLookupTopology Test" should "run" in {
-    val smsCallback = SmsCallbackEvent(messageId = "3ce2de85-be4f-4ccb-a91b-1ce8b424ab4c",
+    val smsCallback = SmsCallbackEvent(messageId = "9d665c63-9f29-45ef-bc1e-19441941bc0a",
       eventType = "sms_delivered",
-      receiver = "+918885472168",
+      receiver = "+918978603587",
       clientId = "affordability",
-      appName = "flipkart",
+      appName = "flipkart-otp",
       contextId = "",
-      cargo = "{\"deliveredTS\":\"1509698165000\",\"cause\":\"SUCCESS\",\"externalId\":\"3440781747693252725-262142534416137710\",\"provider\":\"gupshup\",\"errCode\":\"000\"}",
-      timestamp = 1509698165000L,
+      cargo = "{\"deliveredTS\":\"1514456197000\",\"cause\":\"SUCCESS\",\"externalId\":\"3440781747693252725-262142534416137710\",\"provider\":\"gupshup\",\"errCode\":\"000\"}",
+      timestamp = 1514456197000L,
       eventId = "iaUAuOefuD")
 
     Source.single(smsCallback).via(latency).runWith(Sink.ignore)
