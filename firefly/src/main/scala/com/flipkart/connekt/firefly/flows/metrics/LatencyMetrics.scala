@@ -30,11 +30,11 @@ import scala.util.{Failure, Success, Try}
 
 class LatencyMetrics extends MapFlowStage[CallbackEvent, FlowResponseStatus] with Instrumented {
 
-  private val publishSMSLatency: Boolean = ConnektConfig.getBoolean("publish.sms.latency.enable").getOrElse(false)
+  private val publishSMSLatency: Boolean = ConnektConfig.getBoolean("publish.sms.latency.enabled").getOrElse(false)
 
   private val _timer = scala.collection.concurrent.TrieMap[String, Timer]()
 
-  private val appThresholdMap: Map[String, Integer] = ConnektConfig.getOrElse[Map[String, Integer]]("appWise.sms.latency.threshold.map", Map.empty)
+  lazy val appLevelConfigService = ServiceFactory.getUserProjectConfigService
 
   private def slidingTimer(name: String): Timer = _timer.getOrElseUpdate(name, {
     val slidingTimer = new Timer(new SlidingTimeWindowReservoir(2, TimeUnit.MINUTES))
@@ -79,9 +79,8 @@ class LatencyMetrics extends MapFlowStage[CallbackEvent, FlowResponseStatus] wit
                         slidingTimer(getMetricName(s"sms.latency.${receivedEvent.head.appName}.$providerName")).update(diff, TimeUnit.MILLISECONDS)
                         ConnektLogger(LogFile.SERVICE).debug(s"Metrics.LatencyMetrics for $messageId is ingested into cosmos")
                         val msgAppName: String = receivedEvent.head.appName
-                        if (appThresholdMap.nonEmpty && appThresholdMap.contains(msgAppName)) {
-                          val appThreshold = appThresholdMap.getOrElse[Integer](msgAppName, 0)
-                          if (diff > appThreshold)
+                        val appThresholdConfig = appLevelConfigService.getProjectConfiguration(msgAppName.toLowerCase, s"latency-threshold-sms").get
+                        if (appThresholdConfig.nonEmpty && diff > appThresholdConfig.get.value.toLong) {
                             ConnektLogger(LogFile.SERVICE).debug(s"$providerName took $diff ms to deliver an OTP SMS $messageId.")
                         }
                       }
