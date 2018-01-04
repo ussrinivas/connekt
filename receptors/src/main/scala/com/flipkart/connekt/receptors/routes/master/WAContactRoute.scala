@@ -15,27 +15,30 @@ package com.flipkart.connekt.receptors.routes.master
 import akka.connekt.AkkaHelpers._
 import akka.http.scaladsl.model._
 import akka.stream.ActorMaterializer
+import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.fasterxml.jackson.databind.node.{ArrayNode, ObjectNode}
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels._
-import com.flipkart.connekt.commons.services.{ConnektConfig, WAContactService}
+import com.flipkart.connekt.commons.services.{ConnektConfig, GuardrailService, WAContactService}
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
 import com.flipkart.connekt.receptors.routes.helper.{PhoneNumberHelper, WAContactCheckHelper}
-
+import com.flipkart.connekt.commons.utils.StringUtils
+import com.flipkart.connekt.commons.entities.Channel
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.util.{Failure, Success}
 
 case class WAContactResponse(contactDetails: Any, invalidNumbers: List[String])
+case class WACheckContactResp(exists: String, @JsonInclude(Include.NON_NULL) subscribed: Any)
 
 class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
   private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
 
   private lazy implicit val stencilService = ServiceFactory.getStencilService
-  private lazy val contactService = ServiceFactory.getContactService
-  private val baseUrl = ConnektConfig.getString("wa.base.uri").get
   private val checkContactInterval = ConnektConfig.getInt("wa.check.contact.interval.days").get
 
   val route =
@@ -82,30 +85,36 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                     get {
                       meteredResource("checkcontact") {
                         authorize(user, "CHECK_CONTACT", s"CHECK_CONTACT_$appName") {
-                          complete {
-                            Future {
-                              profile(s"whatsapp.get.checkcontact.$appName") {
-                                PhoneNumberHelper.validateNFormatNumber(appName, destination) match {
-                                  case Some(n) =>
-                                    WAContactService.instance.get(appName, n).get match {
-                                      case Some(wa) =>
-                                        val lastCheckInterval = System.currentTimeMillis() - wa.lastCheckContactTS
-                                        if (lastCheckInterval < checkContactInterval.days.toMillis)
-                                          GenericResponse(StatusCodes.OK.intValue, null, Response(s"WA status for destination $destination", wa))
-                                        else {
-                                          val contactWAStatus = WAContactCheckHelper.checkContactViaWAApi(List(n), appName)
-                                          GenericResponse(StatusCodes.OK.intValue, null, Response(s"WA status for destination $destination", contactWAStatus.head))
+                          parameterMap { params =>
+                            val bucket = params.getOrElse("bucket","")
+                            val subBucket = params.getOrElse("subBucket","")
+                            val bucketsNonEmpty = !(StringUtils.isNullOrEmpty(bucket) || StringUtils.isNullOrEmpty(subBucket))
+                            require(bucketsNonEmpty || params.isEmpty, "Both bucket and subBucket should be non empty")
+                            complete {
+                              Future {
+                                profile(s"whatsapp.get.checkcontact.$appName") {
+                                  PhoneNumberHelper.validateNFormatNumber(appName, destination) match {
+                                    case Some(n) =>
+                                      val subscribed = if (bucketsNonEmpty) {
+                                        GuardrailService.isGuarded[String, Boolean](appName, Channel.WA, destination, params + ("domain" -> appName)) match {
+                                          case Success(sub) => !sub
+                                          case Failure(_) => false
                                         }
-                                      case None =>
-                                        val contactWAStatus = WAContactCheckHelper.checkContactViaWAApi(List(n), appName)
-                                        GenericResponse(StatusCodes.OK.intValue, null, Response(s"WA status for destination $destination", contactWAStatus.head))
-                                    }
-                                  case None =>
-                                    ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatsapp invalid numbers: $destination")
-                                    GenericResponse(StatusCodes.BadRequest.intValue, null, Response(s"Dropping whatsapp invalid numbers $destination", null))
+                                      } else null
+                                      WAContactService.instance.get(appName, n).get match {
+                                        case Some(wa) if (System.currentTimeMillis() - wa.lastCheckContactTS) < checkContactInterval.days.toMillis =>
+                                          GenericResponse(StatusCodes.OK.intValue, null, Response(s"WA status for destination $destination", WACheckContactResp(wa.exists, subscribed)))
+                                        case _ =>
+                                          val contactWAStatus = WAContactCheckHelper.checkContactViaWAApi(List(n), appName)
+                                          GenericResponse(StatusCodes.OK.intValue, null, Response(s"WA status for destination $destination", WACheckContactResp(contactWAStatus.head.exists, subscribed)))
+                                      }
+                                    case None =>
+                                      ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatsapp invalid numbers: $destination")
+                                      GenericResponse(StatusCodes.BadRequest.intValue, null, Response(s"Dropping whatsapp invalid numbers $destination", null))
+                                  }
                                 }
-                              }
-                            }(ioDispatcher)
+                              }(ioDispatcher)
+                            }
                           }
                         }
                       }
