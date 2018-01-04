@@ -144,7 +144,7 @@ object AppBuild extends Build  {
 
     case PathList("org", "xmlpull", "v1", xs@_x) => MergeStrategy.first //crazy xpp3 people http://jira.codehaus.org/browse/XSTR-689
     case PathList("javax", "xml", "namespace", "QName.class") => new IncludeFromJar("xpp3-1.1.4c.jar") //fuck u xpp3
-    case PathList("com", "typesafe", "akka") => MergeStrategy.first
+    case PathList("com", "typesafe", "akka", xs@_x) => MergeStrategy.first
 
     case "mapred-default.xml" | "logback.xml" => MergeStrategy.first
     case "application.conf" | "plugin.properties" => MergeStrategy.concat
