@@ -19,7 +19,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % akkaVersion withSources() withJavadoc(),
   "com.typesafe.akka" %% "akka-stream" % akkaVersion withSources() withJavadoc(),
   "com.typesafe.akka" %% "akka-slf4j" % akkaVersion withSources(),
-  "com.typesafe.akka" %% "akka-http-core" % akkaHttpVersion withSources() withJavadoc(),
+//  "com.typesafe.akka" %% "akka-http-core" % akkaHttpVersion withSources() withJavadoc(),
   "com.typesafe.akka" %% "akka-http" % akkaHttpVersion withSources() withJavadoc(),
   "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test withSources() withJavadoc()
 )
