@@ -42,6 +42,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
   private lazy implicit val stencilService = ServiceFactory.getStencilService
   private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
   private val checkContactInterval = ConnektConfig.getInt("wa.check.contact.interval.days").get
+  private val smsRegexCheck = ConnektConfig.getString("sms.regex.check").get
 
   val route =
     authenticate {
@@ -299,7 +300,6 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                         if (isTestRequest) {
                                           GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse(s"Sms Perf Send Request Received. Skipped sending.", Map("fake_message_id" -> r.destinations), List.empty)).respond
                                         } else {
-                                          val smsRegexCheck = ConnektConfig.getString("sms.regex.check").get
                                           smsRequestInfo.receivers.foreach(r => {
                                             val validateNum = Try(phoneUtil.parse(r, appDefaultCountryCode.get("localRegion").asText.trim.toUpperCase))
                                             if (validateNum.isSuccess && (phoneUtil.isValidNumber(validateNum.get) || r.matches(smsRegexCheck))) {
