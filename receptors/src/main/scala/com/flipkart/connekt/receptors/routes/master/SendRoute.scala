@@ -299,9 +299,10 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                         if (isTestRequest) {
                                           GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse(s"Sms Perf Send Request Received. Skipped sending.", Map("fake_message_id" -> r.destinations), List.empty)).respond
                                         } else {
+                                          val smsCheckRegex = ConnektConfig.getString("sms.regex.check").get
                                           smsRequestInfo.receivers.foreach(r => {
                                             val validateNum = Try(phoneUtil.parse(r, appDefaultCountryCode.get("localRegion").asText.trim.toUpperCase))
-                                            if (validateNum.isSuccess && phoneUtil.isValidNumber(validateNum.get)) {
+                                            if (validateNum.isSuccess && (phoneUtil.isValidNumber(validateNum.get) || r.matches(smsCheckRegex))) {
                                               validNumbers += phoneUtil.format(validateNum.get, PhoneNumberFormat.E164)
                                               ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.SMS, appName, InternalStatus.Received)
                                             } else {
