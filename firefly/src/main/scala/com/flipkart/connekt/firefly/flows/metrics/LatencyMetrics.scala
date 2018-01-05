@@ -81,7 +81,7 @@ class LatencyMetrics extends MapFlowStage[CallbackEvent, FlowResponseStatus] wit
                         val msgAppName: String = receivedEvent.head.appName
                         val appThresholdConfig = appLevelConfigService.getProjectConfiguration(msgAppName.toLowerCase, s"latency-threshold-sms").get
                         if (appThresholdConfig.nonEmpty && diff > appThresholdConfig.get.value.toLong) {
-                            ConnektLogger(LogFile.SERVICE).debug(s"$providerName took $diff ms to deliver an OTP SMS $messageId.")
+                            ConnektLogger(LogFile.SERVICE).info(s"$providerName took $diff ms to deliver an OTP SMS $messageId.")
                         }
                       }
                     })
