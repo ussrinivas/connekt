@@ -15,11 +15,11 @@ package com.flipkart.connekt.commons.iomodels
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.flipkart.connekt.commons.core.Wrappers.Try_#
-import com.flipkart.connekt.commons.dao.{DaoFactory, HbaseSinkSupport}
+import com.flipkart.connekt.commons.dao.HbaseSinkSupport
 import com.flipkart.connekt.commons.entities.Channel
-import com.flipkart.connekt.commons.factories.ServiceFactory
 import com.flipkart.connekt.commons.services.TStencilService
 import com.flipkart.connekt.commons.utils.StringUtils._
+import com.flipkart.metrics.Timed
 
 import scala.util.{Failure, Success, Try}
 
@@ -73,7 +73,7 @@ case class ConnektRequest(@JsonProperty(required = false) id: String,
       }
     }.getOrElse(channelData)
 
-
+  @Timed("validateStencilVariables")
   def validateStencilVariables(implicit stencilService: TStencilService): Try[Boolean] = Try_#(s"Request Stencil Validation Failed, for stencilId : ${stencilId.getOrElse("")} and ChannelDataMode : $channelDataModel") {
     stencilId match {
       case Some(s: String) =>
