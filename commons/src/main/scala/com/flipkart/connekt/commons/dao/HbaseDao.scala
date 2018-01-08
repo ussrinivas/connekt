@@ -66,6 +66,23 @@ trait HbaseDao extends Instrumented {
   }
 
   @throws[IOException]
+  @Timed("addRows")
+  def addRows(rows: List[(String, RowData)], ttl: Option[Long] = None)(implicit hTable: Table) = {
+    val puts = rows.map {
+      case (rowKey: String, data: RowData) =>
+        val put: Put = new Put(rowKey.getBytes(CharEncoding.UTF_8))
+        data.foreach { case (colFamily, v) =>
+          v.foreach { case (colQualifier, d) =>
+            put.addColumn(colFamily.getUtf8Bytes, colQualifier.getUtf8Bytes, d)
+          }
+        }
+        ttl.foreach(put.setTTL)
+        put
+    }
+    hTable.put(puts)
+  }
+
+  @throws[IOException]
   @Timed("remove")
   def removeRow(rowKey: String)(implicit hTable: Table): Unit = {
     val del = new Delete(rowKey.getUtf8Bytes)

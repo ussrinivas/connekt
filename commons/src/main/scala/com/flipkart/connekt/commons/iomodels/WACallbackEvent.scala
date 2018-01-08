@@ -14,7 +14,10 @@ package com.flipkart.connekt.commons.iomodels
 
 import java.util.Optional
 
+import com.flipkart.connekt.commons.dao.HbaseSinkSupport
+import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.entities.bigfoot.PublishSupport
+import com.flipkart.connekt.commons.factories.ServiceFactory
 import com.flipkart.connekt.commons.utils.DateTimeUtils
 import com.flipkart.connekt.commons.utils.StringUtils.StringHandyFunctions
 import org.apache.commons.lang.RandomStringUtils
@@ -29,7 +32,7 @@ case class WACallbackEvent(messageId: String,
                            cargo: String,
                            timestamp: Long = System.currentTimeMillis(),
                            eventId: String = RandomStringUtils.randomAlphabetic(10)
-                          ) extends CallbackEvent with PublishSupport with WAGeneratedEvent {
+                          ) extends CallbackEvent with PublishSupport with WAGeneratedEvent with HbaseSinkSupport {
 
   def this(messageId: String,
            providerMessageId: Optional[String],
@@ -95,4 +98,5 @@ case class WACallbackEvent(messageId: String,
 
   override def namespace: String = "fkint/mp/connekt/WACallbackEvent"
 
+  override def sinkId = messageId
 }

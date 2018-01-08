@@ -18,6 +18,7 @@ import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.utils.StringUtils
 
 class SmsRequestDao(tableName: String, hTableFactory: THTableFactory) extends RequestDao(tableName: String, hTableFactory: THTableFactory) {
+  override protected def persistDataProps(appName: String): Boolean = true
 
   override protected def channelRequestInfoMap(channelRequestInfo: ChannelRequestInfo): Map[String, Array[Byte]] = {
     val smsRequestInfo = channelRequestInfo.asInstanceOf[SmsRequestInfo]
