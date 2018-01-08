@@ -50,7 +50,7 @@ class RetryRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                             GenericResponse(StatusCodes.NotFound.intValue, Map("messageId" -> messageId), Response(s"No Message found for messageId $messageId.", null))
                           case Some(connektRequest) if connektRequest.clientId == user.userId =>
                             val queueName = ServiceFactory.getMessageService(channel).getRequestBucket(connektRequest, user)
-                            ServiceFactory.getMessageService(channel).saveRequest(connektRequest, queueName, persistPayloadInDataStore = true) match {
+                            ServiceFactory.getMessageService(channel).saveRequest(connektRequest, queueName) match {
                               case Success(id) =>
                                 GenericResponse(StatusCodes.Accepted.intValue, Map("messageId" -> messageId), SendResponse(s"Retried for original messageId: $messageId.", Map(id -> connektRequest.destinations), List.empty))
                               case Failure(t) =>

@@ -96,7 +96,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                     val queueName = ServiceFactory.getMessageService(Channel.PUSH).getRequestBucket(request, user)
                                     groupedPlatformRequests.foreach { p =>
                                       /* enqueue multiple requests into kafka */
-                                      ServiceFactory.getMessageService(Channel.PUSH).saveRequest(p, queueName, persistPayloadInDataStore = true) match {
+                                      ServiceFactory.getMessageService(Channel.PUSH).saveRequest(p, queueName) match {
                                         case Success(id) =>
                                           val deviceIds = p.channelInfo.asInstanceOf[PNRequestInfo].deviceIds
                                           success += id -> deviceIds
@@ -168,7 +168,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                   val queueName = ServiceFactory.getMessageService(Channel.PUSH).getRequestBucket(request, user)
 
                                   groupedPlatformRequests.foreach { p =>
-                                    ServiceFactory.getMessageService(Channel.PUSH).saveRequest(p, queueName, persistPayloadInDataStore = true) match {
+                                    ServiceFactory.getMessageService(Channel.PUSH).saveRequest(p, queueName) match {
                                       case Success(id) =>
                                         val deviceIds = p.channelInfo.asInstanceOf[PNRequestInfo].deviceIds
                                         success += id -> deviceIds
@@ -232,9 +232,8 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                     val validRecipients = recipients.diff(excludedAddress)
                                     if (validRecipients.nonEmpty) {
                                       /* enqueue multiple requests into kafka */
-                                      val savePayload = ServiceFactory.getUserProjectConfigService.getProjectConfiguration(appName, "email-store-enabled").get.forall(_.value.toBoolean)
 
-                                      ServiceFactory.getMessageService(Channel.EMAIL).saveRequest(request.copy(channelInfo = emailRequestInfo), queueName, persistPayloadInDataStore = savePayload) match {
+                                      ServiceFactory.getMessageService(Channel.EMAIL).saveRequest(request.copy(channelInfo = emailRequestInfo), queueName) match {
                                         case Success(id) =>
                                           success += id -> validRecipients
                                           ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, request.contextId, request.stencilId, Channel.EMAIL, appName, InternalStatus.Received, recipients.size)
@@ -320,13 +319,12 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
                                             val queueName = ServiceFactory.getMessageService(Channel.SMS).getRequestBucket(request, user)
                                             /* enqueue multiple requests into kafka */
-                                            val (success, failure) = ServiceFactory.getMessageService(Channel.SMS).saveRequest(smsRequest, queueName, persistPayloadInDataStore = true) match {
+                                            val (success, failure) = ServiceFactory.getMessageService(Channel.SMS).saveRequest(smsRequest, queueName) match {
                                               case Success(id) =>
                                                 (Map(id -> nonExcludedNumbers.toSet), invalidNumbers ++ excludedNumbers)
                                               case Failure(t) =>
                                                 (Map(), smsRequestInfo.receivers)
                                             }
-
                                             val (responseCode, message) = if (success.nonEmpty) Tuple2(StatusCodes.Accepted, "SMS Send Request Received") else Tuple2(StatusCodes.InternalServerError, "SMS Send Request Failed")
                                             GenericResponse(responseCode.intValue, null, SendResponse(message, success.toMap, failure.toList)).respond
 
@@ -483,7 +481,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                             val waRequest = request.copy(channelInfo = waRequestInfo.copy(destinations = waUserName.toSet))
                                             val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(request, user)
                                             /* enqueue multiple requests into kafka */
-                                            val (success, failure) = ServiceFactory.getMessageService(Channel.WA).saveRequest(waRequest, queueName, persistPayloadInDataStore = true) match {
+                                            val (success, failure) = ServiceFactory.getMessageService(Channel.WA).saveRequest(waRequest, queueName) match {
                                               case Success(id) =>
                                                 (Map(id -> waUserName.toSet), invalidNumbers ++ userPrefRejectedContacts ++ waNotExistsContacts)
                                               case Failure(t) =>

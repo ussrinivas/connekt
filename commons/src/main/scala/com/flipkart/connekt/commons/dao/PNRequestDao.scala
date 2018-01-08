@@ -21,6 +21,8 @@ import scala.util.Try
 
 class PNRequestDao(tableName: String, pullRequestTableName: String, hTableFactory: THTableFactory) extends RequestDao(tableName: String, hTableFactory: THTableFactory) {
 
+  override protected def persistDataProps(appName: String): Boolean = true
+
   override protected def channelRequestInfoMap(channelRequestInfo: ChannelRequestInfo): Map[String, Array[Byte]] = {
     val pnRequestInfo = channelRequestInfo.asInstanceOf[PNRequestInfo]
 

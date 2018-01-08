@@ -12,7 +12,10 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
+import com.flipkart.connekt.commons.dao.HbaseSinkSupport
+import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.entities.bigfoot.PublishSupport
+import com.flipkart.connekt.commons.factories.ServiceFactory
 import com.flipkart.connekt.commons.utils.DateTimeUtils
 import com.flipkart.connekt.commons.utils.StringUtils.{StringHandyFunctions, _}
 import org.apache.commons.lang.RandomStringUtils
@@ -27,7 +30,7 @@ case class SmsCallbackEvent(
                              cargo: String = null,
                              timestamp: Long = System.currentTimeMillis(),
                              eventId: String = RandomStringUtils.randomAlphabetic(10)
-                           ) extends CallbackEvent with PublishSupport {
+                           ) extends CallbackEvent with PublishSupport with HbaseSinkSupport {
 
   def this(messageId: String, eventType: String, receiver: String, clientId: String, appName: String, contextId: String, cargo: String) {
     this(messageId = messageId, clientId = clientId, receiver = receiver, eventType = eventType, appName = appName, contextId = contextId,
@@ -48,4 +51,6 @@ case class SmsCallbackEvent(
   }
 
   override def namespace: String = "fkint/mp/connekt/SmsCallbackEvent"
+
+  override def sinkId = messageId
 }

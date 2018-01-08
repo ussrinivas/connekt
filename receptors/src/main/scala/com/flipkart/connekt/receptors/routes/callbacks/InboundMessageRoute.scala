@@ -83,12 +83,12 @@ class InboundMessageRoute(implicit am: ActorMaterializer) extends BaseJsonHandle
                                 val channelData = WARequestData(waType = WAType.text, message = Some(standardResponses.get("stop").asText()))
                                 val connektRequest = new ConnektRequest(generateUUID, "whatspp", Some("UNSUBS"), channel.toString, "H", None, None, None, channelInfo, channelData, null)
                                 val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(connektRequest, user)
-                                ServiceFactory.getMessageService(Channel.WA).saveRequest(connektRequest, queueName, true)
+                                ServiceFactory.getMessageService(Channel.WA).saveRequest(connektRequest, queueName)
                               case _ =>
                                 val channelData = WARequestData(waType = WAType.text, message = Some(standardResponses.get("default").asText()))
                                 val connektRequest = new ConnektRequest(generateUUID, "whatspp", Some("WhatsAppReply"), channel.toString, "H", None, None, None, channelInfo, channelData, null)
                                 val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(connektRequest, user)
-                                ServiceFactory.getMessageService(Channel.WA).saveRequest(connektRequest, queueName, true)
+                                ServiceFactory.getMessageService(Channel.WA).saveRequest(connektRequest, queueName)
                             }
                           case Success(pref) =>
                             ConnektLogger(LogFile.SERVICE).info(s"No Whatsapp reply sent to sender: $sender as sender is gurdrailed.")
