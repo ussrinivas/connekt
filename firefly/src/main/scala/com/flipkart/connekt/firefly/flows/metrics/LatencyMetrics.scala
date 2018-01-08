@@ -30,9 +30,11 @@ import scala.util.{Failure, Success, Try}
 
 class LatencyMetrics extends MapFlowStage[CallbackEvent, FlowResponseStatus] with Instrumented {
 
-  private def publishSMSLatency: Boolean = ConnektConfig.getBoolean("publish.sms.latency").getOrElse(false)
+  private val publishSMSLatency: Boolean = ConnektConfig.getBoolean("publish.sms.latency.enabled").getOrElse(false)
 
   private val _timer = scala.collection.concurrent.TrieMap[String, Timer]()
+
+  lazy val appLevelConfigService = ServiceFactory.getUserProjectConfigService
 
   private def slidingTimer(name: String): Timer = _timer.getOrElseUpdate(name, {
     val slidingTimer = new Timer(new SlidingTimeWindowReservoir(2, TimeUnit.MINUTES))
@@ -76,6 +78,11 @@ class LatencyMetrics extends MapFlowStage[CallbackEvent, FlowResponseStatus] wit
                         val diff = deliveredTS - receivedTs
                         slidingTimer(getMetricName(s"sms.latency.${receivedEvent.head.appName}.$providerName")).update(diff, TimeUnit.MILLISECONDS)
                         ConnektLogger(LogFile.SERVICE).debug(s"Metrics.LatencyMetrics for $messageId is ingested into cosmos")
+                        val msgAppName: String = receivedEvent.head.appName
+                        val appThresholdConfig = appLevelConfigService.getProjectConfiguration(msgAppName.toLowerCase, s"latency-threshold-sms").get
+                        if (appThresholdConfig.nonEmpty && diff > appThresholdConfig.get.value.toLong) {
+                            ConnektLogger(LogFile.SERVICE).info(s"$providerName took $diff ms to deliver an OTP SMS $messageId.")
+                        }
                       }
                     })
                   case Success(details) =>
