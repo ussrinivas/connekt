@@ -52,7 +52,6 @@ object FireflyBoot extends BaseApp {
   var smsLatencyMeteringTopology: SmsLatencyMeteringTopology = _
 
   private lazy val WA_CONTACT_TOPIC = ConnektConfig.getString("wa.contact.topic.name").get
-  private lazy val CALLBACK_QUEUE_NAME = ConnektConfig.get("firefly.latency.metric.kafka.topic").getOrElse("ckt_callback_events_%s")
 
   def start() {
     if (!initialized.getAndSet(true)) {
@@ -99,7 +98,7 @@ object FireflyBoot extends BaseApp {
 
       ClientTopologyManager(kafkaConsumerConnConf, ConnektConfig.getInt("firefly.retry.limit").get)
 
-      smsLatencyMeteringTopology = new SmsLatencyMeteringTopology(kafkaConsumerConnConf, CALLBACK_QUEUE_NAME.format(Channel.SMS.toString.toLowerCase))
+      smsLatencyMeteringTopology = new SmsLatencyMeteringTopology(kafkaConsumerConnConf)
       smsLatencyMeteringTopology.run
 
       wAContactTopology = new WAContactTopology(kafkaConsumerConnConf, WA_CONTACT_TOPIC)

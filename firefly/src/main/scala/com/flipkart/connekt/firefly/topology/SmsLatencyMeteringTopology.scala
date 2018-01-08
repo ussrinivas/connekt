@@ -27,9 +27,10 @@ import com.typesafe.config.Config
 
 import scala.concurrent.duration._
 
-class SmsLatencyMeteringTopology(kafkaConsumerConfig: Config, topicName: String) extends CustomTopology[CallbackEvent, FlowResponseStatus] {
+class SmsLatencyMeteringTopology(kafkaConsumerConfig: Config) extends CustomTopology[CallbackEvent, FlowResponseStatus] {
 
   private val latencyMetricsKafkaThrottle = ConnektConfig.getOrElse("latencyMetrics.kafka.throttle.rps", 100)
+  private lazy val CALLBACK_QUEUE_NAME = ConnektConfig.get("firefly.latency.metric.kafka.topic").getOrElse("ckt_callback_events_%s")
 
   def latencyTransformFlow: Flow[CallbackEvent, FlowResponseStatus, NotUsed] = Flow.fromGraph(GraphDSL.create() { implicit b =>
     val latencyMetrics = b.add(new LatencyMetrics().flow)
@@ -39,12 +40,17 @@ class SmsLatencyMeteringTopology(kafkaConsumerConfig: Config, topicName: String)
 
   override def sources: Map[CheckPointGroup, Source[CallbackEvent, NotUsed]] = {
     Map(Channel.SMS.toString ->
-      createMergedSource[CallbackEvent](Channel.SMS, Seq(topicName), kafkaConsumerConfig)
-        .throttle(latencyMetricsKafkaThrottle, 1.second, latencyMetricsKafkaThrottle, ThrottleMode.Shaping)
+      createMergedSource[CallbackEvent](Channel.SMS, Seq(CALLBACK_QUEUE_NAME.format(Channel.SMS.toString.toLowerCase)), kafkaConsumerConfig)
+        .throttle(latencyMetricsKafkaThrottle, 1.second, latencyMetricsKafkaThrottle, ThrottleMode.Shaping),
+      Channel.WA.toString ->
+        createMergedSource[CallbackEvent](Channel.WA, Seq(CALLBACK_QUEUE_NAME.format(Channel.WA.toString.toLowerCase)), kafkaConsumerConfig)
+          .throttle(latencyMetricsKafkaThrottle, 1.second, latencyMetricsKafkaThrottle, ThrottleMode.Shaping)
     )
   }
 
-  override def transformers: Map[CheckPointGroup, Flow[CallbackEvent, FlowResponseStatus, NotUsed]] = Map(Channel.SMS.toString -> latencyTransformFlow)
+  override def transformers: Map[CheckPointGroup, Flow[CallbackEvent, FlowResponseStatus, NotUsed]] =
+    Map(Channel.SMS.toString -> latencyTransformFlow,
+      Channel.WA.toString -> latencyTransformFlow)
 
   override def sink: Sink[FlowResponseStatus, NotUsed] = Sink.fromGraph(GraphDSL.create() { implicit b =>
     val metrics = b.add(new FlowMetrics[FlowResponseStatus]("sms.latency.meter").flow)
