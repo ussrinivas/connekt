@@ -56,6 +56,12 @@ class CallbackService(eventsDao: EventsDaoContainer, requestDao: RequestDaoConta
     }
   }
 
+  override def syncPersistCallbackEvents(channel: Channel.Value, events: List[CallbackEvent]): Try[List[String]] = {
+    Try {
+      eventsDao(channel).saveCallbackEvents(events)
+    }
+  }
+
   @Timed("enqueueCallbackEvent")
   override def enqueueCallbackEvents(events: List[CallbackEvent], queueName: String): Try[Unit] = Try_ {
     queueProducerHelper.writeMessages(queueName, events.map(event => Tuple2(event.eventId, event.getJson)): _*)

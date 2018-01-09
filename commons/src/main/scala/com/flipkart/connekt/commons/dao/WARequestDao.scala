@@ -19,6 +19,7 @@ import com.flipkart.connekt.commons.utils.StringUtils.{JSONMarshallFunctions, JS
 import scala.reflect.runtime.universe._
 
 class WARequestDao(tableName: String, hTableFactory: THTableFactory) extends RequestDao(tableName: String, hTableFactory: THTableFactory) {
+  override protected def persistDataProps(appName: String): Boolean = true
 
   override protected def channelRequestInfoMap(channelRequestInfo: ChannelRequestInfo): Map[String, Array[Byte]] = {
     val waRequestInfo = channelRequestInfo.asInstanceOf[WARequestInfo]

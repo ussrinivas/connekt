@@ -15,7 +15,9 @@ package com.flipkart.connekt.commons.iomodels
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.flipkart.connekt.commons.core.Wrappers.Try_#
+import com.flipkart.connekt.commons.dao.{DaoFactory, HbaseSinkSupport}
 import com.flipkart.connekt.commons.entities.Channel
+import com.flipkart.connekt.commons.factories.ServiceFactory
 import com.flipkart.connekt.commons.services.TStencilService
 import com.flipkart.connekt.commons.utils.StringUtils._
 
@@ -32,7 +34,7 @@ case class ConnektRequest(@JsonProperty(required = false) id: String,
                           @JsonProperty(required = true) channelInfo: ChannelRequestInfo,
                           @JsonProperty(required = false) channelData: ChannelRequestData,
                           @JsonProperty(required = false) channelDataModel: ObjectNode = getObjectNode,
-                          meta: Map[String, String]) {
+                          meta: Map[String, String]) extends HbaseSinkSupport {
 
   def this(id: String, clientId: String, contextId: Option[String], channel: String, sla: String, stencilId: Option[String],
            scheduleTs: Option[Long], expiryTs: Option[Long], channelInfo: ChannelRequestInfo,
@@ -85,4 +87,6 @@ case class ConnektRequest(@JsonProperty(required = false) id: String,
       case _ => true
     }
   }
+
+  override def sinkId: String = id
 }

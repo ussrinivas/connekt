@@ -35,7 +35,7 @@ class MessageService(requestDao: TRequestDao, userConfigurationDao: TUserConfigu
   private val queueProducer: KafkaProducerHelper = queueProducerHelper
   private val clientRequestTopics = scala.collection.mutable.Map[String, String]()
 
-  override def saveRequest(request: ConnektRequest, requestBucket: String, persistPayloadInDataStore: Boolean): Try[String] = {
+  override def saveRequest(request: ConnektRequest, requestBucket: String): Try[String] = {
     try {
       val reqWithId = request.copy(id = generateUUID)
       request.scheduleTs match {
@@ -47,7 +47,8 @@ class MessageService(requestDao: TRequestDao, userConfigurationDao: TUserConfigu
           ConnektLogger(LogFile.SERVICE).debug(s"Saved request ${reqWithId.id} to $requestBucket")
       }
 
-      messageDao.saveRequest(reqWithId.id, reqWithId, persistPayloadInDataStore)
+      queueProducer.writeMessages(s"connekt_request_hbase_sink_${reqWithId.channel}", Tuple2(reqWithId.kafkaKey, reqWithId.getJson))
+      ConnektLogger(LogFile.SERVICE).info(s"Saved request ${reqWithId.id} to connekt_request_hbase_sink_${reqWithId.channel}")
       Success(reqWithId.id)
     } catch {
       case e: Exception =>
@@ -55,6 +56,9 @@ class MessageService(requestDao: TRequestDao, userConfigurationDao: TUserConfigu
         Failure(e)
     }
   }
+
+  override def bulkPersist(requests: List[ConnektRequest]): List[String] =
+    messageDao.saveBulkRequests(requests)
 
   override def enqueueRequest(request: ConnektRequest, requestBucket: String): Unit = {
     queueProducer.writeMessages(requestBucket, Tuple2(request.id,request.getJson))

@@ -12,7 +12,10 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
+import com.flipkart.connekt.commons.dao.HbaseSinkSupport
+import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.entities.bigfoot.PublishSupport
+import com.flipkart.connekt.commons.factories.ServiceFactory
 import com.flipkart.connekt.commons.utils.DateTimeUtils
 import org.apache.commons.lang.RandomStringUtils
 import com.flipkart.connekt.commons.utils.StringUtils._
@@ -25,7 +28,7 @@ case class EmailCallbackEvent(messageId: String,
                               contextId: String,
                               cargo: String = null,
                               timestamp: Long = System.currentTimeMillis(),
-                              eventId: String = RandomStringUtils.randomAlphabetic(10)) extends CallbackEvent with PublishSupport {
+                              eventId: String = RandomStringUtils.randomAlphabetic(10)) extends CallbackEvent with PublishSupport with HbaseSinkSupport {
 
   //java-constructor
   def this(messageId: String, clientId:String, address:String,eventType: String,contextId: String,cargo: String,timestamp: java.lang.Long){
@@ -47,4 +50,5 @@ case class EmailCallbackEvent(messageId: String,
     fkint.mp.connekt.EmailCallbackEvent(messageId = messageId, address = address,eventType = eventType, appName = appName, contextId = contextId, cargo = cargo, timestamp = DateTimeUtils.getStandardFormatted(timestamp))
   }
 
+  override def sinkId = messageId
 }
