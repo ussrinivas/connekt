@@ -11,7 +11,7 @@ class LatencyMetricsTopologyTest extends TopologyUTSpec with Instrumented {
     "HbaseLookupTopology Test" should "run" in {
       val smsCallback = SmsCallbackEvent(messageId = "c37d3855-c349-48c9-b3af-724eade554f0",
         eventType = "sms_delivered",
-        receiver = "+91123456789",
+        receiver = "+911234567843",
         clientId = "affordability",
         appName = "flipkart",
         contextId = "",
@@ -20,22 +20,37 @@ class LatencyMetricsTopologyTest extends TopologyUTSpec with Instrumented {
         eventId = "iaUAuOefuD")
 
       Source.single(smsCallback).via(latency).runWith(Sink.ignore)
-      Thread.sleep(105000)
+      Thread.sleep(6000)
     }
   "WALookupTopology Test" should "run" in {
-    val waCallback = WACallbackEvent(messageId = "1775bf3f-3f97-4296-8256-deda0918e5ac",
+    val waCallback = WACallbackEvent(messageId = "9e8dd914-e103-4cb4-8eec-7d79190826e1",
       providerMessageId=Option("A33341C9515965027D"),
       eventType = "wa_delivered",
-      destination = "91123456789",
+      destination = "911234567843",
       clientId = "affordability",
       appName = "flipkart",
       contextId = "",
-      cargo = "{\"meta\":{},\"payload\":{\"message_id\":\"A33341C9515965027D\",\"message_status\":\"delivered\",\"timestamp\":\"1514540483\",\"to\":\"91123456789\"}}",
-      timestamp = 1514540483000L,
+      cargo = "{\"meta\":{},\"provider\":\"whatsapp\",\"deliveredTS\":\"1515597801000\",\"payload\":{\"message_id\":\"A33341C9515965027D\",\"message_status\":\"delivered\",\"timestamp\":\"1514540483\",\"to\":\"91123456789\"}}",
+      timestamp = 1515597801000L,
       eventId = "iaUAuOefuD")
 
     Source.single(waCallback).via(latency).runWith(Sink.ignore)
-    Thread.sleep(105000)
+    Thread.sleep(6000)
+  }
+  "WALookupTopologyRead Test" should "run" in {
+    val waCallback = WACallbackEvent(messageId = "9e8dd914-e103-4cb4-8eec-7d79190826e1",
+      providerMessageId=Option("A33341C9515965027D"),
+      eventType = "read",
+      destination = "911234567843",
+      clientId = "affordability",
+      appName = "flipkart",
+      contextId = "",
+      cargo = "{\"meta\":{},\"provider\":\"whatsapp\",\"deliveredTS\":\"1515597805000\",\"payload\":{\"message_id\":\"A33341C9515965027D\",\"message_status\":\"read\",\"timestamp\":\"1514540485\",\"to\":\"91123456789\"}}",
+      timestamp = 1514540485000L,
+      eventId = "iaUAuOefuD")
+
+    Source.single(waCallback).via(latency).runWith(Sink.ignore)
+    Thread.sleep(6000)
   }
   "HbaseLookupTopology Test" should "cargo blank" in {
     val smsCallback = SmsCallbackEvent(messageId = "62b7d6a1-cdb8-414d-8954-972bae4aec2c",
