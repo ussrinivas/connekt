@@ -12,7 +12,10 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
+import com.flipkart.connekt.commons.dao.HbaseSinkSupport
+import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.entities.bigfoot.PublishSupport
+import com.flipkart.connekt.commons.factories.ServiceFactory
 import com.flipkart.connekt.commons.utils.DateTimeUtils
 import com.flipkart.connekt.commons.utils.StringUtils._
 import org.apache.commons.lang.RandomStringUtils
@@ -26,7 +29,8 @@ case class PNCallbackEvent(messageId: String,
                            contextId: String,
                            cargo: String = null,
                            timestamp: Long = System.currentTimeMillis(),
-                           eventId: String = RandomStringUtils.randomAlphabetic(10)) extends CallbackEvent with PublishSupport {
+                           eventId: String = RandomStringUtils.randomAlphabetic(10)
+                          ) extends CallbackEvent with PublishSupport with HbaseSinkSupport {
 
   def validate() = {
     require(contextId == null || contextId.hasOnlyAllowedChars, s"`contextId` field can only contain [A-Za-z0-9_\\.\\-\\:\\|] allowed chars, `messageId`: $messageId, `contextId`: $contextId")
@@ -41,4 +45,6 @@ case class PNCallbackEvent(messageId: String,
   }
 
   override def namespace: String = "fkint/mp/connekt/PNCallbackEvent"
+
+  override def sinkId = messageId
 }

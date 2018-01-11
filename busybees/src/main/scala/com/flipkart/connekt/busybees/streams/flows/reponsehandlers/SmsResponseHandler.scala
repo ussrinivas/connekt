@@ -27,10 +27,10 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Either.MergeableEither
 import scala.util.{Failure, Success, Try}
 
-sealed case class SMSCargoContainer(providerMessageId: String, provider: String, cargo: String, meta:Map[String,Any])
+sealed case class SMSCargoContainer(providerMessageId: String, provider: String, cargo: String, meta: Map[String, Any])
 
 class SmsResponseHandler(parallelism: Int)(implicit m: Materializer, ec: ExecutionContext) extends SmsProviderResponseHandler[(Try[SmsResponse], SmsRequestTracker), SmsRequestTracker](parallelism) with Instrumented {
-  override val map: ((Try[SmsResponse], SmsRequestTracker)) => Future[List[Either[SmsRequestTracker, SmsCallbackEvent]]] = responseTrackerPair => Future(profile("map"){
+  override val map: ((Try[SmsResponse], SmsRequestTracker)) => Future[List[Either[SmsRequestTracker, SmsCallbackEvent]]] = responseTrackerPair => Future(profile("map") {
 
     val (smsResponse, smsTracker) = responseTrackerPair
     handleSmsResponse(smsResponse, smsTracker) match {
@@ -48,8 +48,8 @@ class SmsResponseHandler(parallelism: Int)(implicit m: Materializer, ec: Executi
 
     val maybeSmsCallbackEvent = tryResponse match {
       case Success(smsResponse) =>
-        meter(s"${requestTracker.provider}.${smsResponse.responseCode}").mark()
-        ConnektLogger(LogFile.PROCESSORS).debug(s"SmsResponseHandler received http response for: messageId : ${requestTracker.messageId}, code: ${smsResponse.responseCode}, provider: ${requestTracker.provider}")
+        meter(s"${requestTracker.appName}.${requestTracker.provider}.${smsResponse.responseCode}").mark()
+        ConnektLogger(LogFile.PROCESSORS).info(s"SmsResponseHandler received http response for: messageId : ${requestTracker.messageId}, code: ${smsResponse.responseCode}, provider: ${requestTracker.provider}")
         smsResponse.responseCode match {
           case s if 2 == (s / 100) =>
             Right(smsResponse.responsePerReceivers.asScala.map(r => {
@@ -84,10 +84,10 @@ class SmsResponseHandler(parallelism: Int)(implicit m: Materializer, ec: Executi
 
       case Failure(e) =>
         // Retrying in this case
-        meter(s"${requestTracker.provider}.exception").mark()
+        meter(s"${requestTracker.appName}.${requestTracker.provider}.exception").mark()
         ConnektLogger(LogFile.PROCESSORS).error(s"SmsResponseHandler failed to send sms for: ${requestTracker.messageId} due to: ${e.getClass.getSimpleName} with provider ${requestTracker.provider}, ${e.getMessage}", e)
         ServiceFactory.getReportingService.recordChannelStatsDelta(clientId = requestTracker.clientId, contextId = Option(requestTracker.contextId), stencilId = requestTracker.meta.get("stencilId").map(_.toString), channel = Channel.SMS, appName = requestTracker.appName, event = InternalStatus.ProviderSendError, count = requestTracker.receivers.size)
-        Left(receivers.map(SmsCallbackEvent(requestTracker.messageId, InternalStatus.ProviderSendError, _, requestTracker.clientId, requestTracker.appName, requestTracker.contextId, s"SmsResponseHandler-${e.getClass.getSimpleName}-${e.getMessage}")).toList)
+        Left(receivers.map(SmsCallbackEvent(requestTracker.messageId, InternalStatus.ProviderSendError, _, requestTracker.clientId, requestTracker.appName, requestTracker.contextId, SMSCargoContainer(null, requestTracker.provider, s"SmsResponseHandler-${e.getClass.getSimpleName}-${e.getMessage}", Map.empty).getJson)).toList)
     }
     maybeSmsCallbackEvent.merge.persist
     maybeSmsCallbackEvent

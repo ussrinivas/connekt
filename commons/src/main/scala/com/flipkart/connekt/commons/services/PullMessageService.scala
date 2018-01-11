@@ -42,7 +42,7 @@ class PullMessageService(requestDao: TRequestDao) extends TService {
       val pullInfo = request.channelInfo.asInstanceOf[PullRequestInfo]
 
       if (!request.isTestRequest) {
-        messageDao.saveRequest(reqWithId.id, reqWithId, true)
+        messageDao.saveRequest(reqWithId.id, reqWithId)
         pullInfo.userIds.map(
           ServiceFactory.getPullMessageQueueService.enqueueMessage(reqWithId.appName, _, reqWithId.id, reqWithId.expiryTs, Some(false))
         )

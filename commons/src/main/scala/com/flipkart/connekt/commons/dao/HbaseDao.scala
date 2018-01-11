@@ -21,6 +21,7 @@ import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.flipkart.connekt.commons.dao.HbaseDao._
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.services.ConnektConfig
+import com.flipkart.connekt.commons.utils.NullWrapper.NullWrap
 import com.flipkart.metrics.Timed
 import org.apache.commons.codec.CharEncoding
 import org.apache.hadoop.hbase.client._
@@ -62,6 +63,23 @@ trait HbaseDao extends Instrumented {
     }
     ttl.foreach(put.setTTL)
     hTable.put(put)
+  }
+
+  @throws[IOException]
+  @Timed("addRows")
+  def addRows(rows: List[(String, RowData)], ttl: Option[Long] = None)(implicit hTable: Table) = {
+    val puts = rows.map {
+      case (rowKey: String, data: RowData) =>
+        val put: Put = new Put(rowKey.getBytes(CharEncoding.UTF_8))
+        data.foreach { case (colFamily, v) =>
+          v.foreach { case (colQualifier, d) =>
+            put.addColumn(colFamily.getUtf8Bytes, colQualifier.getUtf8Bytes, d)
+          }
+        }
+        ttl.foreach(put.setTTL)
+        put
+    }
+    hTable.put(puts)
   }
 
   @throws[IOException]
@@ -188,6 +206,8 @@ object HbaseDao {
 
   implicit class stringHandyFunctions(val s: String) {
     def getUtf8Bytes = Bytes.toBytes(s)
+
+    def getUtf8BytesNullWrapped = Option(s).map(_.getUtf8Bytes).orNull.wrap
   }
 
   implicit class longHandyFunctions(val l: Long) {

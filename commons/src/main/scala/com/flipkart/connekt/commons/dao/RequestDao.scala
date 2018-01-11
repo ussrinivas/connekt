@@ -17,16 +17,19 @@ import java.util.concurrent.{ScheduledThreadPoolExecutor, TimeUnit}
 
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.flipkart.connekt.commons.dao.HbaseDao._
-import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, THTableFactory}
+import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
+import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory, THTableFactory}
 import com.flipkart.connekt.commons.iomodels.{ChannelRequestData, ChannelRequestInfo, ConnektRequest}
 import com.flipkart.connekt.commons.serializers.KryoSerializer
 import com.flipkart.connekt.commons.utils.StringUtils
 import org.apache.hadoop.hbase.client.BufferedMutator
 import com.flipkart.connekt.commons.core.Wrappers._
+import com.flipkart.connekt.commons.entities.Channel
 
 abstract class RequestDao(tableName: String, hTableFactory: THTableFactory) extends TRequestDao with HbaseDao {
   private val hTableConnFactory = hTableFactory
   private val hTableName = tableName
+  private val hTable = hTableConnFactory.getTableInterface(hTableName)
   implicit lazy val hTableMutator: BufferedMutator = hTableFactory.getBufferedMutator(hTableName)
 
   private val executor = new ScheduledThreadPoolExecutor(1)
@@ -41,6 +44,8 @@ abstract class RequestDao(tableName: String, hTableFactory: THTableFactory) exte
     Option(hTableMutator).foreach(_.close())
   }
 
+  protected def persistDataProps(appName: String): Boolean
+
   protected def channelRequestInfoMap(channelRequestInfo: ChannelRequestInfo): Map[String, Array[Byte]]
 
   protected def getChannelRequestInfo(reqInfoProps: Map[String, Array[Byte]]): ChannelRequestInfo
@@ -53,39 +58,51 @@ abstract class RequestDao(tableName: String, hTableFactory: THTableFactory) exte
 
   private def channelRequestModel(requestModel: ObjectNode) = Map[String, Array[Byte]]("model" -> requestModel.toString.getUtf8Bytes)
 
-  override def  saveRequest(requestId: String, request: ConnektRequest, persistDataProps: Boolean) = {
+  override def  saveRequest(requestId: String, request: ConnektRequest) = {
     try {
-      var requestProps = Map[String, Array[Byte]](
-        "id" -> requestId.getUtf8Bytes,
-        "channel" -> request.channel.getUtf8Bytes,
-        "sla" -> request.sla.getUtf8Bytes,
-        "clientId" -> request.clientId.getUtf8Bytes,
-        "meta" -> KryoSerializer.serialize(request.meta)
-      )
-
-      request.stencilId.foreach(requestProps += "stencilId" -> _.getBytes)
-      request.expiryTs.foreach(requestProps += "expiryTs" -> _.getBytes)
-      request.scheduleTs.foreach(requestProps += "scheduleTs" -> _.getBytes)
-      request.contextId.foreach(requestProps += "contextId" -> _.getBytes)
-
-      val channelRequestInfoProps = channelRequestInfoMap(request.channelInfo)
-
-      val channelDataProps = if (persistDataProps) {
-        val channelRequestDataProps = Option(request.channelData).map(channelRequestDataMap).getOrElse(Map.empty[String, Array[Byte]])
-        val channelRequestModelProps = Option(request.channelDataModel).map(channelRequestModel).getOrElse(Map.empty[String, Array[Byte]])
-        channelRequestDataProps ++ channelRequestModelProps
-      } else
-        Map.empty[String, Array[Byte]]
-
-      val rawData = Map[String, Map[String, Array[Byte]]]("r" -> requestProps, "c" -> channelRequestInfoProps, "t" -> channelDataProps)
-      asyncAddRow(requestId, rawData)
-
+      asyncAddRow(requestId, rawData(request))
       ConnektLogger(LogFile.DAO).debug(s"Request info persisted for $requestId")
     } catch {
       case e: IOException =>
         ConnektLogger(LogFile.DAO).error(s"Request info persistence failed for $requestId ${e.getMessage}", e)
         throw new IOException("Request info persistence failed for %s".format(requestId), e)
     }
+  }
+
+  override def saveBulkRequests(requests: List[ConnektRequest]) : List[String] = {
+    try {
+      val s = requests.map(req => req.id -> rawData(req))
+      addRows(s)(hTable)
+      requests.map(_.id)
+    } catch {
+      case e: IOException =>
+        ConnektLogger(LogFile.DAO).error(s"Request info persistence failed for ${requests.map(_.id)} ${e.getMessage}", e)
+        throw new IOException("Request info persistence failed for %s".format({requests.map(_.id)}), e)
+    }
+  }
+
+  def rawData(request: ConnektRequest): Map[String, Map[String, Array[Byte]]] = {
+    var requestProps = Map[String, Array[Byte]](
+      "id" -> request.id.getUtf8Bytes,
+      "channel" -> request.channel.getUtf8Bytes,
+      "sla" -> request.sla.getUtf8Bytes,
+      "clientId" -> request.clientId.getUtf8Bytes,
+      "meta" -> KryoSerializer.serialize(request.meta)
+    )
+
+    request.stencilId.foreach(requestProps += "stencilId" -> _.getBytes)
+    request.expiryTs.foreach(requestProps += "expiryTs" -> _.getBytes)
+    request.scheduleTs.foreach(requestProps += "scheduleTs" -> _.getBytes)
+    request.contextId.foreach(requestProps += "contextId" -> _.getBytes)
+
+    val channelDataProps = if (persistDataProps(request.appName)) {
+      val channelRequestDataProps = Option(request.channelData).map(channelRequestDataMap).getOrElse(Map.empty[String, Array[Byte]])
+      val channelRequestModelProps = Option(request.channelDataModel).map(channelRequestModel).getOrElse(Map.empty[String, Array[Byte]])
+      channelRequestDataProps ++ channelRequestModelProps
+    } else
+      Map.empty[String, Array[Byte]]
+
+    Map[String, Map[String, Array[Byte]]]("r" -> requestProps, "c" -> channelRequestInfoMap(request.channelInfo), "t" -> channelDataProps)
   }
 
   override def fetchRequest(connektIds: List[String]): List[ConnektRequest] = {

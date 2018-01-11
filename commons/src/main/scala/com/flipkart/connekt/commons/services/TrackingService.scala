@@ -23,7 +23,6 @@ import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.CompressionUtils._
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.metrics.Timed
-import net.htmlparser.jericho.HTMLElementName
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 

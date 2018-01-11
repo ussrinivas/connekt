@@ -16,7 +16,7 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.stream.ActorMaterializer
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels.{GenericResponse, Response}
-import com.flipkart.connekt.commons.services.DeviceDetailsService
+import com.flipkart.connekt.commons.services.{DeviceDetailsService, WAContactService}
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
 
 class AdminRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
@@ -44,6 +44,11 @@ class AdminRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                         complete(GenericResponse(StatusCodes.Created.intValue, null, Response(s"Registration cache warm-up started", Map("appName" -> appName, "jobId" -> jobId))))
                       }
                   }
+              } ~ pathPrefix("whatsapp" / "warmup") {
+                get {
+                  WAContactService.instance.refreshWAContacts
+                  complete(GenericResponse(StatusCodes.Created.intValue, null, Response("Wa Contact warm-up started", null)))
+                }
               }
             }
           }

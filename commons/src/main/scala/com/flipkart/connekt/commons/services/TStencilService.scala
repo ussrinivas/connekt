@@ -20,7 +20,7 @@ trait TStencilService extends TService {
 
   def checkStencil(stencil: Stencil): Try[Boolean]
 
-  def materialize(stencil: Stencil, req: ObjectNode): AnyRef
+  def materialize(stencil: Stencil, req: ObjectNode, logRef: Option[String] = None): AnyRef
 
   def add(id: String, stencils: List[Stencil]): Try[Unit]
 

@@ -29,10 +29,13 @@ class RenderFlow extends MapFlowStage[ConnektRequest, ConnektRequest] with Instr
       ConnektLogger(LogFile.PROCESSORS).debug("RenderFlow received message: {}", supplier(input.id))
       ConnektLogger(LogFile.PROCESSORS).trace("RenderFlow received message: {}", supplier(input.getJson))
 
-      val mRendered = input.copy(channelData = input.stencilId match {
-        case Some(_) => input.getComputedChannelData
-        case None => input.channelData
-      }, meta = input.meta ++ input.stencilId.map("stencilId" -> _).toMap)
+      val mRendered = input.copy(
+        channelData = input.stencilId match {
+          case Some(_) => input.getComputedChannelData
+          case None => input.channelData
+        },
+        meta = input.meta ++ input.stencilId.map("stencilId" -> _).toMap
+      )
 
       List(mRendered)
     } catch {

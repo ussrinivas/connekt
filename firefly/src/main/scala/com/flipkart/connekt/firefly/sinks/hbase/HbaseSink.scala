@@ -13,28 +13,30 @@
 package com.flipkart.connekt.firefly.sinks.hbase
 
 import akka.stream.scaladsl.Sink
-import com.flipkart.connekt.commons.entities.{Channel, SubscriptionEvent}
-import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
-import com.flipkart.connekt.commons.iomodels._
+import com.flipkart.connekt.commons.helpers.HbaseBulkRecorder._
+import com.flipkart.connekt.commons.dao.HbaseSinkSupport
+import com.flipkart.connekt.commons.entities.{HbaseEventSink, Subscription, SubscriptionEvent}
+import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.utils.StringUtils._
 
-class HbaseSink {
+import scala.reflect.{ClassTag, _}
 
-  //TODO: Temp hack, clean this shit.
-  def sink = Sink.foreach[SubscriptionEvent](e => {
-    val event = e.payload.toString.getObj[CallbackEvent]
-    event match {
-      case _:PNCallbackEvent =>
-        ServiceFactory.getCallbackService.persistCallbackEvents(Channel.PUSH, List(event)).get
-      case _:EmailCallbackEvent =>
-        ServiceFactory.getCallbackService.persistCallbackEvents(Channel.EMAIL, List(event)).get
-      case _:SmsCallbackEvent =>
-        ServiceFactory.getCallbackService.persistCallbackEvents(Channel.SMS, List(event)).get
-      case _:PullCallbackEvent =>
-        ServiceFactory.getCallbackService.persistCallbackEvents(Channel.PULL,List(event)).get
-      case _ =>
+class HbaseSink(subscription: Subscription) {
+
+  def sink = Sink.foreach[Seq[SubscriptionEvent]](e => {
+    try {
+      val hbaseEventSink = subscription.sink.asInstanceOf[HbaseEventSink]
+      val tag = ClassTag(Class.forName(hbaseEventSink.entityType))
+      val events = e.map(_.payload.toString.getObj(tag).asInstanceOf[HbaseSinkSupport])
+      val eventKeys = events.bulkPersist
+      ConnektLogger(LogFile.SERVICE).trace(s"HbaseSink event: $tag saved for events: {}", supplier(events))
+      ConnektLogger(LogFile.SERVICE).info(s"HbaseSink event: $tag saved for events: ${eventKeys.get}")
     }
-    ConnektLogger(LogFile.SERVICE).trace(s"HbaseSink event saved {}", supplier(event))
+    catch {
+      case err: Exception =>
+        ConnektLogger(LogFile.SERVICE).error(s"HbaseSink failure for events: $e", err)
+        throw err
+    }
   })
 
 }

@@ -24,21 +24,23 @@ import com.flipkart.metrics.Timed
 
 import scala.util.Try
 
-sealed case class EventsDaoContainer(pnEventsDao: PNCallbackDao, emailEventsDao: EmailCallbackDao, smsEventsDao: SmsCallbackDao, pullEventsDao: PullCallbackDao) {
+sealed case class EventsDaoContainer(pnEventsDao: PNCallbackDao, emailEventsDao: EmailCallbackDao, smsEventsDao: SmsCallbackDao, pullEventsDao: PullCallbackDao, waEventsDao: WACallbackDao) {
   def apply(channel: Channel.Value): CallbackDao = channel match {
     case Channel.PUSH => pnEventsDao
     case Channel.EMAIL => emailEventsDao
     case Channel.SMS => smsEventsDao
     case Channel.PULL => pullEventsDao
+    case Channel.WA => waEventsDao
   }
 }
 
-sealed case class RequestDaoContainer(smsRequestDao: SmsRequestDao, pnRequestDao: PNRequestDao, emailRequestDao: EmailRequestDao, pullRequestDao: PullRequestDao) {
+sealed case class RequestDaoContainer(smsRequestDao: SmsRequestDao, pnRequestDao: PNRequestDao, emailRequestDao: EmailRequestDao, pullRequestDao: PullRequestDao, waRequestDao: WARequestDao) {
   def apply(channel: Channel.Value): RequestDao = channel match {
     case Channel.PUSH => pnRequestDao
     case Channel.EMAIL => emailRequestDao
     case Channel.SMS => smsRequestDao
     case Channel.PULL => pullRequestDao
+    case Channel.WA => waRequestDao
   }
 }
 
@@ -51,6 +53,12 @@ class CallbackService(eventsDao: EventsDaoContainer, requestDao: RequestDaoConta
   override def persistCallbackEvents(channel: Channel.Value, events: List[CallbackEvent]): Try[List[String]] = {
     Try {
       eventsDao(channel).asyncSaveCallbackEvents(events)
+    }
+  }
+
+  override def syncPersistCallbackEvents(channel: Channel.Value, events: List[CallbackEvent]): Try[List[String]] = {
+    Try {
+      eventsDao(channel).saveCallbackEvents(events)
     }
   }
 

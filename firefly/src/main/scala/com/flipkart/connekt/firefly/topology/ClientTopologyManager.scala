@@ -10,7 +10,7 @@
  *
  *      Copyright © 2016 Flipkart.com
  */
-package com.flipkart.connekt.firefly
+package com.flipkart.connekt.firefly.topology
 
 import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, KillSwitch}
@@ -59,7 +59,7 @@ class ClientTopologyManager(kafkaConsumerConnConf: Config, eventRelayRetryLimit:
     }
   }
 
-  def restoreState() ={
+  def restoreState() = {
     SubscriptionService.getAll() match {
       case Success(subscriptions) => subscriptions.filter(_.active).foreach(startTopology)
       case Failure(e) => ConnektLogger(LogFile.SERVICE).error(e)
