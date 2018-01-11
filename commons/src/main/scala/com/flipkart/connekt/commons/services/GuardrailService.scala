@@ -37,7 +37,7 @@ object GuardrailService extends Instrumented {
     val validatorClassName = projectConfigService.getProjectConfiguration(appName, s"validator-service-${channel.toString.toLowerCase}").get.map(_.value).getOrElse(classOf[DefaultGuardrailService].getName)
     try {
       ConnektLogger(LogFile.PROCESSORS).debug(s"GuardrailService received message for appName : $appName and channel $channel with entity ${inpEntity}")
-      val guardrailServiceImpl: TGuardrailService[E, R] = Class.forName(validatorClassName).newInstance().asInstanceOf[TGuardrailService[E, R]]
+      val guardrailServiceImpl: TGuardrailService = Class.forName(validatorClassName).newInstance().asInstanceOf[TGuardrailService]
       guardrailServiceImpl.isGuarded(gEntity, gMeta)
     } catch {
       case e: Throwable =>
@@ -52,7 +52,7 @@ object GuardrailService extends Instrumented {
     val validatorClassName = projectConfigService.getProjectConfiguration(appName, s"validator-service-${channel.toString.toLowerCase}").get.map(_.value).getOrElse(classOf[DefaultGuardrailService].getName)
     try {
       ConnektLogger(LogFile.PROCESSORS).debug(s"GuardrailService received message for appName : $appName and channel $channel with entity ${entity.entity}")
-      val guardrailServiceImpl: TGuardrailService[E, R] = Class.forName(validatorClassName).newInstance().asInstanceOf[TGuardrailService[E, R]]
+      val guardrailServiceImpl: TGuardrailService = Class.forName(validatorClassName).newInstance().asInstanceOf[TGuardrailService]
       val metadata = new TGuardrailEntityMetadata {
         override def meta = inputMeta
       }
@@ -64,5 +64,27 @@ object GuardrailService extends Instrumented {
         throw new Exception(e)
     }
   }
+
+  @Timed("upsertSubscription")
+  def upsertSubscription[E, R](appName: String, channel: Channel, inpEntity: E, inputMeta: Map[String, AnyRef]): Try[R] = {
+    val validatorClassName = projectConfigService.getProjectConfiguration(appName, s"validator-service-${channel.toString.toLowerCase}").get.map(_.value).getOrElse(classOf[DefaultGuardrailService].getName)
+    try {
+      ConnektLogger(LogFile.PROCESSORS).debug(s"GuardrailService received message for appName : $appName and channel $channel with entity ${inpEntity}")
+      val guardrailServiceImpl: TGuardrailService = Class.forName(validatorClassName).newInstance().asInstanceOf[TGuardrailService]
+      val gEntity = new TGuardrailEntity[E] {
+        override def entity = inpEntity
+      }
+      val metadata = new TGuardrailEntityMetadata {
+        override def meta = inputMeta
+      }
+      guardrailServiceImpl.modifyGuard(gEntity, metadata).response
+    } catch {
+      case e: Throwable =>
+        meter(s"guardrail.service.guard.$validatorClassName.failure").mark()
+        ConnektLogger(LogFile.PROCESSORS).error(s"GuardrailService error", e)
+        throw new Exception(e)
+    }
+  }
+
 
 }
