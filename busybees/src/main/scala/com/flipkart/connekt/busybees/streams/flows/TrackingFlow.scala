@@ -34,8 +34,9 @@ abstract class TrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecu
   lazy private val projectConfigService = ServiceFactory.getUserProjectConfigService
   lazy private val defaultTrackingDomain = ConnektConfig.getString("tracking.default.domain").get
 
-  def transformChannelData(request:ConnektRequest, trackingDomain:String, transformer: TURLTransformer ) : ChannelRequestData
-  def transformChannelDataModel(request:ConnektRequest, trackingDomain:String, transformer: TURLTransformer ) : ObjectNode = {
+  def transformChannelData(request: ConnektRequest, trackingDomain: String, transformer: TURLTransformer): ChannelRequestData
+
+  def transformChannelDataModel(request: ConnektRequest, trackingDomain: String, transformer: TURLTransformer): ObjectNode = {
     request.channelDataModel
   }
 
@@ -50,7 +51,7 @@ abstract class TrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecu
       val appDomain = projectConfigService.getProjectConfiguration(input.appName, "tracking-domain").get.map(_.value).getOrElse(defaultTrackingDomain)
       val trackingEnabled = projectConfigService.getProjectConfiguration(input.appName, s"tracking-enabled").get.map(_.value).getOrElse("true").toBoolean
 
-      if(trackingEnabled) {
+      if (trackingEnabled) {
         List(input.copy(
           channelData = transformChannelData(input, appDomain, transformer),
           channelDataModel = transformChannelDataModel(input, appDomain, transformer)
@@ -71,35 +72,35 @@ abstract class TrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecu
 
 class EmailTrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecutor) extends TrackingFlow(parallelism)(ec) {
 
-  override def transformChannelData(input: ConnektRequest, trackingDomain:String, transformer: TURLTransformer ): ChannelRequestData = {
+  override def transformChannelData(input: ConnektRequest, trackingDomain: String, transformer: TURLTransformer): ChannelRequestData = {
 
-        /**
-          * I don't know how to individually track each recipient. Assuming simple email,
-          * open/click are tracked against the first `to` address
-          */
-        val destination = input.channelInfo.asInstanceOf[EmailRequestInfo].to.head.address
-        val cData = input.channelData.asInstanceOf[EmailRequestData]
+    /**
+      * I don't know how to individually track each recipient. Assuming simple email,
+      * open/click are tracked against the first `to` address
+      */
+    val destination = input.channelInfo.asInstanceOf[EmailRequestInfo].to.head.address
+    val cData = input.channelData.asInstanceOf[EmailRequestData]
 
-        val trackerOptions = TrackerOptions(domain = trackingDomain,
-          channel = Channel.EMAIL,
-          messageId = input.id,
-          contextId = input.contextId,
-          destination = destination,
-          clientId = input.clientId,
-          appName = input.appName)
+    val trackerOptions = TrackerOptions(domain = trackingDomain,
+      channel = Channel.EMAIL,
+      messageId = input.id,
+      contextId = input.contextId,
+      destination = destination,
+      clientId = input.clientId,
+      appName = input.appName)
 
-        EmailRequestData(subject = cData.subject,
-          html = TrackingService.trackHTML(cData.html, trackerOptions, transformer),
-          text = TrackingService.trackText(cData.text, trackerOptions, transformer),
-          attachments = cData.attachments
-        )
+    EmailRequestData(subject = cData.subject,
+      html = TrackingService.trackHTML(cData.html, trackerOptions, transformer),
+      text = TrackingService.trackText(cData.text, trackerOptions, transformer),
+      attachments = cData.attachments
+    )
   }
 }
 
 
 class SMSTrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecutor) extends TrackingFlow(parallelism)(ec) {
 
-  override def transformChannelData(input: ConnektRequest, trackingDomain:String, transformer: TURLTransformer ): ChannelRequestData = {
+  override def transformChannelData(input: ConnektRequest, trackingDomain: String, transformer: TURLTransformer): ChannelRequestData = {
 
     /**
       * I don't know how to individually track each recipient. Assuming simple sms,
@@ -122,7 +123,7 @@ class SMSTrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecutor) e
 }
 
 class WATrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecutor) extends TrackingFlow(parallelism)(ec) {
-  override def transformChannelDataModel(input: ConnektRequest, trackingDomain:String, transformer: TURLTransformer ): ObjectNode = {
+  override def transformChannelDataModel(input: ConnektRequest, trackingDomain: String, transformer: TURLTransformer): ObjectNode = {
     val destination = input.channelInfo.asInstanceOf[WARequestInfo].destinations.head
     val trackerOptions = TrackerOptions(domain = trackingDomain,
       channel = Channel.WA,
@@ -133,13 +134,13 @@ class WATrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecutor) ex
       appName = input.appName)
 
     input.channelDataModel match {
-      case dataModel:ObjectNode =>
+      case dataModel: ObjectNode =>
         TrackingService.trackText(dataModel.toString, trackerOptions, transformer).getObj[ObjectNode]
       case _ => input.channelDataModel
     }
   }
 
-  override def transformChannelData(input: ConnektRequest, trackingDomain:String, transformer: TURLTransformer ): ChannelRequestData = {
+  override def transformChannelData(input: ConnektRequest, trackingDomain: String, transformer: TURLTransformer): ChannelRequestData = {
     val destination = input.channelInfo.asInstanceOf[WARequestInfo].destinations.head
     val waData = input.channelData.asInstanceOf[WARequestData]
 
@@ -151,7 +152,7 @@ class WATrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecutor) ex
       clientId = input.clientId,
       appName = input.appName)
 
-    val attachment = waData.attachment.map(attachment => {
+    val attachments = waData.attachments.map(attachment => {
       attachment.copy(
         caption = attachment.caption.map(caption => {
           TrackingService.trackText(caption, trackerOptions, transformer)
@@ -159,10 +160,7 @@ class WATrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecutor) ex
         name = s"${input.id}_${attachment.name}"
       )
     })
-    waData.copy(
-      attachment = attachment,
-      message = waData.message.map(TrackingService.trackText(_, trackerOptions, transformer))
-    )
+    waData.copy(attachments = attachments)
   }
 
 }

@@ -38,7 +38,8 @@ class WATopologyTest extends TopologyUTSpec {
                       |  "channelData" :{
                       |  		"type": "WA",
                       |     "waType" : "image",
-                      |     "attachment": {
+                      |     "attachments": {
+              |                 "attachmentType" : "image",
                       |         "base64Data":"$imgBase64",
                       |         "name":"fog.jpg",
                       |         "mime":"application/jpeg",

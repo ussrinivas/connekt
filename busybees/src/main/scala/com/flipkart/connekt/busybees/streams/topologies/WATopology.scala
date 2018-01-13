@@ -100,9 +100,9 @@ object WATopology {
       */
 
     val mediaPartitioner = b.add(Partition[ConnektRequest](2,
-      _.channelData.asInstanceOf[WARequestData].attachment match {
-        case Some(_:Attachment) => 0
-        case _ => 1
+      _.channelData.asInstanceOf[WARequestData].attachments.isEmpty match {
+        case false => 0
+        case true => 1
       }))
 
     val waMediaDispatcher = b.add(new WAMediaDispatcher().flow)

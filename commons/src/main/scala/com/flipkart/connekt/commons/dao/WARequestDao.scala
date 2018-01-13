@@ -16,6 +16,7 @@ import com.flipkart.connekt.commons.dao.HbaseDao._
 import com.flipkart.connekt.commons.factories.THTableFactory
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.utils.StringUtils.{JSONMarshallFunctions, JSONUnMarshallFunctions}
+
 import scala.reflect.runtime.universe._
 
 class WARequestDao(tableName: String, hTableFactory: THTableFactory) extends RequestDao(tableName: String, hTableFactory: THTableFactory) {
@@ -40,7 +41,7 @@ class WARequestDao(tableName: String, hTableFactory: THTableFactory) extends Req
       val waRequestData = d.asInstanceOf[WARequestData]
       val m = scala.collection.mutable.Map[String, Array[Byte]]()
       waRequestData.message.foreach(m += "message" -> _.getUtf8Bytes)
-      waRequestData.attachment.foreach(m += "attachment" -> _.getJson.getUtf8Bytes)
+      waRequestData.attachments.foreach(m += "attachments" -> _.getJson.getUtf8Bytes)
       m += "waType" -> waRequestData.waType.toString.getUtf8Bytes
       m.toMap
     }).orNull
@@ -50,7 +51,7 @@ class WARequestDao(tableName: String, hTableFactory: THTableFactory) extends Req
     WARequestData(
       WAType.valueOf(reqDataProps.getS("waType")),
       reqDataProps.get("message").map(new String(_)),
-      Option(reqDataProps.getS("attachment")).map(_.getObj(typeTag[Attachment]))
+      Option(reqDataProps.getS("attachments")).map(_.getObj(typeTag[List[WAAttachment]])).orNull
     )
   }
 }

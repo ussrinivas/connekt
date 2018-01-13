@@ -1,18 +1,16 @@
 package com.flipkart.connekt.commons.iomodels;
 
+public enum AttachmentType {
 
-public enum WAType {
-
-  text("text"),
-  media("media"),
-  hsm("hsm");
+  image("image"),
+  document("document");
 
   private final String value;
 
   /**
    * @param value
    */
-  private WAType(final String value) {
+  private AttachmentType(final String value) {
     this.value = value;
   }
 
