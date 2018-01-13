@@ -18,8 +18,7 @@ case class WAAttachment(
                          attachmentType: AttachmentType,
                          base64Data: String,
                          name: String,
-                         mime: String,
-                         caption: Option[String] = None
+                         caption: String
                        )
 
 case class WARequestData(
@@ -29,12 +28,11 @@ case class WARequestData(
                         ) extends ChannelRequestData {
 
   def validate(appName: String)(implicit stencilService: TStencilService): Unit = {
-    attachments.foreach(a => {
-      require(a.attachmentType != null)
-      a.attachmentType match {
-        case AttachmentType.document | AttachmentType.image => require(attachments.nonEmpty, "attachment is required")
-        case _ => None
-      }
-    })
+    require(waType != null)
+    waType match {
+      case WAType.text => require(message.isDefined, "message is required")
+      case WAType.media => require(attachments != null && attachments.nonEmpty, "attachment is required")
+      case _ => None
+    }
   }
 }

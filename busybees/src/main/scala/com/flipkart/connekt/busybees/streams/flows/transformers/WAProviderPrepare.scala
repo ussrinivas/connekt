@@ -93,11 +93,11 @@ object WAPayloadFormatter {
           attachment.attachmentType match {
             case AttachmentType.image =>
               WARequest(DocumentWAPayload(
-                FileData(attachment.name, attachment.caption.getOrElse("")), destination
+                FileData(attachment.name, attachment.caption), destination
               ))
             case AttachmentType.document =>
               WARequest(DocumentWAPayload(
-                FileData(attachment.name, attachment.caption.getOrElse("")), destination
+                FileData(attachment.name, attachment.caption), destination
               ))
           }
         })
