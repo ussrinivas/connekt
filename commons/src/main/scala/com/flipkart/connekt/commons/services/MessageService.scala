@@ -35,12 +35,12 @@ class MessageService(requestDao: TRequestDao, userConfigurationDao: TUserConfigu
   private val queueProducer: KafkaProducerHelper = queueProducerHelper
   private val clientRequestTopics = scala.collection.mutable.Map[String, String]()
 
-  override def saveRequest(request: ConnektRequest, requestBucket: String): Try[String] = {
+  override def saveRequest(request: ConnektRequest, requestBucket: String, lessData : Boolean = true): Try[String] = {
     try {
       val reqWithId = request.copy(id = generateUUID)
       request.scheduleTs match {
         case Some(scheduleTime) if scheduleTime > System.currentTimeMillis() + 2.minutes.toMillis =>
-          schedulerService.client.add(ScheduledRequest(reqWithId, requestBucket), scheduleTime)
+          schedulerService.client.add(ScheduledRequest(reqWithId, requestBucket, lessData), scheduleTime)
           ConnektLogger(LogFile.SERVICE).info(s"Scheduled request ${reqWithId.id} at $scheduleTime to $requestBucket")
         case _ =>
           queueProducer.writeMessages(requestBucket, Tuple2(reqWithId.kafkaKey, reqWithId.getJson))

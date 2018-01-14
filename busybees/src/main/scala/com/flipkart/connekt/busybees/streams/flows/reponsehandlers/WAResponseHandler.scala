@@ -21,7 +21,7 @@ import com.flipkart.connekt.commons.helpers.CallbackRecorder._
 import com.flipkart.connekt.commons.iomodels.MessageStatus.WAResponseStatus
 import com.flipkart.connekt.commons.iomodels.{WACallbackEvent, WAErrorResponse, WASuccessResponse}
 import com.flipkart.connekt.commons.metrics.Instrumented
-import com.flipkart.connekt.commons.services.WAMessageIdMappingService
+import com.flipkart.connekt.commons.services.{SessionControlService, WAMessageIdMappingService}
 import com.flipkart.connekt.commons.utils.StringUtils._
 
 import scala.collection.mutable.ListBuffer
@@ -39,6 +39,9 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends 
 
     val events = ListBuffer[WACallbackEvent]()
     val eventTS = System.currentTimeMillis()
+
+    // Removing user session.
+    SessionControlService.decrease(appName, requestTracker.destination)
 
     try {
       httpResponse match {

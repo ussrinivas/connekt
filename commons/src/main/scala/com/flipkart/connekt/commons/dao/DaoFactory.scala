@@ -39,6 +39,7 @@ object DaoFactory {
     daoMap += DaoType.EXCLUSION_DETAILS -> ExclusionDao("fk-connekt-exclusions", hTableFactory)
     daoMap += DaoType.WA_MESSAGEID_MAPPING -> WAMessageIdMappingDao("fk-connekt-wa-message-mapping", hTableFactory)
     daoMap += DaoType.WA_CONTACT -> WAContactDao("fk-connekt-wa-contact", hTableFactory)
+    daoMap += DaoType.SCHEDULE_REQUEST -> ScheduleRequestDao("connekt-scheduled-bigdata-requests", hTableFactory)
     daoMap += DaoType.PN_REQUEST_INFO -> PNRequestDao(tableName = "fk-connekt-pn-info", hTableFactory = hTableFactory)
     daoMap += DaoType.SMS_REQUEST_INFO -> SmsRequestDao(tableName = "fk-connekt-sms-info", hTableFactory = hTableFactory)
     daoMap += DaoType.WA_REQUEST_INFO -> WARequestDao(tableName = "fk-connekt-wa-info", hTableFactory = hTableFactory)
@@ -122,6 +123,8 @@ object DaoFactory {
 
   def getWAContactDao: WAContactDao = daoMap(DaoType.WA_CONTACT).asInstanceOf[WAContactDao]
 
+  def getScheduleRequestDao: ScheduleRequestDao = daoMap(DaoType.SCHEDULE_REQUEST).asInstanceOf[ScheduleRequestDao]
+
   def getPNRequestDao: PNRequestDao = daoMap(DaoType.PN_REQUEST_INFO).asInstanceOf[PNRequestDao]
 
   def getSmsRequestDao: SmsRequestDao = daoMap(DaoType.SMS_REQUEST_INFO).asInstanceOf[SmsRequestDao]
@@ -162,6 +165,7 @@ object DaoType extends Enumeration {
   REQUEST_META,
   EXCLUSION_DETAILS,
   WA_CONTACT,
+  SCHEDULE_REQUEST,
   WA_REQUEST_INFO,
   WA_MESSAGEID_MAPPING,
   PN_REQUEST_INFO,

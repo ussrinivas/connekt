@@ -17,6 +17,7 @@ import com.couchbase.client.java.document.StringDocument
 import com.couchbase.client.java.error.DocumentDoesNotExistException
 import com.flipkart.connekt.commons.dao.DaoFactory
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
+import com.flipkart.connekt.commons.services.ConnektConfig
 import com.flipkart.connekt.commons.utils.StringUtils._
 import rx.lang.scala.Observable
 
@@ -30,6 +31,7 @@ object DistributedCacheManager extends CacheManager {
   cacheTTLMap += DistributedCacheType.TransientUsers -> CacheProperty(0, 6.hours)
   cacheTTLMap += DistributedCacheType.ExclusionDetails -> CacheProperty(0, 0.second)
   cacheTTLMap += DistributedCacheType.IdempotentCheck -> CacheProperty(0, 1.day)
+  cacheTTLMap += DistributedCacheType.SessionControl -> CacheProperty(0, ConnektConfig.getInt("wa.user.session.timeout.min").get.minute)
   cacheTTLMap += DistributedCacheType.Default -> CacheProperty(0, 24.hours)
   cacheTTLMap += DistributedCacheType.DeviceDetails -> CacheProperty(0, Duration.Inf)
 

@@ -42,6 +42,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
   private lazy implicit val stencilService = ServiceFactory.getStencilService
   private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
   private val checkContactInterval = ConnektConfig.getInt("wa.check.contact.interval.days").get
+  private val sessionTimeout = ConnektConfig.getInt("wa.user.session.timeout.min").get
   private val smsRegexCheck = ConnektConfig.getString("sms.regex.check").get
 
   val route =
@@ -478,10 +479,34 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
                                           val userPrefRejectedContacts = prefCheckedContacts.map(_._1).diff(validNumbers)
                                           if (prefCheckedContacts.nonEmpty) {
-                                            val waRequest = request.copy(channelInfo = waRequestInfo.copy(destinations = waUserName.toSet))
+
+                                            // Checking if user session already exists if only one reciever in request
+                                            val scheduleTs = if (prefCheckedContacts.size == 1) {
+                                              val userRequestCount = SessionControlService.get(appName, waUserName.head).get
+                                              val sTS = if (userRequestCount == 0) {
+                                                None
+                                              } else {
+                                                request.scheduleTs match {
+                                                  case Some(t) =>
+                                                    val waitTime = userRequestCount * sessionTimeout * 60 * 1000 + System.currentTimeMillis()
+                                                    if (t > waitTime)
+                                                      Some(t)
+                                                    else
+                                                      Some(waitTime)
+                                                  case None => Some(userRequestCount * sessionTimeout * 60 * 1000 + System.currentTimeMillis())
+                                                }
+                                              }
+                                              SessionControlService.increase(appName, waUserName.head)
+                                              sTS
+                                            } else {
+                                              request.scheduleTs
+                                            }
+                                            //
+                                            val waRequest = request.copy(channelInfo = waRequestInfo.copy(destinations = waUserName.toSet), scheduleTs = scheduleTs)
+
                                             val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(request, user)
                                             /* enqueue multiple requests into kafka */
-                                            val (success, failure) = ServiceFactory.getMessageService(Channel.WA).saveRequest(waRequest, queueName) match {
+                                            val (success, failure) = ServiceFactory.getMessageService(Channel.WA).saveRequest(waRequest, queueName, false) match {
                                               case Success(id) =>
                                                 (Map(id -> waUserName.toSet), invalidNumbers ++ userPrefRejectedContacts ++ waNotExistsContacts)
                                               case Failure(t) =>

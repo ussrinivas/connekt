@@ -29,12 +29,13 @@ import org.apache.curator.RetryPolicy
 import org.apache.curator.framework.{CuratorFramework, CuratorFrameworkFactory}
 import org.apache.curator.retry.ExponentialBackoffRetry
 
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 abstract class ConnektSchedulerModule extends AbstractModule {
 
   protected var appName: String = null
   protected var numPartitions: Int = 0
+  private lazy val dao = DaoFactory.getScheduleRequestDao
 
   protected def initializeClassMembers()
 
@@ -53,7 +54,7 @@ abstract class ConnektSchedulerModule extends AbstractModule {
   protected def configureClient() {
 
     val zookeeperHost = ConnektConfig.getString("connections.scheduler.worker.zookeeper.host").get
-    val baseSleepInMillis  = ConnektConfig.getInt("scheduler.worker.baseSleepInMilliSecs").getOrElse(10000)
+    val baseSleepInMillis = ConnektConfig.getInt("scheduler.worker.baseSleepInMilliSecs").getOrElse(10000)
     val maxRetryCount = ConnektConfig.getInt("scheduler.worker.maxRetryCount").getOrElse(5)
     val zookeeperSessionTimeoutInMillis = ConnektConfig.getInt("connections.scheduler.worker.zookeeper.sessionTimeoutInMillis").getOrElse(10000)
     val zookeeperConnectionTimeoutInMillis = ConnektConfig.getInt("connections.scheduler.worker.zookeeper.connectionTimeoutInMillis").getOrElse(60000)
@@ -79,8 +80,20 @@ abstract class ConnektSchedulerModule extends AbstractModule {
 
     new KafkaSchedulerSink(producerConfig, "invalid_topic_since_topic_is_derived_from_value", new KafkaMessage() {
       override def getKeyedMessage(topic: String, value: String): KeyedMessage[String, String] = {
-        val keyValue = value.split("\\$", 2)
-        new KeyedMessage[String, String](keyValue(0), keyValue(1))
+        val keyValue = value.split("\\$", 3)
+        val data = if (keyValue(1).toBoolean) {
+          keyValue(2)
+        } else {
+          dao.get(keyValue(2)) match {
+            case Success(s) =>
+              dao.delete(keyValue(2))
+              s.get
+            case Failure(f) =>
+              ConnektLogger(LogFile.WORKERS).error(s"Failed to fetch request with exception : ", f)
+              ""
+          }
+        }
+        new KeyedMessage[String, String](keyValue(0), data)
       }
     })
   }
@@ -102,10 +115,10 @@ abstract class ConnektSchedulerModule extends AbstractModule {
 
     (0 until numPartitions).foreach(i => {
       val previousCheckpoint = Try(schedulerCheckPointer.peek(i)).recover {
-          case e: SchedulerException =>
-            ConnektLogger(LogFile.WORKERS).error(s"No current checkpoint for partition $i", e)
-            null
-        }.get
+        case e: SchedulerException =>
+          ConnektLogger(LogFile.WORKERS).error(s"No current checkpoint for partition $i", e)
+          null
+      }.get
       if (null == previousCheckpoint)
         schedulerCheckPointer.set(String.valueOf(resumeCheckpointSince), i)
     })
