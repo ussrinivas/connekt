@@ -41,7 +41,7 @@ class WARequestDao(tableName: String, hTableFactory: THTableFactory) extends Req
       val waRequestData = d.asInstanceOf[WARequestData]
       val m = scala.collection.mutable.Map[String, Array[Byte]]()
       waRequestData.message.foreach(m += "message" -> _.getUtf8Bytes)
-      waRequestData.attachments.foreach(m += "attachments" -> _.getJson.getUtf8Bytes)
+      Option(waRequestData.attachments).foreach(m += "attachments" -> _.getJson.getUtf8Bytes )
       m += "waType" -> waRequestData.waType.toString.getUtf8Bytes
       m.toMap
     }).orNull
