@@ -41,6 +41,7 @@ abstract class TrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecu
   }
 
   override val map: (ConnektRequest) => Future[List[ConnektRequest]] = input => Future(profile("map") {
+    Thread.sleep(30000)
     try {
       ConnektLogger(LogFile.PROCESSORS).debug("TrackingFlow received message: {}", supplier(input.id))
       ConnektLogger(LogFile.PROCESSORS).trace("TrackingFlow received message: {}", supplier(input.getJson))
