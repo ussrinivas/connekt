@@ -26,7 +26,7 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
 import com.flipkart.connekt.commons.metrics.Instrumented
-import com.flipkart.connekt.commons.services.ConnektConfig
+import com.flipkart.connekt.commons.services.{ConnektConfig, SessionControlService}
 
 class WAMediaDispatcher extends MapFlowStage[ConnektRequest, (HttpRequest, WAMediaRequestTracker)] with Instrumented {
   private val baseUrl = ConnektConfig.getString("wa.base.uri").get
@@ -35,6 +35,10 @@ class WAMediaDispatcher extends MapFlowStage[ConnektRequest, (HttpRequest, WAMed
   override val map: (ConnektRequest) => (List[(HttpRequest, WAMediaRequestTracker)]) = connektRequest => profile("map") {
     try {
       val wARequestData = connektRequest.channelData.asInstanceOf[WARequestData]
+
+      // Adding number of attachment to request id to properly invalidate user session.
+      SessionControlService.add(Channel.WA.toString, connektRequest.appName, connektRequest.id, wARequestData.attachments.size)
+
       if (wARequestData.attachments.isEmpty) {
         List.empty
       } else {

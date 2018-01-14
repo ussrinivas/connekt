@@ -40,8 +40,13 @@ class WAResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends 
     val events = ListBuffer[WACallbackEvent]()
     val eventTS = System.currentTimeMillis()
 
-    // Removing user session.
-    SessionControlService.decrease(appName, requestTracker.destination)
+    // Removing user session when all attachment response is recieved.
+    val attachCount = SessionControlService.get(Channel.WA.toString, appName, messageId).get
+    if (attachCount == 0) {
+      SessionControlService.decrease(Channel.WA.toString, appName, requestTracker.destination)
+    } else {
+      SessionControlService.add(Channel.WA.toString, appName, messageId, attachCount - 1)
+    }
 
     try {
       httpResponse match {

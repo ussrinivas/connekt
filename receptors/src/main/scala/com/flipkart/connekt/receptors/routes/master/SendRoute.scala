@@ -482,21 +482,21 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
                                             // Checking if user session already exists if only one reciever in request
                                             val scheduleTs = if (prefCheckedContacts.size == 1) {
-                                              val userRequestCount = SessionControlService.get(appName, waUserName.head).get
-                                              val sTS = if (userRequestCount == 0) {
+                                              val sessionCount = SessionControlService.get(Channel.WA.toString, appName, waUserName.head).get
+                                              val sTS = if (sessionCount == 0) {
                                                 None
                                               } else {
                                                 request.scheduleTs match {
                                                   case Some(t) =>
-                                                    val waitTime = userRequestCount * sessionTimeout * 60 * 1000 + System.currentTimeMillis()
+                                                    val waitTime = sessionCount * sessionTimeout * 60 * 1000 + System.currentTimeMillis()
                                                     if (t > waitTime)
                                                       Some(t)
                                                     else
                                                       Some(waitTime)
-                                                  case None => Some(userRequestCount * sessionTimeout * 60 * 1000 + System.currentTimeMillis())
+                                                  case None => Some(sessionCount * sessionTimeout * 60 * 1000 + System.currentTimeMillis())
                                                 }
                                               }
-                                              SessionControlService.increase(appName, waUserName.head)
+                                              SessionControlService.increase(Channel.WA.toString, appName, waUserName.head)
                                               sTS
                                             } else {
                                               request.scheduleTs
