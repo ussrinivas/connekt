@@ -481,7 +481,8 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                           if (prefCheckedContacts.nonEmpty) {
 
                                             // Checking if user session already exists if only one reciever in request
-                                            val scheduleTs = if (prefCheckedContacts.size == 1) {
+                                            val wARequestData = request.channelData.asInstanceOf[WARequestData]
+                                            val scheduleTs = if (prefCheckedContacts.size == 1 && wARequestData.attachments != null && wARequestData.attachments.nonEmpty) {
                                               val sessionCount = SessionControlService.get(Channel.WA.toString, appName, waUserName.head).get
                                               val sTS = if (sessionCount == 0) {
                                                 None

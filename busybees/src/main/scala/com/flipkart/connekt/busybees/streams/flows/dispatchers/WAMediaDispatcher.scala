@@ -37,9 +37,11 @@ class WAMediaDispatcher extends MapFlowStage[ConnektRequest, (HttpRequest, WAMed
       val wARequestData = connektRequest.channelData.asInstanceOf[WARequestData]
 
       // Adding number of attachment to request id to properly invalidate user session.
-      SessionControlService.add(Channel.WA.toString, connektRequest.appName, connektRequest.id, wARequestData.attachments.size)
+      if (connektRequest.destinations.size == 1 && wARequestData.attachments != null && wARequestData.attachments.nonEmpty) {
+        SessionControlService.add(Channel.WA.toString, connektRequest.appName, connektRequest.id, wARequestData.attachments.size)
+      }
 
-      if (wARequestData.attachments.isEmpty) {
+      if (wARequestData.attachments == null || wARequestData.attachments.isEmpty) {
         List.empty
       } else {
         wARequestData.attachments.map(a => {
