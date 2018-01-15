@@ -13,7 +13,7 @@
 package com.flipkart.connekt.commons.iomodels
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import org.apache.commons.lang3.StringUtils
+import org.apache.commons.lang.StringUtils
 
 case class WAContactRequest(@JsonProperty payload: Payload)
 

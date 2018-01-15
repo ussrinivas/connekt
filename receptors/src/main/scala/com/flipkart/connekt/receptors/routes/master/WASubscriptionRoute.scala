@@ -49,7 +49,7 @@ class WASubscriptionRoute (implicit am: ActorMaterializer) extends BaseJsonHandl
                               case Some(validNumber) =>
                                 GuardrailService.modifyGuard[String, Any, Map[String, Boolean]](appName, Channel.WA, validNumber, subRequest.asMap.asInstanceOf[Map[String, AnyRef]]) match {
                                   case Success(subResp) =>
-                                    if (subResp("firstTimeUser")) {
+                                    if (subResp("firstTimeUser") && subRequest.subscription == SubscriptionValues.SUBS) {
                                       val checkedContacts = WAContactCheckHelper.checkContact(appName, Set(validNumber))
                                       val number = checkedContacts._1.headOption match {
                                         case Some(n) =>
