@@ -29,7 +29,7 @@ import scala.util.{Failure, Success}
 class WASubscriptionRoute (implicit am: ActorMaterializer) extends BaseJsonHandler {
   private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
 
-  def WELCOME_STENCIL = ConnektConfig.getOrElse("whatsapp.welcome.stencil","STNR9N6VD")
+  def WELCOME_STENCIL = ConnektConfig.getString("whatsapp.welcome.stencil")
   private val checkContactInterval = ConnektConfig.getInt("wa.check.contact.interval.days").get
 
   val route =
@@ -50,16 +50,13 @@ class WASubscriptionRoute (implicit am: ActorMaterializer) extends BaseJsonHandl
                                 GuardrailService.modifyGuard[String, Any, Map[String, Boolean]](appName, Channel.WA, validNumber, subRequest.asMap.asInstanceOf[Map[String, AnyRef]]) match {
                                   case Success(subResp) =>
                                     if (subResp("firstTimeUser") && subRequest.subscription == SubscriptionValues.SUBS) {
-                                      val checkedContacts = WAContactCheckHelper.checkContact(appName, Set(validNumber))
-                                      val number = checkedContacts._1.headOption match {
+                                      val waValidUsers = WAContactCheckHelper.checkContact(appName, Set(validNumber))._1
+                                      val number = waValidUsers.headOption match {
                                         case Some(n) =>
                                           val channelInfo = WARequestInfo(appName = appName, destinations = Set(n.userName))
                                           val channelData = WARequestData(waType = WAType.hsm)
-                                          val channelDataModel = StringUtils.getObjectNode
-                                          channelDataModel.put("pickupTime", "10AM")
-                                          channelDataModel.put("orderId", "ankit-order-id")
                                           val meta = WAMetaData("flipkart", "transactional", "order").asMap.asInstanceOf[Map[String, String]]
-                                          val connektRequest = ConnektRequest(generateUUID, "whatspp", Some("WELCOME"), "wa", "H", Some(WELCOME_STENCIL), None, None, channelInfo, channelData, channelDataModel, meta)
+                                          val connektRequest = ConnektRequest(generateUUID, "whatspp", Some("WELCOME"), "wa", "H", WELCOME_STENCIL, None, None, channelInfo, channelData, null, meta)
                                           val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(connektRequest, user)
                                           ServiceFactory.getMessageService(Channel.WA).saveRequest(connektRequest, queueName)
                                         case None =>

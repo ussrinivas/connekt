@@ -63,8 +63,8 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                   case None => invalidDestinations += d
                                 }
                               })
-                              val checkedContacts = WAContactCheckHelper.checkContact(appName, formattedDestination.toSet)
-                              GenericResponse(StatusCodes.OK.intValue, null, Response("Some message", WAContactResponse(checkedContacts._1 ::: checkedContacts._2, invalidDestinations.toList)))
+                              val (waValidUsers, waInvalidUsers) = WAContactCheckHelper.checkContact(appName, formattedDestination.toSet)
+                              GenericResponse(StatusCodes.OK.intValue, null, Response("Some message", WAContactResponse(waValidUsers ::: waInvalidUsers, invalidDestinations.toList)))
                             }
                           }(ioDispatcher)
                         }
@@ -94,8 +94,8 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                           case Failure(_) => false
                                         }
                                       } else null
-                                      val checkedContacts = WAContactCheckHelper.checkContact(appName, Set(n))
-                                      GenericResponse(StatusCodes.OK.intValue, null, Response(s"WA status for destination $destination", WACheckContactResp((checkedContacts._1 ::: checkedContacts._2).head.exists, subscribed)))
+                                      val (waValidUsers, waInvalidUsers) = WAContactCheckHelper.checkContact(appName, Set(n))
+                                      GenericResponse(StatusCodes.OK.intValue, null, Response(s"WA status for destination $destination", WACheckContactResp((waValidUsers ::: waInvalidUsers).head.exists, subscribed)))
                                     case None =>
                                       ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatsapp invalid numbers: $destination")
                                       GenericResponse(StatusCodes.BadRequest.intValue, null, Response(s"Dropping whatsapp invalid numbers $destination", null))

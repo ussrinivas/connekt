@@ -442,9 +442,9 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                           })
 
                                           // WAContactService check.
-                                          val checkedContacts = WAContactCheckHelper.checkContact(appName, validNumbers.toSet)
-                                          val waValidUserNames = checkedContacts._1.map(_.userName)
-                                          val waValidDestinations = checkedContacts._1.map(_.destination)
+                                          val (waValidUsers, waInvalidUsers) = WAContactCheckHelper.checkContact(appName, validNumbers.toSet)
+                                          val waValidUserNames = waValidUsers.map(_.userName)
+                                          val waValidDestinations = waValidUsers.map(_.destination)
 
                                           // User Pref Check
                                           val prefCheckedContacts = waValidDestinations.map(c =>
@@ -461,11 +461,11 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                             /* enqueue multiple requests into kafka */
                                             val (success, failure) = ServiceFactory.getMessageService(Channel.WA).saveRequest(waRequest, queueName) match {
                                               case Success(id) =>
-                                                (Map(id -> waValidDestinations.toSet), invalidNumbers ++ userPrefRejectedContacts ++ checkedContacts._2.map(_.destination))
+                                                (Map(id -> waValidDestinations.toSet), invalidNumbers ++ userPrefRejectedContacts ++ waInvalidUsers.map(_.destination))
                                               case Failure(t) =>
                                                 (Map(), waRequestInfo.destinations)
                                             }
-                                            ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.WA, appName, InternalStatus.Received, checkedContacts._1.size)
+                                            ServiceFactory.getReportingService.recordChannelStatsDelta(request.clientId, request.contextId, request.stencilId, Channel.WA, appName, InternalStatus.Received, waValidUsers.size)
                                             val (responseCode, message) = if (success.nonEmpty) Tuple2(StatusCodes.Accepted, "Whatups Send Request Received") else Tuple2(StatusCodes.InternalServerError, "Whatups Send Request Failed")
                                             GenericResponse(responseCode.intValue, null, SendResponse(message, success.toMap, failure.toList)).respond
                                           } else {

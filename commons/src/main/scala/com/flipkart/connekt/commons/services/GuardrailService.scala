@@ -65,7 +65,7 @@ object GuardrailService extends Instrumented {
     }
   }
 
-  @Timed("upsertSubscription")
+  @Timed("modifyGuard")
   def modifyGuard[E, R, T](appName: String, channel: Channel, inpEntity: E, inputMeta: Map[String, AnyRef]): Try[T] = {
     val validatorClassName = projectConfigService.getProjectConfiguration(appName, s"validator-service-${channel.toString.toLowerCase}").get.map(_.value).getOrElse(classOf[DefaultGuardrailService].getName)
     try {
@@ -80,7 +80,7 @@ object GuardrailService extends Instrumented {
       guardrailServiceImpl.modifyGuard(gEntity, metadata).response
     } catch {
       case e: Throwable =>
-        meter(s"guardrail.service.guard.$validatorClassName.failure").mark()
+        meter(s"guardrail.service.modifyGuard.$validatorClassName.failure").mark()
         ConnektLogger(LogFile.PROCESSORS).error(s"GuardrailService error", e)
         throw new Exception(e)
     }

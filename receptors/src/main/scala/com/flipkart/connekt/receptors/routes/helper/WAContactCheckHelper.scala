@@ -42,14 +42,7 @@ object WAContactCheckHelper extends Instrumented {
       case Success(waList) => waList.filter(System.currentTimeMillis() - _.lastCheckContactTS < checkContactInterval.days.toMillis)
       case _ => Nil
     }
-    (checkContactViaWAApi(destinations.toList.diff(withinTTLWAList.map(_.destination)), appName) ++ withinTTLWAList)
-      .map(wa =>
-        if (wa.exists.toLowerCase.contains("true"))
-          validWAUsers += wa
-        else
-          invalidWAUsers += wa
-      )
-    (validWAUsers.toList, invalidWAUsers.toList)
+    (checkContactViaWAApi(destinations.toList.diff(withinTTLWAList.map(_.destination)), appName) ++ withinTTLWAList).partition(_.exists.toLowerCase.contains("true"))
   }
 
   def checkContactViaWAApi(destinations: List[String], appName: String)(implicit am: ActorMaterializer): List[WAContactEntity] = {
