@@ -20,7 +20,7 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.fasterxml.jackson.databind.node.{ArrayNode, ObjectNode}
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels._
-import com.flipkart.connekt.commons.services.{ConnektConfig, GuardrailService, WAContactService}
+import com.flipkart.connekt.commons.services.{ConnektConfig, GuardrailService}
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
 import com.flipkart.connekt.receptors.routes.helper.{PhoneNumberHelper, WAContactCheckHelper}
 import com.flipkart.connekt.commons.utils.StringUtils
@@ -28,7 +28,6 @@ import com.flipkart.connekt.commons.entities.Channel
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
-import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
 case class WAContactResponse(contactDetails: Any, invalidNumbers: List[String])
@@ -64,14 +63,8 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                   case None => invalidDestinations += d
                                 }
                               })
-                              val allDetails = WAContactService.instance.gets(appName, formattedDestination.toSet).get
-                              val ttlCheckedNumbers = allDetails.filter(d => {
-                                val lastCheckInterval = System.currentTimeMillis() - d.lastCheckContactTS
-                                lastCheckInterval < checkContactInterval.days.toMillis
-                              })
-                              val toCheckNumbers = formattedDestination.diff(ttlCheckedNumbers.map(_.destination))
-                              val contactWAStatus = WAContactCheckHelper.checkContactViaWAApi(toCheckNumbers.toList, appName)
-                              GenericResponse(StatusCodes.OK.intValue, null, Response("Some message", WAContactResponse(ttlCheckedNumbers ::: contactWAStatus, invalidDestinations.toList)))
+                              val (waValidUsers, waInvalidUsers) = WAContactCheckHelper.checkContact(appName, formattedDestination.toSet)
+                              GenericResponse(StatusCodes.OK.intValue, null, Response("Some message", WAContactResponse(waValidUsers ::: waInvalidUsers, invalidDestinations.toList)))
                             }
                           }(ioDispatcher)
                         }
@@ -96,18 +89,13 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                   PhoneNumberHelper.validateNFormatNumber(appName, destination) match {
                                     case Some(n) =>
                                       val subscribed = if (bucketsNonEmpty) {
-                                        GuardrailService.isGuarded[String, Boolean](appName, Channel.WA, destination, params + ("domain" -> appName)) match {
+                                        GuardrailService.isGuarded[String, Boolean, Map[_,_]](appName, Channel.WA, n, params + ("domain" -> appName)) match {
                                           case Success(sub) => !sub
                                           case Failure(_) => false
                                         }
                                       } else null
-                                      WAContactService.instance.get(appName, n).get match {
-                                        case Some(wa) if (System.currentTimeMillis() - wa.lastCheckContactTS) < checkContactInterval.days.toMillis =>
-                                          GenericResponse(StatusCodes.OK.intValue, null, Response(s"WA status for destination $destination", WACheckContactResp(wa.exists, subscribed)))
-                                        case _ =>
-                                          val contactWAStatus = WAContactCheckHelper.checkContactViaWAApi(List(n), appName)
-                                          GenericResponse(StatusCodes.OK.intValue, null, Response(s"WA status for destination $destination", WACheckContactResp(contactWAStatus.head.exists, subscribed)))
-                                      }
+                                      val (waValidUsers, waInvalidUsers) = WAContactCheckHelper.checkContact(appName, Set(n))
+                                      GenericResponse(StatusCodes.OK.intValue, null, Response(s"WA status for destination $destination", WACheckContactResp((waValidUsers ::: waInvalidUsers).head.exists, subscribed)))
                                     case None =>
                                       ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatsapp invalid numbers: $destination")
                                       GenericResponse(StatusCodes.BadRequest.intValue, null, Response(s"Dropping whatsapp invalid numbers $destination", null))
