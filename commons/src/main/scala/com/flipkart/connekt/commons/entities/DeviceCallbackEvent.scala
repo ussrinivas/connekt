@@ -26,7 +26,7 @@ sealed case class DeviceCallbackEvent(deviceId: String,
                                       brand: String,
                                       model: String,
                                       state: String,
-                                      ts: Long,
+                                      timestamp: Long,
                                       active: Boolean
                                      ) extends CallbackEvent with PublishSupport {
 

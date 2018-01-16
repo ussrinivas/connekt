@@ -44,5 +44,7 @@ abstract class CallbackEvent extends TopologyInputDatatype {
   def appName: String
 
   def clientId: String
+
+  def timestamp: Long
 }
 
