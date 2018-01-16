@@ -59,7 +59,6 @@ class KafkaSource[V: ClassTag](kafkaConsumerConf: Config, topic: String, groupId
         val retries = new AtomicInteger(0)
 
         do {
-          meter(s"kafka.read.$topic.$groupId").mark()
           n = iterator.next()
         } while (n.message().isEmpty && safeHasNext && retries.getAndIncrement < 1000)
 
