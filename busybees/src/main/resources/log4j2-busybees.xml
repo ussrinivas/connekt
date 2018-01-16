@@ -54,7 +54,7 @@
       <Policies>
         <SizeBasedTriggeringPolicy size="100 MB"/>
       </Policies>
-      <DefaultRolloverStrategy max="4"/>
+      <DefaultRolloverStrategy max="10"/>
     </RollingRandomAccessFile>
 
     <RollingRandomAccessFile name="FACTORY" fileName="${factoryLogFile}" filePattern="${factoryLogFile}.%i.gz" immediateFlush="false" bufferSize="1048576">
@@ -74,7 +74,7 @@
       <Policies>
         <SizeBasedTriggeringPolicy size="100 MB"/>
       </Policies>
-      <DefaultRolloverStrategy max="4"/>
+      <DefaultRolloverStrategy max="5"/>
     </RollingRandomAccessFile>
 
     <RollingRandomAccessFile name="SERVICE" fileName="${serviceLogFile}" filePattern="${serviceLogFile}.%i.gz" immediateFlush="false" bufferSize="1048576">
@@ -84,7 +84,7 @@
       <Policies>
         <SizeBasedTriggeringPolicy size="100 MB"/>
       </Policies>
-      <DefaultRolloverStrategy max="4"/>
+      <DefaultRolloverStrategy max="8"/>
     </RollingRandomAccessFile>
 
   </Appenders>
