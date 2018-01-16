@@ -441,21 +441,21 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                             }
                                           })
 
-                                          // WAContactService check.
-                                          val (waValidUsers, waInvalidUsers) = WAContactCheckHelper.checkContact(appName, validNumbers.toSet)
-                                          val waValidUserNames = waValidUsers.map(_.userName)
-                                          val waValidDestinations = waValidUsers.map(_.destination)
-
                                           // User Pref Check
-                                          val prefCheckedContacts = waValidDestinations.map(c =>
+                                          val prefCheckedContacts = validNumbers.map(c =>
                                             GuardrailService.isGuarded[String, Any, Map[_,_]](appName, Channel.WA, c, request.meta) match {
                                               case Success(pref) => c -> pref
                                               case Failure(f) => c -> true
                                             }
                                           ).filterNot(_._2)
+                                          val userPrefRejectedContacts = validNumbers.diff(prefCheckedContacts.map(_._1))
 
-                                          val userPrefRejectedContacts = prefCheckedContacts.map(_._1).diff(validNumbers)
-                                          if (prefCheckedContacts.nonEmpty) {
+                                          // WAContactService check.
+                                          val (waValidUsers, waInvalidUsers) = WAContactCheckHelper.checkContact(appName, prefCheckedContacts.map(_._1).toSet)
+                                          val waValidUserNames = waValidUsers.map(_.userName)
+                                          val waValidDestinations = waValidUsers.map(_.destination)
+
+                                          if (waValidUserNames.nonEmpty) {
                                             val waRequest = request.copy(channelInfo = waRequestInfo.copy(destinations = waValidUserNames.toSet))
                                             val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(request, user)
                                             /* enqueue multiple requests into kafka */
