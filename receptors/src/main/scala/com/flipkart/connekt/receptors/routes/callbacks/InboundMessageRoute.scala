@@ -72,7 +72,7 @@ class InboundMessageRoute(implicit am: ActorMaterializer) extends BaseJsonHandle
                           val cargo = inboundEvent.cargo.getObj[Map[String, String]]
                           if (cargo.contains("from")) {
                             val sender = cargo("from")
-                            GuardrailService.isGuarded[String, Boolean](appName, Channel.WA, sender, Map("domain" -> "flipkart", "source" -> "Whatsapp", "bucket" -> "transactional", "subBucket" -> "order", "accountId" -> "")) match {
+                            GuardrailService.isGuarded[String, Any, Map[_,_]](appName, Channel.WA, sender, WAMetaData("flipkart", "transactional", "order", "Whatsapp").asMap.asInstanceOf[Map[String, String]]) match {
                               case Success(isGuarded) if !isGuarded =>
                                 val text = inboundEvent.message.getObj[Map[String, String]].getOrElse("text", "")
                                 val channelInfo = WARequestInfo(appName = appName, destinations = Set(sender))
@@ -82,7 +82,7 @@ class InboundMessageRoute(implicit am: ActorMaterializer) extends BaseJsonHandle
                                     val guardrailEntity = new TGuardrailEntity[String] {
                                       override def entity: String = sender
                                     }
-                                    GuardrailService.guard[String, Boolean](appName, channel, guardrailEntity, Map("domain" -> "flipkart", "source" -> "Whatsapp"))
+                                    GuardrailService.guard[String, Boolean,Map[_,_]](appName, channel, guardrailEntity, Map("domain" -> "flipkart", "source" -> "Whatsapp"))
                                     val channelData = WARequestData(waType = WAType.text, message = Some(standardResponses.get("stop").asText()))
                                     val connektRequest = new ConnektRequest(generateUUID, "whatspp", Some("UNSUBS"), channel.toString, "H", None, None, None, channelInfo, channelData, null)
                                     val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(connektRequest, user)
