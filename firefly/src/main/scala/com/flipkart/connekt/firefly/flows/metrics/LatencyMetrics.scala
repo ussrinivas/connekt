@@ -1,15 +1,3 @@
-/*
- *         -╥⌐⌐⌐⌐            -⌐⌐⌐⌐-
- *      ≡╢░░░░⌐\░░░φ     ╓╝░░░░⌐░░░░╪╕
- *     ╣╬░░`    `░░░╢┘ φ▒╣╬╝╜     ░░╢╣Q
- *    ║╣╬░⌐        ` ╤▒▒▒Å`        ║╢╬╣
- *    ╚╣╬░⌐        ╔▒▒▒▒`«╕        ╢╢╣▒
- *     ╫╬░░╖    .░ ╙╨╨  ╣╣╬░φ    ╓φ░╢╢Å
- *      ╙╢░░░░⌐"░░░╜     ╙Å░░░░⌐░░░░╝`
- *        ``˚¬ ⌐              ˚˚⌐´
- *
- *      Copyright © 2016 Flipkart.com
- */
 package com.flipkart.connekt.firefly.flows.metrics
 
 import java.util.concurrent.TimeUnit
@@ -38,8 +26,7 @@ class LatencyMetrics extends MapFlowStage[CallbackEvent, FlowResponseStatus] wit
     slidingTimer
   })
 
-  override implicit val map: CallbackEvent => List[FlowResponseStatus] = {
-    case ce: CallbackEvent =>
+  override implicit val map: CallbackEvent => List[FlowResponseStatus] = ce => {
       val messageId = ce.messageId
       val channel: Channel.Value = ce match {
         case sce: SmsCallbackEvent => Channel.SMS
@@ -69,12 +56,8 @@ class LatencyMetrics extends MapFlowStage[CallbackEvent, FlowResponseStatus] wit
               val providerName = cargoMap("provider").toString
               meter(s"${ce.appName}.$providerName.$kafkaEvent").mark()
 
-              val patternEmail = "[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}".r
-              val patternPhone = "([a-z]+)([0-9,+]+)".r
-              val patternPhone(appName, receiver) = ce.contactId
-              if (channelName.equalsIgnoreCase("email")) {
-                val patternEmail(appName, receiver) = ce.contactId
-              }
+              val pattern = jsonObj("pattern").toString.r
+              val pattern(appName, receiver) = ce.contactId
 
               val eventThreshold = jsonObj("event-threshold").asInstanceOf[Map[String,Int]]
               if (eventThreshold.nonEmpty && eventThreshold.contains(kafkaEvent) && jsonObj("publishLatency").asInstanceOf[String].toBoolean && cargoMap.nonEmpty) {
@@ -93,17 +76,16 @@ class LatencyMetrics extends MapFlowStage[CallbackEvent, FlowResponseStatus] wit
                     case Success(details) if details.nonEmpty =>
                       val eventDetails = details.get(receiver)
                       eventDetails.foreach(eventDetail => {
-                        val receivedEvent = eventDetail.filter(_.eventType.equalsIgnoreCase(jsonObj("receivedEvent").toString))
-                        if (receivedEvent.nonEmpty) {
-                          val receivedTs: Long = receivedEvent.head.timestamp
+                          eventDetail.filter(_.eventType.equalsIgnoreCase(jsonObj("receivedEvent").toString)).foreach(receivedEvent => {
+                          val receivedTs: Long = receivedEvent.timestamp
                           val diff: Long = deliveredTS - receivedTs
-                          slidingTimer(getMetricName(s"$channelName.$kafkaEvent.latency.${receivedEvent.head.appName}.$providerName")).update(diff, TimeUnit.MILLISECONDS)
+                          slidingTimer(getMetricName(s"$channelName.$kafkaEvent.latency.${receivedEvent.appName}.$providerName")).update(diff, TimeUnit.MILLISECONDS)
                           ConnektLogger(LogFile.SERVICE).debug(s"$kafkaEvent.LatencyMetrics for $messageId is ingested into cosmos")
                           val thresholdVal = eventThreshold(kafkaEvent).toLong
                           if (diff > thresholdVal) {
                             ConnektLogger(LogFile.SERVICE).info(s"${channelName.toUpperCase} msg $messageId got delayed by $diff ms by provider: $providerName")
                           }
-                        }
+                        })
                       })
                     case Success(details) =>
                       ConnektLogger(LogFile.SERVICE).debug(s"Events not available: fetchCallbackEventByMId for messageId : $messageId")
@@ -126,8 +108,5 @@ class LatencyMetrics extends MapFlowStage[CallbackEvent, FlowResponseStatus] wit
         ConnektLogger(LogFile.SERVICE).info(s"The app config for the channel: $channelName is not defined.")
       }
       List(FlowResponseStatus(Status.Success))
-    case _ =>
-      ConnektLogger(LogFile.SERVICE).info(s"LatencyMetrics for channel callback event not implemented yet.")
-      List(FlowResponseStatus(Status.Failed))
   }
 }
