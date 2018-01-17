@@ -6,11 +6,7 @@
       "process": "connekt",
       "queries": [
         {
-          "obj" : "fk.metrics:name=*",
-          "saperator" : "."
-        },
-        {
-          "obj" : "kafka:name=*",
+          "obj" : "*",
           "saperator" : "."
         }
       ],
