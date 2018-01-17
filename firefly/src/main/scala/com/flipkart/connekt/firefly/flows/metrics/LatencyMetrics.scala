@@ -73,8 +73,8 @@ class LatencyMetrics extends MapFlowStage[CallbackEvent, FlowResponseStatus] wit
                   val minTimestamp: Long = deliveredTS - jsonObj("hbase-scan-LL").asInstanceOf[Int].toLong
                   val maxTimestamp: Long = deliveredTS + jsonObj("hbase-scan-UL").asInstanceOf[Int].toLong
                   ServiceFactory.getCallbackService.fetchCallbackEventByMId(messageId, channel, Some(Tuple2(minTimestamp, maxTimestamp))) match {
-                    case Success(details) if details.nonEmpty =>
-                      val eventDetails = details.get(receiver)
+                    case Success(msgDetail) if msgDetail.nonEmpty =>
+                      val eventDetails = msgDetail.get(receiver)
                       eventDetails.foreach(eventDetail => {
                           eventDetail.filter(_.eventType.equalsIgnoreCase(jsonObj("receivedEvent").toString)).foreach(receivedEvent => {
                           val receivedTs: Long = receivedEvent.timestamp
@@ -87,7 +87,7 @@ class LatencyMetrics extends MapFlowStage[CallbackEvent, FlowResponseStatus] wit
                           }
                         })
                       })
-                    case Success(details) =>
+                    case Success(msgDetail) =>
                       ConnektLogger(LogFile.SERVICE).debug(s"Events not available: fetchCallbackEventByMId for messageId : $messageId")
                     case Failure(f) =>
                       ConnektLogger(LogFile.SERVICE).error(s"Events fetch failed fetchCallbackEventByMId for messageId : $messageId with error : ", f)
