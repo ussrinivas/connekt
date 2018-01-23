@@ -27,7 +27,7 @@ import com.typesafe.config.Config
 
 import scala.concurrent.duration._
 
-class SmsLatencyMeteringTopology(kafkaConsumerConfig: Config) extends CustomTopology[CallbackEvent, FlowResponseStatus] {
+class LatencyMeteringTopology(kafkaConsumerConfig: Config) extends CustomTopology[CallbackEvent, FlowResponseStatus] {
 
   private val latencyMetricsKafkaThrottle = ConnektConfig.getOrElse("latencyMetrics.kafka.throttle.rps", 100)
   private lazy val CALLBACK_QUEUE_NAME = ConnektConfig.get("firefly.latency.metric.kafka.topic").getOrElse("ckt_callback_events_%s")
@@ -53,7 +53,7 @@ class SmsLatencyMeteringTopology(kafkaConsumerConfig: Config) extends CustomTopo
       Channel.WA.toString -> latencyTransformFlow)
 
   override def sink: Sink[FlowResponseStatus, NotUsed] = Sink.fromGraph(GraphDSL.create() { implicit b =>
-    val metrics = b.add(new FlowMetrics[FlowResponseStatus]("sms.latency.meter").flow)
+    val metrics = b.add(new FlowMetrics[FlowResponseStatus]("latency.meter").flow)
     metrics ~> Sink.ignore
     SinkShape(metrics.in)
   })

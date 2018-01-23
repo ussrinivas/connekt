@@ -54,10 +54,7 @@ class LatencyMetrics extends MapFlowStage[CallbackEvent, FlowResponseStatus] wit
             case Success(cargoMap) if Try(cargoMap("provider")).isSuccess =>
               ConnektLogger(LogFile.SERVICE).trace(s"Ingesting $channelName Metrics.LatencyMetrics for $messageId with cargo : $tryCargoMap.")
               val providerName = cargoMap("provider").toString
-              meter(s"${ce.appName}.$providerName.$kafkaEvent").mark()
-
-              val pattern = jsonObj("pattern").toString.r
-              val pattern(appName, receiver) = ce.contactId
+              meter(s"$channelName.${ce.appName}.$providerName.$kafkaEvent").mark()
 
               val eventThreshold = jsonObj("event-threshold").asInstanceOf[Map[String,Int]]
               if (eventThreshold.nonEmpty && eventThreshold.contains(kafkaEvent) && jsonObj("publishLatency").asInstanceOf[String].toBoolean && cargoMap.nonEmpty) {
@@ -65,22 +62,22 @@ class LatencyMetrics extends MapFlowStage[CallbackEvent, FlowResponseStatus] wit
                   cargoMap("deliveredTS").toString.toLong
                 } catch {
                   case ex: Exception =>
-                    meter(s"${ce.appName}.$providerName.errored").mark()
-                    ConnektLogger(LogFile.SERVICE).error(s"Erroneous DeliveredTS value being sent by provider: $providerName for messageId:$messageId ${ex.getMessage}")
+                    meter(s"$channelName.${ce.appName}.$providerName.errored").mark()
+                    ConnektLogger(LogFile.SERVICE).error(s"Erroneous DeliveredTS value being sent in channel $channelName by provider: $providerName for messageId:$messageId ${ex.getMessage}")
                     -1L
                 }
                 if (deliveredTS >= 0L) {
-                  val minTimestamp: Long = deliveredTS - jsonObj("hbase-scan-LL").asInstanceOf[Int].toLong
-                  val maxTimestamp: Long = deliveredTS + jsonObj("hbase-scan-UL").asInstanceOf[Int].toLong
+                  val minTimestamp: Long = deliveredTS - jsonObj("hbase-scan-lowerLimit").asInstanceOf[Int].toLong
+                  val maxTimestamp: Long = deliveredTS + jsonObj("hbase-scan-upperLimit").asInstanceOf[Int].toLong
                   ServiceFactory.getCallbackService.fetchCallbackEventByMId(messageId, channel, Some(Tuple2(minTimestamp, maxTimestamp))) match {
                     case Success(msgDetail) if msgDetail.nonEmpty =>
-                      val eventDetails = msgDetail.get(receiver)
+                      val eventDetails = msgDetail.get(ce.destination)
                       eventDetails.foreach(eventDetail => {
                           eventDetail.filter(_.eventType.equalsIgnoreCase(jsonObj("receivedEvent").toString)).foreach(receivedEvent => {
                           val receivedTs: Long = receivedEvent.timestamp
                           val diff: Long = deliveredTS - receivedTs
                           slidingTimer(getMetricName(s"$channelName.$kafkaEvent.latency.${receivedEvent.appName}.$providerName")).update(diff, TimeUnit.MILLISECONDS)
-                          ConnektLogger(LogFile.SERVICE).debug(s"$kafkaEvent.LatencyMetrics for $messageId is ingested into cosmos")
+                          ConnektLogger(LogFile.SERVICE).debug(s"${channelName.toUpperCase} $kafkaEvent.LatencyMetrics for $messageId is ingested into cosmos")
                           val thresholdVal = eventThreshold(kafkaEvent).toLong
                           if (diff > thresholdVal) {
                             ConnektLogger(LogFile.SERVICE).info(s"${channelName.toUpperCase} msg $messageId got delayed by $diff ms by provider: $providerName")

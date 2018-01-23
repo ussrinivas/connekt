@@ -60,6 +60,8 @@ case class InboundMessageCallbackEvent(clientId: String,
 
   override def contactId: String = s"${appName.toLowerCase}$sender"
 
+  override def destination: String = sender
+
   override def namespace: String = "fkint/mp/connekt/InboundMessageCallbackEvent"
 
   override def toPublishFormat: fkint.mp.connekt.InboundMessageCallbackEvent = {

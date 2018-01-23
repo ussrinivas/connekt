@@ -42,6 +42,8 @@ sealed case class DeviceCallbackEvent(deviceId: String,
 
   override def eventId: String = null
 
+  override def destination: String = null
+
   override def namespace: String = "fkint/mp/connekt/DeviceDetails"
 
   override def toPublishFormat: TPublishRequest = fkint.mp.connekt.DeviceDetails(
