@@ -169,9 +169,15 @@ trait HbaseDao extends Instrumented {
         colFamilies.foreach(cF => get.addFamily(cF.getBytes(CharEncoding.UTF_8)))
         get
       })
-      val rowResults = hTable.get(gets.toList.asJava)
+      val rowResults = hbaseGet(hTable, gets)
       rowResults.filter(_.getRow != null).map(rowResult => rowResult.getRow.getString -> getRowData(rowResult, colFamilies)).toMap[String, RowData]
     }).reduceOption(_ ++ _).getOrElse(Map.empty[String, RowData])
+  }
+
+  @throws[IOException]
+  @Timed("hTableGets")
+  protected def hbaseGet(hTable: Table, gets : List[Get]) : Array[Result] = {
+    hTable.get(gets.toList.asJava)
   }
 
 
