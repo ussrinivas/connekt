@@ -34,10 +34,8 @@ object WAContactCheckHelper extends Instrumented {
   private val timeout = ConnektConfig.getInt("wa.contact.api.timeout").get.seconds
   private val checkContactInterval = ConnektConfig.getInt("wa.check.contact.interval.days").get
 
-  //returns valid tuple of valid numbers list and invalid numbers list
+  //returns tuple of valid numbers list and invalid numbers list
   def checkContact(appName: String, destinations: Set[String])(implicit am: ActorMaterializer): (List[WAContactEntity], List[WAContactEntity]) = {
-    val validWAUsers = ListBuffer[WAContactEntity]()
-    val invalidWAUsers = ListBuffer[WAContactEntity]()
     val withinTTLWAList = WAContactService.instance.gets(appName, destinations.toSet) match {
       case Success(waList) => waList.filter(System.currentTimeMillis() - _.lastCheckContactTS < checkContactInterval.days.toMillis)
       case _ => Nil
