@@ -55,8 +55,8 @@ class WASubscriptionRoute (implicit am: ActorMaterializer) extends BaseJsonHandl
                                         case Some(n) =>
                                           val channelInfo = WARequestInfo(appName = appName, destinations = Set(n.userName))
                                           val channelData = WARequestData(waType = WAType.hsm)
-                                          val meta = WAMetaData("flipkart", "transactional", "order").asMap.asInstanceOf[Map[String, String]]
-                                          val connektRequest = ConnektRequest(generateUUID, "whatspp", Some("WELCOME"), "wa", "H", WELCOME_STENCIL, None, None, channelInfo, channelData, null, meta)
+                                          val meta = WAMetaData(appName, subRequest.bucket, subRequest.subBucket, subRequest.source, subRequest.accountId).asMap.asInstanceOf[Map[String, String]]
+                                          val connektRequest = ConnektRequest(generateUUID, user.userId, Some("WELCOME"), "wa", "H", WELCOME_STENCIL, None, None, channelInfo, channelData, StringUtils.getObjectNode, meta)
                                           val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(connektRequest, user)
                                           ServiceFactory.getMessageService(Channel.WA).saveRequest(connektRequest, queueName)
                                         case None =>
