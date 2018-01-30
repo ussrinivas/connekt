@@ -21,18 +21,22 @@ import com.flipkart.concord.guardrail.TGuardrailEntity
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
-import com.flipkart.connekt.commons.iomodels.{ChannelRequestInfo, _}
+import com.flipkart.connekt.commons.helpers.CallbackRecorder._
+import com.flipkart.connekt.commons.iomodels._
+import com.flipkart.connekt.commons.services.{ConnektConfig, GuardrailService}
+import com.flipkart.connekt.commons.utils.StringUtils
+import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.receptors.directives.ChannelSegment
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
-import com.flipkart.connekt.commons.utils.StringUtils._
-import com.flipkart.connekt.commons.helpers.CallbackRecorder._
-import com.flipkart.connekt.commons.services.GuardrailService
-
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 class InboundMessageRoute(implicit am: ActorMaterializer) extends BaseJsonHandler with PredefinedFromEntityUnmarshallers {
 
   private lazy implicit val stencilService = ServiceFactory.getStencilService
+  private val stopReplyStencil = ConnektConfig.getString("whatsapp.stop.message.default.reply.stencil")
+  private val transactionalBucketName = ConnektConfig.getString("whatsapp.transactional.message.preference.bucket.name").get
+  private val transactionalSubBucketName = ConnektConfig.getString("whatsapp.transactional.message.preference.sub.bucket.name").get
+  private val anyMessageReplyStencil = ConnektConfig.getString("whatsapp.any.message.default.reply.stencil")
 
   val route =
     authenticate {
@@ -66,30 +70,27 @@ class InboundMessageRoute(implicit am: ActorMaterializer) extends BaseJsonHandle
                     entity(as[CallbackEvent]) { callbackEvent =>
                       channel match {
                         case Channel.WA =>
-                          val appLevelConfigService = ServiceFactory.getUserProjectConfigService
                           val inboundEvent = callbackEvent.asInstanceOf[InboundMessageCallbackEvent]
                           ConnektLogger(LogFile.SERVICE).debug(s"Received Whatsapp inbound process request with payload: ${inboundEvent.toString}")
                           val cargo = inboundEvent.cargo.getObj[Map[String, String]]
                           if (cargo.contains("from")) {
                             val sender = cargo("from")
-                            GuardrailService.isGuarded[String, Any, Map[_,_]](appName, Channel.WA, sender, WAMetaData("flipkart", "transactional", "order", "Whatsapp").asMap.asInstanceOf[Map[String, String]]) match {
+                            GuardrailService.isGuarded[String, Any, Map[_, _]](appName, Channel.WA, sender, WAMetaData(appName, transactionalBucketName, transactionalSubBucketName, "Whatsapp").asMap.asInstanceOf[Map[String, String]]) match {
                               case Success(isGuarded) if !isGuarded =>
                                 val text = inboundEvent.message.getObj[Map[String, String]].getOrElse("text", "")
                                 val channelInfo = WARequestInfo(appName = appName, destinations = Set(sender))
-                                val standardResponses = appLevelConfigService.getProjectConfiguration(appName.toLowerCase, "whatsapp-standard-responses").get.get.value.getObj[ObjectNode]
+                                val channelData = WARequestData(waType = WAType.hsm)
                                 text.toLowerCase match {
                                   case "stop" =>
                                     val guardrailEntity = new TGuardrailEntity[String] {
                                       override def entity: String = sender
                                     }
-                                    GuardrailService.guard[String, Boolean,Map[_,_]](appName, channel, guardrailEntity, Map("domain" -> "flipkart", "source" -> "Whatsapp"))
-                                    val channelData = WARequestData(waType = WAType.text, message = Some(standardResponses.get("stop").asText()))
-                                    val connektRequest = new ConnektRequest(generateUUID, "whatspp", Some("UNSUBS"), channel.toString, "H", None, None, None, channelInfo, channelData, null)
+                                    GuardrailService.guard[String, Boolean, Map[_, _]](appName, channel, guardrailEntity, Map("domain" -> "flipkart", "source" -> "Whatsapp"))
+                                    val connektRequest = ConnektRequest(generateUUID, user.userId, Some("UNSUBS"), channel.toString, "H", stopReplyStencil, None, None, channelInfo, channelData, StringUtils.getObjectNode, Map.empty)
                                     val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(connektRequest, user)
                                     ServiceFactory.getMessageService(Channel.WA).saveRequest(connektRequest, queueName)
                                   case _ =>
-                                    val channelData = WARequestData(waType = WAType.text, message = Some(standardResponses.get("default").asText()))
-                                    val connektRequest = new ConnektRequest(generateUUID, "whatspp", Some("WhatsAppReply"), channel.toString, "H", None, None, None, channelInfo, channelData, null)
+                                    val connektRequest = ConnektRequest(generateUUID, user.userId, Some("WhatsappDefaultReply"), channel.toString, "H", anyMessageReplyStencil, None, None, channelInfo, channelData, StringUtils.getObjectNode, Map.empty)
                                     val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(connektRequest, user)
                                     ServiceFactory.getMessageService(Channel.WA).saveRequest(connektRequest, queueName)
                                 }

@@ -27,10 +27,9 @@ import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 class WASubscriptionRoute (implicit am: ActorMaterializer) extends BaseJsonHandler {
-  private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
 
-  def WELCOME_STENCIL = ConnektConfig.getString("whatsapp.welcome.stencil")
-  private val checkContactInterval = ConnektConfig.getInt("wa.check.contact.interval.days").get
+  private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
+  private val welcomeDefualtMsgStencil = ConnektConfig.getString("whatsapp.welcome.default.message.stencil")
 
   val route =
     authenticate {
@@ -56,7 +55,7 @@ class WASubscriptionRoute (implicit am: ActorMaterializer) extends BaseJsonHandl
                                           val channelInfo = WARequestInfo(appName = appName, destinations = Set(n.userName))
                                           val channelData = WARequestData(waType = WAType.hsm)
                                           val meta = WAMetaData(appName, subRequest.bucket, subRequest.subBucket, subRequest.source, subRequest.accountId).asMap.asInstanceOf[Map[String, String]]
-                                          val connektRequest = ConnektRequest(generateUUID, user.userId, Some("WELCOME"), Channel.WA.toString, "H", WELCOME_STENCIL, None, None, channelInfo, channelData, StringUtils.getObjectNode, meta)
+                                          val connektRequest = ConnektRequest(generateUUID, user.userId, Some("WELCOME"), Channel.WA.toString, "H", welcomeDefualtMsgStencil, None, None, channelInfo, channelData, StringUtils.getObjectNode, meta)
                                           val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(connektRequest, user)
                                           ServiceFactory.getMessageService(Channel.WA).saveRequest(connektRequest, queueName)
                                         case None =>
