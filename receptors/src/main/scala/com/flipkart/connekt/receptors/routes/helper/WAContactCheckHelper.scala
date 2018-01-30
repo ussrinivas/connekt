@@ -36,7 +36,7 @@ object WAContactCheckHelper extends Instrumented {
 
   //returns tuple of valid numbers list and invalid numbers list
   def checkContact(appName: String, destinations: Set[String])(implicit am: ActorMaterializer): (List[WAContactEntity], List[WAContactEntity]) = {
-    val withinTTLWAList = WAContactService.instance.gets(appName, destinations.toSet) match {
+    val withinTTLWAList = WAContactService.instance.gets(appName, destinations) match {
       case Success(waList) => waList.filter(System.currentTimeMillis() - _.lastCheckContactTS < checkContactInterval.days.toMillis)
       case _ => Nil
     }
