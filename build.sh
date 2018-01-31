@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-time=`date +%s`
+build_ver=`git log -1 --pretty=format:%ct | xargs echo`
 
 export PACKAGE=${PACKAGE:-"fk-pf-connekt"}
 export TARGET=${TARGET:-local}
@@ -13,8 +13,8 @@ bash $LOCAL_DIR/make-$PACKAGE-deb
 
 cd $LOCAL_DIR/deb
 
-sed -i -e "s/_VERSION_/$time/g" DEBIAN/control
-echo "Version: 1.$time"
+sed -i -e "s/_VERSION_/$build_ver/g" DEBIAN/control
+echo "Version: 1.$build_ver"
 
 cd $LOCAL_DIR
 
