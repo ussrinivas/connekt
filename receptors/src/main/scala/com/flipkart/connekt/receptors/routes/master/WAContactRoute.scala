@@ -15,30 +15,34 @@ package com.flipkart.connekt.receptors.routes.master
 import akka.connekt.AkkaHelpers._
 import akka.http.scaladsl.model._
 import akka.stream.ActorMaterializer
-import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonInclude.Include
-import com.fasterxml.jackson.databind.node.{ArrayNode, ObjectNode}
+import com.fasterxml.jackson.annotation.{JsonInclude, JsonProperty}
+import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels._
-import com.flipkart.connekt.commons.services.{ConnektConfig, GuardrailService}
+import com.flipkart.connekt.commons.services.GuardrailService
+import com.flipkart.connekt.commons.utils.StringUtils
+import com.flipkart.connekt.commons.utils.StringUtils.ObjectHandyFunction
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
 import com.flipkart.connekt.receptors.routes.helper.{PhoneNumberHelper, WAContactCheckHelper}
-import com.flipkart.connekt.commons.utils.StringUtils
-import com.flipkart.connekt.commons.entities.Channel
-import scala.collection.JavaConverters._
+
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
-case class WAContactResponse(contactDetails: Any, invalidNumbers: List[String])
-case class WACheckContactResp(exists: String, @JsonInclude(Include.NON_NULL) subscribed: Any)
+case class WABulkCheckContactResponse(contactDetails: List[WACheckContactResp], invalidNumbers: List[String])
+
+case class WACheckContactResp(destination: String, exists: String, @JsonInclude(Include.NON_NULL) subscribed: Any)
+
+case class WABulkCheckContactRequest(@JsonProperty(required = true) destinations: Set[String],
+                                     bucket: String,
+                                     subBucket: String)
 
 class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
   private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
 
   private lazy implicit val stencilService = ServiceFactory.getStencilService
-  private val checkContactInterval = ConnektConfig.getInt("wa.check.contact.interval.days").get
 
   val route =
     authenticate {
@@ -50,11 +54,16 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                 post {
                   meteredResource("checkcontact") {
                     authorize(user, "CHECK_CONTACT", s"CHECK_CONTACT_$appName") {
-                      entity(as[ObjectNode]) { obj =>
+                      entity(as[WABulkCheckContactRequest]) { obj =>
                         complete {
                           Future {
                             profile(s"whatsapp.post.checkcontact.$appName") {
-                              val destinations = obj.get("destinations").asInstanceOf[ArrayNode].elements().asScala.map(_.asText).toSet
+                              val bucket = obj.bucket
+                              val subBucket = obj.subBucket
+                              val bucketsNonEmpty = !(StringUtils.isNullOrEmpty(bucket) || StringUtils.isNullOrEmpty(subBucket))
+                              require(bucketsNonEmpty || (bucket == null && subBucket == null), "Both bucket and subBucket should be non empty")
+
+                              val destinations = obj.destinations
                               val formattedDestination = ListBuffer[String]()
                               val invalidDestinations = ListBuffer[String]()
                               destinations.foreach(d => {
@@ -64,7 +73,19 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                 }
                               })
                               val (waPresentUsers, waAbsentUsers) = WAContactCheckHelper.checkContact(appName, formattedDestination.toSet)
-                              GenericResponse(StatusCodes.OK.intValue, null, Response("Some message", WAContactResponse(waPresentUsers ::: waAbsentUsers, invalidDestinations.toList)))
+                              val meta = WAMetaData(appName, bucket, subBucket).asMap.asInstanceOf[Map[String, String]]
+                              val waAllUsers = waPresentUsers ::: waAbsentUsers
+                              val waBulkCheckContactResponse = waAllUsers.map(w => {
+                                val subscribed = if (bucketsNonEmpty) {
+                                  val meta = WAMetaData(appName, bucket, subBucket).asMap.asInstanceOf[Map[String, String]]
+                                  GuardrailService.isGuarded[String, Boolean, Map[_, _]](appName, Channel.WA, w.destination, meta) match {
+                                    case Success(sub) => !sub
+                                    case Failure(_) => false
+                                  }
+                                } else null
+                                WACheckContactResp(w.destination, w.exists, subscribed)
+                              })
+                              GenericResponse(StatusCodes.OK.intValue, null, Response("WA status for destinations", WABulkCheckContactResponse(waBulkCheckContactResponse, invalidDestinations.toList)))
                             }
                           }(ioDispatcher)
                         }
@@ -79,8 +100,8 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                       meteredResource("checkcontact") {
                         authorize(user, "CHECK_CONTACT", s"CHECK_CONTACT_$appName") {
                           parameterMap { params =>
-                            val bucket = params.getOrElse("bucket","")
-                            val subBucket = params.getOrElse("subBucket","")
+                            val bucket = params.getOrElse("bucket", "")
+                            val subBucket = params.getOrElse("subBucket", "")
                             val bucketsNonEmpty = !(StringUtils.isNullOrEmpty(bucket) || StringUtils.isNullOrEmpty(subBucket))
                             require(bucketsNonEmpty || params.isEmpty, "Both bucket and subBucket should be non empty")
                             complete {
@@ -89,13 +110,15 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                   PhoneNumberHelper.validateNFormatNumber(appName, destination) match {
                                     case Some(n) =>
                                       val subscribed = if (bucketsNonEmpty) {
-                                        GuardrailService.isGuarded[String, Boolean, Map[_,_]](appName, Channel.WA, n, params + ("domain" -> appName)) match {
+                                        val meta = WAMetaData(appName, bucket, subBucket).asMap.asInstanceOf[Map[String, String]]
+                                        GuardrailService.isGuarded[String, Boolean, Map[_, _]](appName, Channel.WA, n, meta) match {
                                           case Success(sub) => !sub
                                           case Failure(_) => false
                                         }
                                       } else null
                                       val (waPresentUsers, waAbsentUsers) = WAContactCheckHelper.checkContact(appName, Set(n))
-                                      GenericResponse(StatusCodes.OK.intValue, null, Response(s"WA status for destination $destination", WACheckContactResp((waPresentUsers ::: waAbsentUsers).head.exists, subscribed)))
+                                      val waDetails = (waPresentUsers ::: waAbsentUsers).head
+                                      GenericResponse(StatusCodes.OK.intValue, null, Response(s"WA status for destination $destination", WACheckContactResp(destination, waDetails.exists, subscribed)))
                                     case None =>
                                       ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatsapp invalid numbers: $destination")
                                       GenericResponse(StatusCodes.BadRequest.intValue, null, Response(s"Dropping whatsapp invalid numbers $destination", null))
