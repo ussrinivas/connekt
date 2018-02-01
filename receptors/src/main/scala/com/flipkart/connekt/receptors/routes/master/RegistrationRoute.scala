@@ -206,7 +206,7 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
             }
           }
         }
-    } ~ path("v1" / "unauthorized" / "registration" / "whatsapp" / Segment ) {
+    } ~ path("v1" / "varadhi" / "registration" / "whatsapp" / Segment ) {
       (appName: String) =>
         withRequestTimeout(registrationTimeout) {
           optionalHeaderValueByName(varadhiTopicHeader) {
