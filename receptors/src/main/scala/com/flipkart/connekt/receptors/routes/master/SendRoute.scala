@@ -39,7 +39,6 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
   private lazy implicit val stencilService = ServiceFactory.getStencilService
   private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
-  private val checkContactInterval = ConnektConfig.getInt("wa.check.contact.interval.days").get
   private val smsRegexCheck = ConnektConfig.getString("sms.regex.check").get
 
   val route =
