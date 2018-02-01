@@ -38,9 +38,11 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
 
   private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
   private val registrationTimeout = ConnektConfig.getInt("timeout.registration").getOrElse(8000).millis
+  private val varadhiTopicHeader = ConnektConfig.getString("wa.varadhi.topic.header").get
+  private val userServiceNewAccountTopic = ConnektConfig.getString("wa.varadhi.user.svc.topic").get
   private val contactService = ServiceFactory.getContactService
 
-  val route =
+  val route = {
     authenticate {
       user =>
         pathPrefix("v1") {
@@ -204,6 +206,31 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
             }
           }
         }
+    } ~ path("v1" / "unauthorized" / "registration" / "whatsapp" / Segment ) {
+      (appName: String) =>
+        withRequestTimeout(registrationTimeout) {
+          optionalHeaderValueByName(varadhiTopicHeader) {
+            case Some(eventType) if eventType.equalsIgnoreCase(userServiceNewAccountTopic) =>
+              put {
+                meteredResource(s"register.unauthorized.wa.contact.$appName") {
+                  entity(as[ContactPayload]) { contact =>
+                    PhoneNumberHelper.validateNFormatNumber(appName, contact.user_identifier) match {
+                      case Some(n) =>
+                        val updatedContact = contact.copy(user_identifier = n, appName = appName)
+                        contactService.enqueueContactEvents(updatedContact)
+                        complete(GenericResponse(StatusCodes.Accepted.intValue, null, Response(s"Contact registration request received for destination : ${contact.user_identifier}", null)))
+                      case None =>
+                        ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatsapp invalid numbers: ${contact.user_identifier}")
+                        complete(GenericResponse(StatusCodes.BadRequest.intValue, null, Response(s"Dropping whatsapp invalid numbers ${contact.user_identifier}", null)))
+                    }
+                  }
+                }
+              }
+            case _ =>
+              complete(GenericResponse(StatusCodes.Unauthorized.intValue, null, Response("CLIENT_NOT_AUTHORIZED", null)))
+          }
+        }
     }
+  }
 
 }
