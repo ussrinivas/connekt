@@ -33,13 +33,13 @@ class WAContactTopology(kafkaConsumerConfig: Config) extends CustomTopology[Cont
 
   private val waContactSize: Int = ConnektConfig.getInt("wa.contact.batch.size").getOrElse(1000)
   private val waContactTimeLimit: Int = ConnektConfig.getInt("wa.contact.wait.time.limit.sec").getOrElse(2)
-  private lazy val waContactTopics = ConnektConfig.getString("wa.contact.topic.name").get
+  private lazy val waContactTopic = ConnektConfig.getString("wa.contact.topic.name").get
   private lazy val waContactNewRegistrationTopic = ConnektConfig.getString("wa.contact.new.registration.topic.name").get
 
   override def sources: Map[CheckPointGroup, Source[ContactPayloads, NotUsed]] = {
     val waKafkaThrottle = ConnektConfig.getOrElse("wa.contact.throttle.rps", 2)
     Map(Channel.WA.toString ->
-      createMergedSource[ContactPayload]("wa_check_contact_topology", Seq(waContactNewRegistrationTopic, waContactTopics), kafkaConsumerConfig)
+      createMergedSource[ContactPayload]("wa_check_contact_topology", Seq(waContactNewRegistrationTopic, waContactTopic), kafkaConsumerConfig)
         .groupedWithin(waContactSize, waContactTimeLimit.second)
         .throttle(waKafkaThrottle, 1.second, waKafkaThrottle, ThrottleMode.Shaping)
         .via(Flow[Seq[ContactPayload]].map {
