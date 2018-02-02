@@ -52,43 +52,41 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
             (appName: String) =>
               pathEndOrSingleSlash {
                 post {
-                  meteredResource("bulk.checkcontact") {
-                    authorize(user, "CHECK_CONTACT", s"CHECK_CONTACT_$appName") {
-                      entity(as[WABulkCheckContactRequest]) { obj =>
-                        complete {
-                          Future {
-                            profile(s"whatsapp.post.checkcontact.$appName") {
-                              val bucket = obj.bucket
-                              val subBucket = obj.subBucket
-                              val bucketsNonEmpty = !(StringUtils.isNullOrEmpty(bucket) || StringUtils.isNullOrEmpty(subBucket))
-                              require(bucketsNonEmpty || (bucket == null && subBucket == null), "Both bucket and subBucket should be non empty")
+                  authorize(user, "CHECK_CONTACT", s"CHECK_CONTACT_$appName") {
+                    entity(as[WABulkCheckContactRequest]) { obj =>
+                      complete {
+                        Future {
+                          profile(s"whatsapp.post.checkcontact.$appName") {
+                            val bucket = obj.bucket
+                            val subBucket = obj.subBucket
+                            val bucketsNonEmpty = !(StringUtils.isNullOrEmpty(bucket) || StringUtils.isNullOrEmpty(subBucket))
+                            require(bucketsNonEmpty || (bucket == null && subBucket == null), "Both bucket and subBucket should be non empty")
 
-                              val destinations = obj.destinations
-                              val formattedDestination = ListBuffer[String]()
-                              val invalidDestinations = ListBuffer[String]()
-                              destinations.foreach(d => {
-                                PhoneNumberHelper.validateNFormatNumber(appName, d)("wacontactroute") match {
-                                  case Some(n) => formattedDestination += n
-                                  case None => invalidDestinations += d
+                            val destinations = obj.destinations
+                            val formattedDestination = ListBuffer[String]()
+                            val invalidDestinations = ListBuffer[String]()
+                            destinations.foreach(d => {
+                              PhoneNumberHelper.validateNFormatNumber(appName, d)("wacontactroute") match {
+                                case Some(n) => formattedDestination += n
+                                case None => invalidDestinations += d
+                              }
+                            })
+                            val (waPresentUsers, waAbsentUsers) = WAContactCheckHelper.checkContact(appName, formattedDestination.toSet)
+                            val meta = WAMetaData(appName, bucket, subBucket).asMap.asInstanceOf[Map[String, String]]
+                            val waAllUsers = waPresentUsers ::: waAbsentUsers
+                            val waBulkCheckContactResponse = waAllUsers.map(w => {
+                              val subscribed = if (bucketsNonEmpty) {
+                                val meta = WAMetaData(appName, bucket, subBucket).asMap.asInstanceOf[Map[String, String]]
+                                GuardrailService.isGuarded[String, Boolean, Map[_, _]](appName, Channel.WA, w.destination, meta) match {
+                                  case Success(sub) => !sub
+                                  case Failure(_) => false
                                 }
-                              })
-                              val (waPresentUsers, waAbsentUsers) = WAContactCheckHelper.checkContact(appName, formattedDestination.toSet)
-                              val meta = WAMetaData(appName, bucket, subBucket).asMap.asInstanceOf[Map[String, String]]
-                              val waAllUsers = waPresentUsers ::: waAbsentUsers
-                              val waBulkCheckContactResponse = waAllUsers.map(w => {
-                                val subscribed = if (bucketsNonEmpty) {
-                                  val meta = WAMetaData(appName, bucket, subBucket).asMap.asInstanceOf[Map[String, String]]
-                                  GuardrailService.isGuarded[String, Boolean, Map[_, _]](appName, Channel.WA, w.destination, meta) match {
-                                    case Success(sub) => !sub
-                                    case Failure(_) => false
-                                  }
-                                } else null
-                                WACheckContactResp(w.destination, w.exists, subscribed)
-                              })
-                              GenericResponse(StatusCodes.OK.intValue, null, Response("WA status for destinations", WABulkCheckContactResponse(waBulkCheckContactResponse, invalidDestinations.toList)))
-                            }
-                          }(ioDispatcher)
-                        }
+                              } else null
+                              WACheckContactResp(w.destination, w.exists, subscribed)
+                            })
+                            GenericResponse(StatusCodes.OK.intValue, null, Response("WA status for destinations", WABulkCheckContactResponse(waBulkCheckContactResponse, invalidDestinations.toList)))
+                          }
+                        }(ioDispatcher)
                       }
                     }
                   }
@@ -97,35 +95,33 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                 (destination: String) =>
                   pathEndOrSingleSlash {
                     get {
-                      meteredResource("checkcontact") {
-                        authorize(user, "CHECK_CONTACT", s"CHECK_CONTACT_$appName") {
-                          parameterMap { params =>
-                            val bucket = params.getOrElse("bucket", "")
-                            val subBucket = params.getOrElse("subBucket", "")
-                            val bucketsNonEmpty = !(StringUtils.isNullOrEmpty(bucket) || StringUtils.isNullOrEmpty(subBucket))
-                            require(bucketsNonEmpty || params.isEmpty, "Both bucket and subBucket should be non empty")
-                            complete {
-                              Future {
-                                profile(s"whatsapp.get.checkcontact.$appName") {
-                                  PhoneNumberHelper.validateNFormatNumber(appName, destination)("wacontactroute") match {
-                                    case Some(n) =>
-                                      val subscribed = if (bucketsNonEmpty) {
-                                        val meta = WAMetaData(appName, bucket, subBucket).asMap.asInstanceOf[Map[String, String]]
-                                        GuardrailService.isGuarded[String, Boolean, Map[_, _]](appName, Channel.WA, n, meta) match {
-                                          case Success(sub) => !sub
-                                          case Failure(_) => false
-                                        }
-                                      } else null
-                                      val (waPresentUsers, waAbsentUsers) = WAContactCheckHelper.checkContact(appName, Set(n))
-                                      val waDetails = (waPresentUsers ::: waAbsentUsers).head
-                                      GenericResponse(StatusCodes.OK.intValue, null, Response(s"WA status for destination $destination", WACheckContactResp(destination, waDetails.exists, subscribed)))
-                                    case None =>
-                                      ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatsapp invalid numbers: $destination")
-                                      GenericResponse(StatusCodes.BadRequest.intValue, null, Response(s"Dropping whatsapp invalid numbers $destination", null))
-                                  }
+                      authorize(user, "CHECK_CONTACT", s"CHECK_CONTACT_$appName") {
+                        parameterMap { params =>
+                          val bucket = params.getOrElse("bucket", "")
+                          val subBucket = params.getOrElse("subBucket", "")
+                          val bucketsNonEmpty = !(StringUtils.isNullOrEmpty(bucket) || StringUtils.isNullOrEmpty(subBucket))
+                          require(bucketsNonEmpty || params.isEmpty, "Both bucket and subBucket should be non empty")
+                          complete {
+                            Future {
+                              profile(s"whatsapp.get.checkcontact.$appName") {
+                                PhoneNumberHelper.validateNFormatNumber(appName, destination)("wacontactroute") match {
+                                  case Some(n) =>
+                                    val subscribed = if (bucketsNonEmpty) {
+                                      val meta = WAMetaData(appName, bucket, subBucket).asMap.asInstanceOf[Map[String, String]]
+                                      GuardrailService.isGuarded[String, Boolean, Map[_, _]](appName, Channel.WA, n, meta) match {
+                                        case Success(sub) => !sub
+                                        case Failure(_) => false
+                                      }
+                                    } else null
+                                    val (waPresentUsers, waAbsentUsers) = WAContactCheckHelper.checkContact(appName, Set(n))
+                                    val waDetails = (waPresentUsers ::: waAbsentUsers).head
+                                    GenericResponse(StatusCodes.OK.intValue, null, Response(s"WA status for destination $destination", WACheckContactResp(destination, waDetails.exists, subscribed)))
+                                  case None =>
+                                    ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatsapp invalid numbers: $destination")
+                                    GenericResponse(StatusCodes.BadRequest.intValue, null, Response(s"Dropping whatsapp invalid numbers $destination", null))
                                 }
-                              }(ioDispatcher)
-                            }
+                              }
+                            }(ioDispatcher)
                           }
                         }
                       }
