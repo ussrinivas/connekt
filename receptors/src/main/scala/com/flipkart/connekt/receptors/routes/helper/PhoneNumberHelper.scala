@@ -21,7 +21,7 @@ import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
 
 import scala.util.Try
 
-object PhoneNumberHelper extends Instrumented{
+object PhoneNumberHelper extends Instrumented {
 
   val appLevelConfigService = ServiceFactory.getUserProjectConfigService
   val phoneUtil: PhoneNumberUtil = PhoneNumberUtil.getInstance()
@@ -31,13 +31,13 @@ object PhoneNumberHelper extends Instrumented{
     validateNum.isSuccess && phoneUtil.isValidNumber(validateNum.get)
   }
 
-  def validateNFormatNumber(appName: String, number: String): Option[String] = {
+  def validateNFormatNumber(appName: String, number: String)(names: String*): Option[String] = {
     Try(phoneUtil.parse(number, getLocalRegion(appName))) match {
       case number if number.isSuccess && phoneUtil.isValidNumber(number.get) =>
-        meter("validateNFormatNumber.success").mark()
+        names.foreach(name => meter(s"validateNFormatNumber.$name.success").mark())
         Some(phoneUtil.format(number.get, PhoneNumberFormat.E164))
       case _ =>
-        meter("validateNFormatNumber.failed").mark()
+        names.foreach(name => meter(s"validateNFormatNumber.$name.failed").mark())
         None
     }
   }

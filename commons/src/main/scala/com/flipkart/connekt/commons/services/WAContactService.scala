@@ -28,7 +28,6 @@ class WAContactService extends TService with Instrumented {
   var queueProducerHelper: KafkaProducerHelper = null
   private lazy val dao = DaoFactory.getWAContactDao
   private final val WA_CONTACT_BATCH = ConnektConfig.getInt("wa.check.contact.batch.size").getOrElse(1000)
-  private final val WA_CONTACT_QUEUE = ConnektConfig.getString("wa.contact.topic.name").get
 
   def this(queueProducerHelper: KafkaProducerHelper) {
     this()
@@ -50,12 +49,12 @@ class WAContactService extends TService with Instrumented {
     dao.gets(appName, destinations)
   }
 
-  def refreshWAContacts() = {
+  def refreshWAContacts(topic: String) = {
     val task = new Runnable {
       override def run() = {
         profile("refreshAll") {
           dao.getAllContacts match {
-            case Success(c) => c.grouped(WA_CONTACT_BATCH).foreach(_.foreach(contact => enqueueContactEvents(contact)))
+            case Success(c) => c.grouped(WA_CONTACT_BATCH).foreach(_.foreach(contact => enqueueContactEvents(contact, topic)))
             case Failure(f) => ConnektLogger(LogFile.SERVICE).error(s"Contact warm-up failure", f)
           }
         }
@@ -65,9 +64,9 @@ class WAContactService extends TService with Instrumented {
   }
 
   @Timed("enqueueContactPayload")
-  def enqueueContactEvents(contact: ContactPayload): Unit = {
+  def enqueueContactEvents(contact: ContactPayload, topic: String): Unit = {
     val reqId = generateUUID
-    queueProducerHelper.writeMessages(WA_CONTACT_QUEUE, (reqId, contact.getJson))
+    queueProducerHelper.writeMessages(topic, (reqId, contact.getJson))
   }
 
 }

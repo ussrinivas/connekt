@@ -39,6 +39,7 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
   private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
   private val registrationTimeout = ConnektConfig.getInt("timeout.registration").getOrElse(8000).millis
   private val contactService = ServiceFactory.getContactService
+  private final val WA_CONTACT_QUEUE = ConnektConfig.getString("wa.contact.topic.name").get
 
   val route =
     authenticate {
@@ -183,10 +184,10 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                         meteredResource(s"register.wa.contact.$appName") {
                           entity(as[ContactPayload]) { contact =>
                             if (!isTestRequest) {
-                              PhoneNumberHelper.validateNFormatNumber(appName, contact.user_identifier) match {
+                              PhoneNumberHelper.validateNFormatNumber(appName, contact.user_identifier)("registrationroute.wa") match {
                                 case Some(n) =>
                                   val updatedContact = contact.copy(user_identifier = n, appName = appName)
-                                  contactService.enqueueContactEvents(updatedContact)
+                                  contactService.enqueueContactEvents(updatedContact, WA_CONTACT_QUEUE)
                                   complete(GenericResponse(StatusCodes.Accepted.intValue, null, Response(s"Contact registration request received for destination : ${contact.user_identifier}", null)))
                                 case None =>
                                   ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatsapp invalid numbers: ${contact.user_identifier}")

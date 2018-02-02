@@ -20,7 +20,7 @@ import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFa
 import com.flipkart.connekt.commons.iomodels.MessageStatus.WAResponseStatus
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.metrics.Instrumented
-import com.flipkart.connekt.commons.services.{BigfootService, WAContactService}
+import com.flipkart.connekt.commons.services.{BigfootService, ConnektConfig, WAContactService}
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.firefly.models.FlowResponseStatus
 import com.flipkart.connekt.firefly.models.Status
@@ -31,6 +31,7 @@ import scala.util.{Failure, Success, Try}
 class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends WAProviderResponseHandler[(Try[HttpResponse], WAContactTracker)](96) with Instrumented {
 
   private val contactService = ServiceFactory.getContactService
+  private final val WA_CONTACT_QUEUE = ConnektConfig.getString("wa.contact.topic.name").get
 
   override implicit val map: ((Try[HttpResponse], WAContactTracker)) => Future[List[FlowResponseStatus]] = responseTrackerPair => Future(profile("map") {
 
@@ -61,21 +62,21 @@ class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) e
               val response = strResponse.getObj[WAErrorResponse]
               ConnektLogger(LogFile.PROCESSORS).error(s"WAContactResponseHandler received http response : ${response.getJson} , with status code $w.")
               meter(s"check.contact.failed.${WAResponseStatus.ContactError}").mark()
-              requestTracker.contactPayloads.contacts.foreach(contactService.enqueueContactEvents)
+              requestTracker.contactPayloads.contacts.foreach(contactService.enqueueContactEvents(_, WA_CONTACT_QUEUE))
               List(FlowResponseStatus(Status.Failed))
           }
         } catch {
           case e: Exception =>
             ConnektLogger(LogFile.PROCESSORS).error(s"WAContactResponseHandler failed processing http response body for: $r due to internal error ", e)
             meter(s"check.contact.failed.${WAResponseStatus.ContactSystemError}").mark()
-            requestTracker.contactPayloads.contacts.foreach(contactService.enqueueContactEvents)
+            requestTracker.contactPayloads.contacts.foreach(contactService.enqueueContactEvents(_, WA_CONTACT_QUEUE))
             List(FlowResponseStatus(Status.Failed))
         }
       case Failure(e2) =>
         ConnektLogger(LogFile.PROCESSORS).debug(s"WAContactResponseHandler send failure for: $requestTracker", e2)
         ConnektLogger(LogFile.PROCESSORS).error(s"WAContactResponseHandler send failure for messageId : ${requestTracker.messageId} with error : ", e2)
         meter(s"check.contact.failed.${WAResponseStatus.ContactError}").mark()
-        requestTracker.contactPayloads.contacts.foreach(contactService.enqueueContactEvents)
+        requestTracker.contactPayloads.contacts.foreach(contactService.enqueueContactEvents(_, WA_CONTACT_QUEUE))
         List(FlowResponseStatus(Status.Failed))
     }
   })(m.executionContext)

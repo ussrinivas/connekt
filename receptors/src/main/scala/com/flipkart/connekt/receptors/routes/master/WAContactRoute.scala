@@ -67,7 +67,7 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                               val formattedDestination = ListBuffer[String]()
                               val invalidDestinations = ListBuffer[String]()
                               destinations.foreach(d => {
-                                PhoneNumberHelper.validateNFormatNumber(appName, d) match {
+                                PhoneNumberHelper.validateNFormatNumber(appName, d)("wacontactroute") match {
                                   case Some(n) => formattedDestination += n
                                   case None => invalidDestinations += d
                                 }
@@ -107,7 +107,7 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                             complete {
                               Future {
                                 profile(s"whatsapp.get.checkcontact.$appName") {
-                                  PhoneNumberHelper.validateNFormatNumber(appName, destination) match {
+                                  PhoneNumberHelper.validateNFormatNumber(appName, destination)("wacontactroute") match {
                                     case Some(n) =>
                                       val subscribed = if (bucketsNonEmpty) {
                                         val meta = WAMetaData(appName, bucket, subBucket).asMap.asInstanceOf[Map[String, String]]

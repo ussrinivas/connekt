@@ -26,7 +26,7 @@ import com.flipkart.connekt.receptors.routes.helper.{PhoneNumberHelper, WAContac
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
-class WASubscriptionRoute (implicit am: ActorMaterializer) extends BaseJsonHandler {
+class WASubscriptionRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
   private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
   private val welcomeDefualtMsgStencil = ConnektConfig.getString("whatsapp.welcome.default.message.stencil")
@@ -44,7 +44,7 @@ class WASubscriptionRoute (implicit am: ActorMaterializer) extends BaseJsonHandl
                       entity(as[WASubscriptionRequest]) { subRequest =>
                         complete {
                           Future {
-                            PhoneNumberHelper.validateNFormatNumber(appName, destination) match {
+                            PhoneNumberHelper.validateNFormatNumber(appName, destination)("wasubscriptionroute") match {
                               case Some(validNumber) =>
                                 GuardrailService.modifyGuard[String, Any, Map[String, Boolean]](appName, Channel.WA, validNumber, subRequest.asMap.asInstanceOf[Map[String, AnyRef]]) match {
                                   case Success(subResp) =>
