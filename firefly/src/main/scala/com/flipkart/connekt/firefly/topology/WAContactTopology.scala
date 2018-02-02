@@ -38,7 +38,7 @@ class WAContactTopology(kafkaConsumerConfig: Config) extends CustomTopology[Cont
   override def sources: Map[CheckPointGroup, Source[ContactPayloads, NotUsed]] = {
     val waKafkaThrottle = ConnektConfig.getOrElse("wa.contact.throttle.rps", 2)
     Map(Channel.WA.toString ->
-      createMergedSource[ContactPayload](Channel.WA, waContactTopics, kafkaConsumerConfig)
+      createMergedSource[ContactPayload]("wa_check_contact_topology", waContactTopics, kafkaConsumerConfig)
         .groupedWithin(waContactSize, waContactTimeLimit.second)
         .throttle(waKafkaThrottle, 1.second, waKafkaThrottle, ThrottleMode.Shaping)
         .via(Flow[Seq[ContactPayload]].map {
