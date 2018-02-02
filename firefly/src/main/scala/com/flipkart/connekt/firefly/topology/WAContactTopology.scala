@@ -29,15 +29,16 @@ import com.typesafe.config.Config
 
 import scala.concurrent.duration._
 
-class WAContactTopology(kafkaConsumerConfig: Config, topicName: String) extends CustomTopology[ContactPayloads, FlowResponseStatus] {
+class WAContactTopology(kafkaConsumerConfig: Config) extends CustomTopology[ContactPayloads, FlowResponseStatus] {
 
   private val waContactSize: Int = ConnektConfig.getInt("wa.contact.batch.size").getOrElse(1000)
   private val waContactTimeLimit: Int = ConnektConfig.getInt("wa.contact.wait.time.limit.sec").getOrElse(2)
+  private lazy val waContactTopics = ConnektConfig.getList("wa.contact.topics.name")
 
   override def sources: Map[CheckPointGroup, Source[ContactPayloads, NotUsed]] = {
     val waKafkaThrottle = ConnektConfig.getOrElse("wa.contact.throttle.rps", 2)
     Map(Channel.WA.toString ->
-      createMergedSource[ContactPayload](Channel.WA, Seq(topicName), kafkaConsumerConfig)
+      createMergedSource[ContactPayload](Channel.WA, waContactTopics, kafkaConsumerConfig)
         .groupedWithin(waContactSize, waContactTimeLimit.second)
         .throttle(waKafkaThrottle, 1.second, waKafkaThrottle, ThrottleMode.Shaping)
         .via(Flow[Seq[ContactPayload]].map {
