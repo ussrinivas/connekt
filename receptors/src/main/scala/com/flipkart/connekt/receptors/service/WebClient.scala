@@ -19,7 +19,9 @@ import akka.stream.ActorMaterializer
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.entities.Channel.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
+import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.services.KeyChainManager
+import com.flipkart.metrics.Timed
 import com.typesafe.sslconfig.akka.AkkaSSLConfig
 import com.typesafe.sslconfig.ssl.{TrustManagerConfig, TrustStoreConfig}
 
@@ -40,8 +42,9 @@ object WebClientHelper {
 }
 
 
-class WebClient {
+class WebClient extends Instrumented {
 
+  @Timed("callHttpService")
   def callHttpService(httpRequest: HttpRequest, channel: Channel, appName: String): Future[HttpResponse] = {
 
     implicit val materializer = WebClientHelper.getMaterializer
