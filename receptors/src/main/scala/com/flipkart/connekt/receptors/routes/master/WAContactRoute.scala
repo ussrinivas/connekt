@@ -52,7 +52,7 @@ class WAContactRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
             (appName: String) =>
               pathEndOrSingleSlash {
                 post {
-                  meteredResource("checkcontact") {
+                  meteredResource("bulk.checkcontact") {
                     authorize(user, "CHECK_CONTACT", s"CHECK_CONTACT_$appName") {
                       entity(as[WABulkCheckContactRequest]) { obj =>
                         complete {
