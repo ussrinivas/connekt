@@ -31,7 +31,7 @@ import scala.util.{Failure, Success, Try}
 class WAContactResponseHandler(implicit m: Materializer, ec: ExecutionContext) extends WAProviderResponseHandler[(Try[HttpResponse], WAContactTracker)](96) with Instrumented {
 
   private val contactService = ServiceFactory.getContactService
-  private final val WA_CONTACT_QUEUE = ConnektConfig.getString("wa.contact.topic.name").get
+  private final val WA_CONTACT_QUEUE = Constants.WAConstants.WA_CONTACT_QUEUE
 
   override implicit val map: ((Try[HttpResponse], WAContactTracker)) => Future[List[FlowResponseStatus]] = responseTrackerPair => Future(profile("map") {
 

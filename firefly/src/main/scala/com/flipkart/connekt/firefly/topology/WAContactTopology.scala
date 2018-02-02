@@ -19,9 +19,8 @@ import akka.stream.scaladsl.{Flow, GraphDSL, Sink, Source}
 import com.flipkart.connekt.busybees.streams.flows.FlowMetrics
 import com.flipkart.connekt.busybees.streams.flows.profilers.TimedFlowOps._
 import com.flipkart.connekt.commons.entities.Channel
-import com.flipkart.connekt.commons.iomodels.{ContactPayload, ContactPayloads}
+import com.flipkart.connekt.commons.iomodels.{Constants, ContactPayload, ContactPayloads}
 import com.flipkart.connekt.commons.services.ConnektConfig
-import com.flipkart.connekt.commons.utils.StringUtils._
 import com.flipkart.connekt.firefly.flows.dispatchers.{HttpDispatcher, WAContactHttpDispatcherPrepare}
 import com.flipkart.connekt.firefly.flows.responsehandlers.WAContactResponseHandler
 import com.flipkart.connekt.firefly.models.FlowResponseStatus
@@ -33,13 +32,13 @@ class WAContactTopology(kafkaConsumerConfig: Config) extends CustomTopology[Cont
 
   private val waContactSize: Int = ConnektConfig.getInt("wa.contact.batch.size").getOrElse(1000)
   private val waContactTimeLimit: Int = ConnektConfig.getInt("wa.contact.wait.time.limit.sec").getOrElse(2)
-  private lazy val waContactTopic = ConnektConfig.getString("wa.contact.topic.name").get
+  private final val WA_CONTACT_QUEUE = Constants.WAConstants.WA_CONTACT_QUEUE
   private lazy val waContactNewRegistrationTopic = ConnektConfig.getString("wa.contact.new.registration.topic.name").get
 
   override def sources: Map[CheckPointGroup, Source[ContactPayloads, NotUsed]] = {
     val waKafkaThrottle = ConnektConfig.getOrElse("wa.contact.throttle.rps", 2)
     Map(Channel.WA.toString ->
-      createMergedSource[ContactPayload]("wa_check_contact_topology", Seq(waContactNewRegistrationTopic, waContactTopic), kafkaConsumerConfig)
+      createMergedSource[ContactPayload]("wa_check_contact_topology", Seq(waContactNewRegistrationTopic, WA_CONTACT_QUEUE), kafkaConsumerConfig)
         .groupedWithin(waContactSize, waContactTimeLimit.second)
         .throttle(waKafkaThrottle, 1.second, waKafkaThrottle, ThrottleMode.Shaping)
         .via(Flow[Seq[ContactPayload]].map {

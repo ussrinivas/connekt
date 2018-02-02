@@ -21,7 +21,7 @@ import akka.stream.scaladsl.Source
 import com.flipkart.connekt.commons.entities.DeviceDetails
 import com.flipkart.connekt.commons.entities.MobilePlatform.MobilePlatform
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
-import com.flipkart.connekt.commons.iomodels.{ContactPayload, GenericResponse, Response}
+import com.flipkart.connekt.commons.iomodels.{Constants, ContactPayload, GenericResponse, Response}
 import com.flipkart.connekt.commons.services.{ConnektConfig, DeviceDetailsService}
 import com.flipkart.connekt.commons.utils.GenericUtils.CaseClassPatch
 import com.flipkart.connekt.commons.utils.StringUtils._
@@ -42,7 +42,7 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
   private val WA_NEW_REGISTRATION_TOPIC = ConnektConfig.getString("wa.contact.new.registration.topic.name").get
   private val userServiceNewAccountTopic = ConnektConfig.getString("wa.varadhi.user.svc.topic").get
   private val contactService = ServiceFactory.getContactService
-  private final val WA_CONTACT_QUEUE = ConnektConfig.getString("wa.contact.topic.name").get
+  private final val WA_CONTACT_QUEUE = Constants.WAConstants.WA_CONTACT_QUEUE
 
   val route = {
     authenticate {

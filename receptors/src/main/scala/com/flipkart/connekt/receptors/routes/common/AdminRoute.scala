@@ -15,13 +15,13 @@ package com.flipkart.connekt.receptors.routes.common
 import akka.http.scaladsl.model.StatusCodes
 import akka.stream.ActorMaterializer
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
-import com.flipkart.connekt.commons.iomodels.{GenericResponse, Response}
-import com.flipkart.connekt.commons.services.{ConnektConfig, DeviceDetailsService, WAContactService}
+import com.flipkart.connekt.commons.iomodels.{Constants, GenericResponse, Response}
+import com.flipkart.connekt.commons.services.{DeviceDetailsService, WAContactService}
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
 
 class AdminRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
-  private final val WA_CONTACT_QUEUE = ConnektConfig.getString("wa.contact.topic.name").get
+  private final val WA_CONTACT_QUEUE = Constants.WAConstants.WA_CONTACT_QUEUE
 
   val route =
     authenticate {
