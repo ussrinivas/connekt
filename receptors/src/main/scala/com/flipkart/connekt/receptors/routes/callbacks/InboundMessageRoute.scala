@@ -48,17 +48,19 @@ class InboundMessageRoute(implicit am: ActorMaterializer) extends BaseJsonHandle
                 authorize(user, "CREATE_INBOUND_EVENTS", s"CREATE_INBOUND_EVENTS_$appName") {
                   (post | get) {
                     parameterMap { urlParams =>
-                      entity(as[String](messageUnmarshallerFromEntityUnmarshaller(stringUnmarshaller))) { stringBody =>
-                        val payload: ObjectNode = stringBody match {
-                          case x if x.isEmpty => Map("get" -> urlParams).getJsonNode
-                          case y => Map("post" -> y.getObj[BaseJsonNode]).getJsonNode
+                      profile(s"inbound.parse.$appName.$providerName") {
+                        entity(as[String](messageUnmarshallerFromEntityUnmarshaller(stringUnmarshaller))) { stringBody =>
+                          val payload: ObjectNode = stringBody match {
+                            case x if x.isEmpty => Map("get" -> urlParams).getJsonNode
+                            case y => Map("post" -> y.getObj[BaseJsonNode]).getJsonNode
+                          }
+                          val stencil = stencilService.getStencilsByName(s"ckt-$channel-$providerName").find(_.component.equalsIgnoreCase("inbound")).get
+                          val event = stencilService.materialize(stencil, payload).asInstanceOf[InboundMessageCallbackEvent].copy(clientId = user.userId, appName = appName, channel = channel, sender = providerName)
+                          event.validate()
+                          event.enqueue
+                          ConnektLogger(LogFile.SERVICE).debug(s"Received inbound event {}", supplier(event.toString))
+                          complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"InboundMessage event recieved successfully for appName : $appName, providerName : $providerName", null)))
                         }
-                        val stencil = stencilService.getStencilsByName(s"ckt-$channel-$providerName").find(_.component.equalsIgnoreCase("inbound")).get
-                        val event = stencilService.materialize(stencil, payload).asInstanceOf[InboundMessageCallbackEvent].copy(clientId = user.userId, appName = appName, channel = channel, sender = providerName)
-                        event.validate()
-                        event.enqueue
-                        ConnektLogger(LogFile.SERVICE).debug(s"Received inbound event {}", supplier(event.toString))
-                        complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"InboundMessage event recieved successfully for appName : $appName, providerName : $providerName", null)))
                       }
                     }
                   }
@@ -68,43 +70,45 @@ class InboundMessageRoute(implicit am: ActorMaterializer) extends BaseJsonHandle
                 authorize(user, "PROCESS_INBOUND_EVENTS", s"PROCESS_INBOUND_EVENTS_$appName") {
                   post {
                     entity(as[CallbackEvent]) { callbackEvent =>
-                      channel match {
-                        case Channel.WA =>
-                          val inboundEvent = callbackEvent.asInstanceOf[InboundMessageCallbackEvent]
-                          ConnektLogger(LogFile.SERVICE).debug(s"Received Whatsapp inbound process request with payload: ${inboundEvent.toString}")
-                          val cargo = inboundEvent.cargo.getObj[Map[String, String]]
-                          if (cargo.contains("from")) {
-                            val sender = cargo("from")
-                            GuardrailService.isGuarded[String, Any, Map[_, _]](appName, Channel.WA, sender, WAMetaData(appName, transactionalBucketName, transactionalSubBucketName, "Whatsapp").asMap.asInstanceOf[Map[String, String]]) match {
-                              case Success(isGuarded) if !isGuarded =>
-                                val text = inboundEvent.message.getObj[Map[String, String]].getOrElse("text", "")
-                                val channelInfo = WARequestInfo(appName = appName, destinations = Set(sender))
-                                val channelData = WARequestData(waType = WAType.hsm)
-                                text.toLowerCase match {
-                                  case "stop" =>
-                                    val guardrailEntity = new TGuardrailEntity[String] {
-                                      override def entity: String = sender
-                                    }
-                                    GuardrailService.guard[String, Boolean, Map[_, _]](appName, channel, guardrailEntity, Map("domain" -> "flipkart", "source" -> "Whatsapp"))
-                                    val connektRequest = ConnektRequest(generateUUID, user.userId, Some("UNSUBS"), channel.toString, "H", stopReplyStencil, None, None, channelInfo, channelData, StringUtils.getObjectNode, Map.empty)
-                                    val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(connektRequest, user)
-                                    ServiceFactory.getMessageService(Channel.WA).saveRequest(connektRequest, queueName)
-                                  case _ =>
-                                    val connektRequest = ConnektRequest(generateUUID, user.userId, Some("WhatsappDefaultReply"), channel.toString, "H", anyMessageReplyStencil, None, None, channelInfo, channelData, StringUtils.getObjectNode, Map.empty)
-                                    val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(connektRequest, user)
-                                    ServiceFactory.getMessageService(Channel.WA).saveRequest(connektRequest, queueName)
-                                }
-                              case Success(pref) =>
-                                ConnektLogger(LogFile.SERVICE).info(s"No Whatsapp reply sent to sender: $sender as sender is guarded.")
-                              case Failure(f) =>
-                                ConnektLogger(LogFile.SERVICE).error(s"GuardrailService failed: ${f.toString}")
+                      profile(s"inbound.process.$appName.$providerName") {
+                        channel match {
+                          case Channel.WA =>
+                            val inboundEvent = callbackEvent.asInstanceOf[InboundMessageCallbackEvent]
+                            ConnektLogger(LogFile.SERVICE).debug(s"Received Whatsapp inbound process request with payload: ${inboundEvent.toString}")
+                            val cargo = inboundEvent.cargo.getObj[Map[String, String]]
+                            if (cargo.contains("from")) {
+                              val sender = cargo("from")
+                              GuardrailService.isGuarded[String, Any, Map[_, _]](appName, Channel.WA, sender, WAMetaData(appName, transactionalBucketName, transactionalSubBucketName, "Whatsapp").asMap.asInstanceOf[Map[String, String]]) match {
+                                case Success(isGuarded) if !isGuarded =>
+                                  val text = inboundEvent.message.getObj[Map[String, String]].getOrElse("text", "")
+                                  val channelInfo = WARequestInfo(appName = appName, destinations = Set(sender))
+                                  val channelData = WARequestData(waType = WAType.hsm)
+                                  text.toLowerCase match {
+                                    case "stop" =>
+                                      val guardrailEntity = new TGuardrailEntity[String] {
+                                        override def entity: String = sender
+                                      }
+                                      GuardrailService.guard[String, Boolean, Map[_, _]](appName, channel, guardrailEntity, Map("domain" -> "flipkart", "source" -> "Whatsapp"))
+                                      val connektRequest = ConnektRequest(generateUUID, user.userId, Some("UNSUBS"), channel.toString, "H", stopReplyStencil, None, None, channelInfo, channelData, StringUtils.getObjectNode, Map.empty)
+                                      val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(connektRequest, user)
+                                      ServiceFactory.getMessageService(Channel.WA).saveRequest(connektRequest, queueName)
+                                    case _ =>
+                                      val connektRequest = ConnektRequest(generateUUID, user.userId, Some("WhatsappDefaultReply"), channel.toString, "H", anyMessageReplyStencil, None, None, channelInfo, channelData, StringUtils.getObjectNode, Map.empty)
+                                      val queueName = ServiceFactory.getMessageService(Channel.WA).getRequestBucket(connektRequest, user)
+                                      ServiceFactory.getMessageService(Channel.WA).saveRequest(connektRequest, queueName)
+                                  }
+                                case Success(pref) =>
+                                  ConnektLogger(LogFile.SERVICE).info(s"No Whatsapp reply sent to sender: $sender as sender is guarded.")
+                                case Failure(f) =>
+                                  ConnektLogger(LogFile.SERVICE).error(s"GuardrailService failed: ${f.toString}")
+                              }
+                              complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"InboundMessage event processed successfully for appName : $appName, providerName : $providerName", null)))
+                            } else {
+                              complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Ignoring inboundMessage event as it doesn't contains Sender destination for appName : $appName, providerName : $providerName", null)))
                             }
-                            complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"InboundMessage event processed successfully for appName : $appName, providerName : $providerName", null)))
-                          } else {
-                            complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Ignoring inboundMessage event as it doesn't contains Sender destination for appName : $appName, providerName : $providerName", null)))
-                          }
-                        case _ =>
-                          complete(GenericResponse(StatusCodes.NotAcceptable.intValue, null, Response(s"InboundMessage event for channel : $channel is not supported", null)))
+                          case _ =>
+                            complete(GenericResponse(StatusCodes.NotAcceptable.intValue, null, Response(s"InboundMessage event for channel : $channel is not supported", null)))
+                        }
                       }
                     }
                   }
