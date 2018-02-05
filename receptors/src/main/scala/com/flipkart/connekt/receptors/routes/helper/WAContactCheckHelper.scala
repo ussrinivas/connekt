@@ -31,13 +31,18 @@ import scala.util.{Failure, Success, Try}
 object WAContactCheckHelper extends Instrumented {
 
   private val baseUrl = ConnektConfig.getString("wa.base.uri").get
-  private val timeout = ConnektConfig.getInt("wa.contact.api.timeout").get.seconds
-  private val checkContactInterval = ConnektConfig.getInt("wa.check.contact.interval.days").get
+  private val timeout = ConnektConfig.getInt("wa.contact.api.timeout.sec").get.seconds
+  private val checkContactInterval = ConnektConfig.getInt("wa.hbase.check.contact.interval.days").get
+  private val checkContactEnabled = ConnektConfig.getBoolean("wa.hbase.check.contact.enable").get
 
   //returns tuple of valid numbers list and invalid numbers list
   def checkContact(appName: String, destinations: Set[String])(implicit am: ActorMaterializer): (List[WAContactEntity], List[WAContactEntity]) = {
     val withinTTLWAList = WAContactService.instance.gets(appName, destinations) match {
-      case Success(waList) => waList.filter(System.currentTimeMillis() - _.lastCheckContactTS < checkContactInterval.days.toMillis)
+      case Success(waList) =>
+        if (checkContactEnabled)
+          waList.filter(System.currentTimeMillis() - _.lastCheckContactTS < checkContactInterval.days.toMillis)
+        else
+          waList
       case _ => Nil
     }
     (checkContactViaWAApi(destinations.toList.diff(withinTTLWAList.map(_.destination)), appName) ++ withinTTLWAList).partition(_.exists.toLowerCase.contains("true"))
