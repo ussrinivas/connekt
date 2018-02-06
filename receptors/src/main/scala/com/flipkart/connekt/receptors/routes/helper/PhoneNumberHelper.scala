@@ -14,13 +14,14 @@ package com.flipkart.connekt.receptors.routes.helper
 
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.flipkart.connekt.commons.factories.ServiceFactory
+import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.utils.StringUtils.JSONUnMarshallFunctions
 import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
 
 import scala.util.Try
 
-object PhoneNumberHelper {
+object PhoneNumberHelper extends Instrumented{
 
   val appLevelConfigService = ServiceFactory.getUserProjectConfigService
   val phoneUtil: PhoneNumberUtil = PhoneNumberUtil.getInstance()
@@ -33,8 +34,11 @@ object PhoneNumberHelper {
   def validateNFormatNumber(appName: String, number: String): Option[String] = {
     Try(phoneUtil.parse(number, getLocalRegion(appName))) match {
       case number if number.isSuccess && phoneUtil.isValidNumber(number.get) =>
+        meter("validateNFormatNumber.success").mark()
         Some(phoneUtil.format(number.get, PhoneNumberFormat.E164))
-      case _ => None
+      case _ =>
+        meter("validateNFormatNumber.failed").mark()
+        None
     }
   }
 
