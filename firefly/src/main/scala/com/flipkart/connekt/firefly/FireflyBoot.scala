@@ -21,7 +21,6 @@ import com.flipkart.connekt.commons.connections.ConnectionProvider
 import com.flipkart.connekt.commons.core.BaseApp
 import com.flipkart.connekt.commons.core.Wrappers.Try_#
 import com.flipkart.connekt.commons.dao.DaoFactory
-import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.KafkaProducerHelper
 import com.flipkart.connekt.commons.services.{ConnektConfig, EventsDaoContainer, RequestDaoContainer}
@@ -50,8 +49,6 @@ object FireflyBoot extends BaseApp {
 
   var wAContactTopology: WAContactTopology = _
   var latencyMeteringTopology: LatencyMeteringTopology = _
-
-  private lazy val WA_CONTACT_TOPIC = ConnektConfig.getString("wa.contact.topic.name").get
 
   def start() {
     if (!initialized.getAndSet(true)) {
@@ -103,7 +100,7 @@ object FireflyBoot extends BaseApp {
       latencyMeteringTopology = new LatencyMeteringTopology(kafkaConsumerConnConf)
       latencyMeteringTopology.run
 
-      wAContactTopology = new WAContactTopology(kafkaConsumerConnConf, WA_CONTACT_TOPIC)
+      wAContactTopology = new WAContactTopology(kafkaConsumerConnConf)
       wAContactTopology.run
 
       ConnektLogger(LogFile.SERVICE).info("Started `Firefly` app")
