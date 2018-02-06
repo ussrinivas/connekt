@@ -28,7 +28,7 @@ import com.flipkart.connekt.commons.services.{ConnektConfig, EventsDaoContainer,
 import com.flipkart.connekt.commons.sync.SyncManager
 import com.flipkart.connekt.commons.utils.ConfigUtils
 import com.flipkart.connekt.firefly.flows.dispatchers.HttpDispatcher
-import com.flipkart.connekt.firefly.topology.{ClientTopologyManager, SmsLatencyMeteringTopology, WAContactTopology}
+import com.flipkart.connekt.firefly.topology.{ClientTopologyManager, LatencyMeteringTopology, WAContactTopology}
 import com.typesafe.config.ConfigFactory
 
 import scala.concurrent.duration.DurationLong
@@ -49,9 +49,9 @@ object FireflyBoot extends BaseApp {
   lazy val ioMat = ActorMaterializer(settings.withDispatcher("akka.actor.io-dispatcher"))
 
   var wAContactTopology: WAContactTopology = _
-  var smsLatencyMeteringTopology: SmsLatencyMeteringTopology = _
+  var latencyMeteringTopology: LatencyMeteringTopology = _
 
-  private lazy val CALLBACK_QUEUE_NAME = ConnektConfig.get("firefly.latency.metric.kafka.topic").getOrElse("ckt_callback_events_%s")
+  private lazy val WA_CONTACT_TOPIC = ConnektConfig.getString("wa.contact.topic.name").get
 
   def start() {
     if (!initialized.getAndSet(true)) {
@@ -100,10 +100,10 @@ object FireflyBoot extends BaseApp {
 
       ClientTopologyManager(kafkaConsumerConnConf, ConnektConfig.getInt("firefly.retry.limit").get)
 
-      smsLatencyMeteringTopology = new SmsLatencyMeteringTopology(kafkaConsumerConnConf, CALLBACK_QUEUE_NAME.format(Channel.SMS.toString.toLowerCase))
-      smsLatencyMeteringTopology.run
+      latencyMeteringTopology = new LatencyMeteringTopology(kafkaConsumerConnConf)
+      latencyMeteringTopology.run
 
-      wAContactTopology = new WAContactTopology(kafkaConsumerConnConf)
+      wAContactTopology = new WAContactTopology(kafkaConsumerConnConf, WA_CONTACT_TOPIC)
       wAContactTopology.run
 
       ConnektLogger(LogFile.SERVICE).info("Started `Firefly` app")
@@ -115,7 +115,7 @@ object FireflyBoot extends BaseApp {
     if (initialized.get()) {
       DaoFactory.shutdownHTableDaoFactory()
       Option(ClientTopologyManager.instance).foreach(_.stopAllTopologies())
-      val shutdownFutures = Option(wAContactTopology).map(_.shutdown()) :: Option(smsLatencyMeteringTopology).map(_.shutdown()) :: Nil
+      val shutdownFutures = Option(wAContactTopology).map(_.shutdown()) :: Option(latencyMeteringTopology).map(_.shutdown()) :: Nil
       Try_#(message = "Topology Shutdown Didn't Complete")(Await.ready(Future.sequence(shutdownFutures.flatten), 20.seconds))
       ConnektLogger.shutdown()
     }

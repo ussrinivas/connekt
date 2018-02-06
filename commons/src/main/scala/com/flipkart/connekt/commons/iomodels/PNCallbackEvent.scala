@@ -40,6 +40,8 @@ case class PNCallbackEvent(messageId: String,
 
   override def contactId: String = s"${appName.toLowerCase}$deviceId"
 
+  override def destination: String = deviceId
+
   override def toPublishFormat: fkint.mp.connekt.PNCallbackEvent = {
     fkint.mp.connekt.PNCallbackEvent(messageId = messageId, deviceId = deviceId, platform = platform, eventType = eventType, appName = appName, contextId = contextId, cargo = cargo, timestamp = DateTimeUtils.getStandardFormatted(timestamp))
   }

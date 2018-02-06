@@ -44,6 +44,8 @@ case class EmailCallbackEvent(messageId: String,
 
   override def contactId: String =  s"${appName.toLowerCase}$address"
 
+  override def destination: String = address
+
   override def namespace: String = "fkint/mp/connekt/EmailCallbackEvent"
 
   override def toPublishFormat: fkint.mp.connekt.EmailCallbackEvent = {
