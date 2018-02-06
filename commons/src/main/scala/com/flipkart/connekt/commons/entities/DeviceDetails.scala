@@ -44,7 +44,7 @@ case class DeviceDetails(deviceId: String,
 
   def toCallbackEvent = {
     DeviceCallbackEvent(deviceId = deviceId, userId = userId, osName = osName, osVersion = osVersion,
-      appName = appName, appVersion = appVersion, brand = brand, model = model, state = state, timestamp = System.currentTimeMillis(), active = active)
+      appName = appName, appVersion = appVersion, brand = brand, model = model, state = state, timestamp = System.currentTimeMillis(), ts = System.currentTimeMillis(), active = active)
   }
 
   def validate() = {
