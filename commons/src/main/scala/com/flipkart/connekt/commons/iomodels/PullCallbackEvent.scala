@@ -24,6 +24,8 @@ case class PullCallbackEvent(messageId: String,
                              timestamp: Long = System.currentTimeMillis(),
                              eventId: String = RandomStringUtils.randomAlphabetic(10)) extends CallbackEvent {
 
+  override def destination: String = null
+
   def validate() = {
     require(eventType.isDefined, s"`eventType` field cannot be empty or null, `messageId`: $messageId")
     require(contactId.isDefined, s"`contactId` field cannot be empty or null, `messageId`: $messageId")

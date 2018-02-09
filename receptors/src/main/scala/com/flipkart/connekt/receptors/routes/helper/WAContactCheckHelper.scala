@@ -15,7 +15,7 @@ package com.flipkart.connekt.receptors.routes.helper
 import akka.http.scaladsl.model._
 import akka.stream.ActorMaterializer
 import com.flipkart.connekt.commons.entities.{Channel, WAContactEntity}
-import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
+import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels.MessageStatus.WAResponseStatus
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.metrics.Instrumented
@@ -36,6 +36,8 @@ object WAContactCheckHelper extends Instrumented {
   private val checkContactInterval = ConnektConfig.getInt("wa.hbase.check.contact.interval.days").get
   private val checkContactHbaseEnabled = ConnektConfig.getBoolean("wa.hbase.check.contact.enable").get
   private val checkContactViaWaApiEnabled = ConnektConfig.getBoolean("wa.api.check.contact.enable").get
+  private val WA_NEW_REGISTRATION_TOPIC = ConnektConfig.getString("wa.contact.new.registration.topic.name").get
+  private val contactService = ServiceFactory.getContactService
 
   //returns tuple of valid numbers list and invalid numbers list
   @Timed("checkContact")
@@ -52,6 +54,7 @@ object WAContactCheckHelper extends Instrumented {
       (checkContactViaWAApi(destinations.toList.diff(withinTTLWAList.map(_.destination)), appName) ++ withinTTLWAList).partition(_.exists.toLowerCase.contains("true"))
     else {
       val contactNotInHbase = destinations.toList.diff(withinTTLWAList.map(_.destination))
+      contactNotInHbase.foreach(contact => contactService.enqueueContactEvents(ContactPayload(contact, appName), WA_NEW_REGISTRATION_TOPIC))
       val waAbsentUsers = contactNotInHbase.map(c => {
         WAContactEntity(c, c, appName, "false", None)
       })

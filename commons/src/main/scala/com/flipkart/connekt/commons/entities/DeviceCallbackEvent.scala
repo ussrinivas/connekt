@@ -26,6 +26,7 @@ sealed case class DeviceCallbackEvent(deviceId: String,
                                       brand: String,
                                       model: String,
                                       state: String,
+                                      timestamp: Long,
                                       ts: Long,
                                       active: Boolean
                                      ) extends CallbackEvent with PublishSupport {
@@ -41,6 +42,8 @@ sealed case class DeviceCallbackEvent(deviceId: String,
   override def eventType: String = throw new RuntimeException(s"`eventType` undefined for DeviceCallbackEvent")
 
   override def eventId: String = null
+
+  override def destination: String = null
 
   override def namespace: String = "fkint/mp/connekt/DeviceDetails"
 
