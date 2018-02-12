@@ -45,11 +45,7 @@ object ReceptorsServer extends BaseJsonHandler with AccessLogDirective with CORS
   private val bindHost = ConnektConfig.getString("receptors.bindHost").getOrElse("0.0.0.0")
   private val bindPort = ConnektConfig.getInt("receptors.bindPort").getOrElse(28000)
 
-  private val enableHttps = ConnektConfig.getBoolean("receptors.https.enabled").getOrElse(false)
-  private val bindHttpsPort = ConnektConfig.getInt("receptors.https.port").getOrElse(28443)
-
   var httpService: Future[ServerBinding] = null
-  var httpsService: Future[ServerBinding] = null
 
   val basicAuthChallenge = HttpChallenge("Basic", "Connekt")
   val apiAuthChallenge = HttpChallenge("API-Key", "Connekt")
@@ -115,45 +111,10 @@ object ReceptorsServer extends BaseJsonHandler with AccessLogDirective with CORS
 
     httpService = Http().bindAndHandle(routeWithLogging, bindHost, bindPort)
 
-    if (enableHttps) {
-
-      ConnektLogger(LogFile.SERVICE).info("Receptor Server HTTPS enabled... enabling https port")
-
-      val httpsContext = {
-        val keystorePassword = "changeit".toCharArray
-        val context = SSLContext.getInstance("TLS")
-
-        val keyStore = KeyStore.getInstance("jks")
-        keyStore.load(getClass.getClassLoader.getResourceAsStream("nm.flipkart.jks"), keystorePassword)
-
-        val keyManagerFactory = KeyManagerFactory.getInstance("SunX509")
-        keyManagerFactory.init(keyStore, keystorePassword)
-
-        val trustManagerFactory = TrustManagerFactory.getInstance("SunX509")
-        trustManagerFactory.init(keyStore)
-
-        context.init(keyManagerFactory.getKeyManagers, trustManagerFactory.getTrustManagers, new SecureRandom)
-
-        //Best ciphers based on http://security.stackexchange.com/questions/76993/now-that-it-is-2015-what-ssl-tls-cipher-suites-should-be-used-in-a-high-securit
-        val allowedCiphers = context.getDefaultSSLParameters.getCipherSuites.toSeq
-          .intersect(Seq("TLS_DHE_RSA_WITH_AES_256_CBC_SHA256", "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384", "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384", "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_DHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"))
-
-        ConnectionContext.https(
-          sslContext = context,
-          enabledProtocols = Option(immutable.Seq("TLSv1"))
-          //enabledCipherSuites = Option(immutable.Seq[String](allowedCiphers: _*)) //For enhanced security
-        )
-      }
-
-      httpsService = Http().bindAndHandle(routeWithLogging, bindHost, bindHttpsPort, httpsContext)
-    }
   }
 
   def shutdown() = {
-    val httpShutdown = httpService.flatMap(_.unbind())
-    val httpsShutdown = Option(httpsService).map(_.flatMap(_.unbind())).getOrElse(FastFuture.successful(Unit))
-
-    Future.sequence(List(httpShutdown, httpsShutdown)).onComplete(_ => {
+    httpService.flatMap(_.unbind()).onComplete(_ => {
       ConnektLogger(LogFile.SERVICE).info("receptor server unbinding complete")
 
       /**

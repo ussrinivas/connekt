@@ -18,17 +18,23 @@ import java.util.concurrent.atomic.AtomicBoolean
 import akka.event.Logging
 import akka.stream._
 import akka.stream.scaladsl.{Flow, RunnableGraph, Sink, Source}
+import akka.stream.{ActorAttributes, Attributes, KillSwitches, Materializer}
+import com.codahale.metrics.Gauge
 import akka.{Done, NotUsed}
 import com.flipkart.connekt.busybees.BusyBeesBoot
 import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels.{CallbackEvent, ConnektRequest}
+import com.flipkart.connekt.commons.core.Wrappers._
+import com.flipkart.connekt.commons.metrics.Instrumented
+
 import com.flipkart.connekt.commons.sync.SyncType.SyncType
 import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
+trait ConnektTopology[E <: CallbackEvent] extends Instrumented {
 case class GroupWiseConfig(topologyEnabled: AtomicBoolean, killSwitch: SharedKillSwitch)
 
 trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate {
@@ -116,6 +122,12 @@ trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate {
 
   def run(implicit dmat: Materializer): Unit = {
     ConnektLogger(LogFile.PROCESSORS).info(s"Starting Topology " + this.getClass.getSimpleName)
+    registry.register(getMetricName("topology.status"), new Gauge[Int] {
+      override def getValue: Int =  {
+        Option(shutdownComplete).map(tp => if (tp.isCompleted) 0 else 1).getOrElse(-1)
+      }
+    })
+    graphs().foreach(_.run())
     graphs.foreach(_.run())
   }
 

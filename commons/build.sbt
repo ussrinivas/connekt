@@ -11,7 +11,6 @@ envKey := {
   }
 }
 
-
 /** all akka only **/
 val akkaVersion = "2.4.17"
 val akkaHttpVersion = "10.0.4"
@@ -26,8 +25,8 @@ libraryDependencies ++= Seq(
 
 libraryDependencies ++= Seq(
   "org.scala-lang.modules" %% "scala-xml" % "1.0.6",
-  "com.flipkart.connekt" %% "concord" % "0.2.1",
-  "com.flipkart.connekt" %% "connekt-concord" % "0.2.10" excludeAll ExclusionRule(organization = "com.google.guava", name = "guava"),
+  "com.flipkart.connekt" %% "concord" % "0.2.9",
+  "com.flipkart.connekt" %% "connekt-concord" % "0.2.24" excludeAll ExclusionRule(organization = "com.google.guava", name = "guava"),
   /* Logging Dependencies.Since we want to use log4j2 */
   "com.lmax" % "disruptor" % "3.3.4",
   "org.apache.logging.log4j" % "log4j-api" % "2.5",
@@ -119,12 +118,11 @@ libraryDependencies ++= Seq(
   "javax.mail" % "mail" % "1.5.0-b01",
   "net.htmlparser.jericho" % "jericho-html" % "3.3",
   "org.jsoup" % "jsoup" % "1.8.3",
-  "com.googlecode.libphonenumber" % "libphonenumber" % "8.8.2",
+  "com.googlecode.libphonenumber" % "libphonenumber" % "8.8.9",
   "com.rabbitmq" % "amqp-client" % "4.0.1",
   "net.freeutils" % "jcharset" % "2.0",
   "com.aerospike" % "aerospike-client" % "3.3.3"
 )
-
 
 test in assembly := {}
 

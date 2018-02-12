@@ -22,6 +22,7 @@ import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
 )
 @JsonSubTypes(Array(
   new Type(value = classOf[PNRequestInfo], name = "PN"),
+  new Type(value = classOf[WARequestInfo], name = "WA"),
   new Type(value = classOf[EmailRequestInfo], name = "EMAIL"),
   new Type(value = classOf[SmsRequestInfo], name = "SMS"),
   new Type(value = classOf[PullRequestInfo], name = "PULL"),

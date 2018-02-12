@@ -16,6 +16,7 @@ import akka.connekt.AkkaHelpers._
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.stream.ActorMaterializer
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.entities.MobilePlatform.MobilePlatform
 import com.flipkart.connekt.commons.factories.ServiceFactory
@@ -26,7 +27,9 @@ import com.flipkart.connekt.receptors.routes.BaseJsonHandler
 import com.flipkart.connekt.receptors.wire.ResponseUtils._
 import com.flipkart.connekt.commons.services.ConnektConfig
 
+import scala.collection.immutable.ListMap
 import scala.concurrent.duration._
+import scala.collection._
 import scala.util.Try
 
 
@@ -79,15 +82,16 @@ class FetchRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                   case _ => r.getComputedChannelData
                                 }
                                 val pnRequestData = channelData.asInstanceOf[PNRequestData]
+                                //Pass Channel Id in payload if client is passing any Notification Channel Id
+                                r.channelInfo.asInstanceOf[PNRequestInfo].channelId foreach (chId => pnRequestData.data.put("channelId", chId))
                                 pnRequestData.data.put("contextId", r.contextId.orEmpty).put("messageId", r.id)
                               }
-                            }).toMap
+                            })(breakOut[Seq[ConnektRequest],(String, ObjectNode), ListMap[String, ObjectNode]])
 
                             val transformedRequests = stencilService.getStencilsByName(s"ckt-${appName.toLowerCase}-fetch").headOption match {
                               case None => pushRequests
                               case Some(stencil) => stencilService.materialize(stencil, pushRequests.getJsonNode)
                             }
-
                             profiler.stop()
                             GenericResponse(StatusCodes.OK.intValue, null, Response(s"Fetched result for $instanceId", transformedRequests))
                               .respondWithHeaders(scala.collection.immutable.Seq(RawHeader("endTs", endTs.toString), RawHeader("Access-Control-Expose-Headers", "endTs")))

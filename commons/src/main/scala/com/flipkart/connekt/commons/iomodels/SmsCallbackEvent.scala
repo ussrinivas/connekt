@@ -12,20 +12,25 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
+import com.flipkart.connekt.commons.dao.HbaseSinkSupport
+import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.entities.bigfoot.PublishSupport
+import com.flipkart.connekt.commons.factories.ServiceFactory
 import com.flipkart.connekt.commons.utils.DateTimeUtils
 import com.flipkart.connekt.commons.utils.StringUtils.{StringHandyFunctions, _}
 import org.apache.commons.lang.RandomStringUtils
 
-case class SmsCallbackEvent(messageId: String,
-                            eventType: String,
-                            receiver: String,
-                            clientId: String,
-                            appName: String,
-                            contextId: String,
-                            cargo: String = null,
-                            timestamp: Long = System.currentTimeMillis(),
-                            eventId: String = RandomStringUtils.randomAlphabetic(10)) extends CallbackEvent with PublishSupport {
+case class SmsCallbackEvent(
+                             messageId: String,
+                             eventType: String,
+                             receiver: String,
+                             clientId: String,
+                             appName: String,
+                             contextId: String,
+                             cargo: String = null,
+                             timestamp: Long = System.currentTimeMillis(),
+                             eventId: String = RandomStringUtils.randomAlphabetic(10)
+                           ) extends CallbackEvent with PublishSupport with HbaseSinkSupport {
 
   def this(messageId: String, eventType: String, receiver: String, clientId: String, appName: String, contextId: String, cargo: String) {
     this(messageId = messageId, clientId = clientId, receiver = receiver, eventType = eventType, appName = appName, contextId = contextId,
@@ -40,10 +45,14 @@ case class SmsCallbackEvent(messageId: String,
 
   override def contactId: String = s"${appName.toLowerCase}$receiver"
 
+  override def destination: String = receiver
+
   override def toPublishFormat: fkint.mp.connekt.SmsCallbackEvent = {
     fkint.mp.connekt.SmsCallbackEvent(messageId = messageId, appName = appName, contextId = contextId, eventType = eventType,
       cargo = cargo, receiver = receiver.getJson, timestamp = DateTimeUtils.getStandardFormatted(timestamp))
   }
 
   override def namespace: String = "fkint/mp/connekt/SmsCallbackEvent"
+
+  override def sinkId = messageId
 }

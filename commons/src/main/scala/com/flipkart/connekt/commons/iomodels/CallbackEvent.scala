@@ -14,8 +14,8 @@ package com.flipkart.connekt.commons.iomodels
 
 import com.fasterxml.jackson.annotation.JsonSubTypes.Type
 import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
+import com.flipkart.connekt.commons.dao.HbaseSinkSupport
 import com.flipkart.connekt.commons.entities.DeviceCallbackEvent
-import com.flipkart.connekt.commons.entities.bigfoot.PublishSupport
 
 @JsonTypeInfo(
   use = JsonTypeInfo.Id.NAME,
@@ -27,10 +27,13 @@ import com.flipkart.connekt.commons.entities.bigfoot.PublishSupport
   new Type(value = classOf[EmailCallbackEvent], name = "EMAIL"),
   new Type(value = classOf[DeviceCallbackEvent], name = "DEVICE"),
   new Type(value = classOf[SmsCallbackEvent], name = "SMS"),
+  new Type(value = classOf[WACallbackEvent], name = "WA"),
   new Type(value = classOf[InboundMessageCallbackEvent], name = "INB")
 ))
-abstract class CallbackEvent {
+abstract class CallbackEvent extends TopologyInputDatatype {
   def contactId: String
+
+  def destination: String
 
   def messageId: String
 
@@ -43,4 +46,7 @@ abstract class CallbackEvent {
   def appName: String
 
   def clientId: String
+
+  def timestamp: Long
 }
+

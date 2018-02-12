@@ -13,20 +13,26 @@
 package com.flipkart.connekt.commons.iomodels
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize}
-import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
-import com.flipkart.connekt.commons.entities.EnumTypeHint
-
-import scala.annotation.meta._
+import com.flipkart.connekt.commons.utils.StringUtils._
+import com.flipkart.connekt.commons.factories.ServiceFactory
 
 case class PNRequestInfo(@JsonProperty(required = false) platform: String,
                          @JsonProperty(required = false) appName: String,
                          @JsonProperty(required = false) deviceIds: Set[String] = Set.empty[String],
                          @JsonProperty(required = false) topic:Option[String] = None,
+                         @JsonProperty(required = false) channelId:Option[String] = None,
                          ackRequired: Boolean,
                          priority: Priority = Priority.HIGH) extends ChannelRequestInfo {
   def this() {
-    this(null, null, Set.empty[String], None, false, Priority.HIGH)
+    this(null, null, Set.empty[String], None, None, false, Priority.HIGH)
+  }
+
+  def validateChannel(clientId : String) = {
+    val cId = channelId.getOrElse("")
+
+    require(ServiceFactory.getUserProjectConfigService.getProjectConfiguration(appName, "pn-allowed-channels").get.forall(userProjectConfig => {
+      userProjectConfig.value.getObj[Map[String, List[String]]].getOrElse(clientId, List.empty).contains(cId)
+    }), s"Channel $cId not whitelisted")
   }
 
 }

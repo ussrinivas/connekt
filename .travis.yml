@@ -29,7 +29,7 @@ before_install:
   - pushd chronosq > /dev/null
   - mvn install -DskipTests=true -B -V
   - popd > /dev/null
-  - git clone https://gist.github.com/f33ad41bac5e4550a3b2dbccf4a4a77b.git ckt-concord
+  - git clone https://gist.github.com/8b04b00c093f4a1ba6ae84a7855a44aa.git ckt-concord
   - pushd ckt-concord > /dev/null
   - sbt publishM2
   - popd > /dev/null

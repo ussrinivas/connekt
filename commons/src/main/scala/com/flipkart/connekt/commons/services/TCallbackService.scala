@@ -21,6 +21,8 @@ trait TCallbackService extends TService {
 
   def persistCallbackEvents(channel: Channel.Value, events: List[CallbackEvent]): Try[List[String]]
 
+  def syncPersistCallbackEvents(channel: Channel.Value, events: List[CallbackEvent]): Try[List[String]]
+
   def enqueueCallbackEvents(events: List[CallbackEvent], queueName:String): Try[Unit]
 
   def fetchCallbackEvent(requestId: String, contactId: String, channel: Channel.Value): Try[List[(CallbackEvent, Long)]]
@@ -29,7 +31,7 @@ trait TCallbackService extends TService {
 
   def fetchEventsMapForContactId(contactId: String, channel: Channel.Value, minTimestamp: Long, maxTimestamp: Long): Try[Map[String, List[CallbackEvent]]]
 
-  def fetchCallbackEventByMId(messageId: String, channel: Channel.Value): Try[Map[String, List[CallbackEvent]]]
+  def fetchCallbackEventByMId(messageId: String, channel: Channel.Value, timeStampRange: Option[(Long, Long)] = None): Try[Map[String, List[CallbackEvent]]]
 
   def deleteCallBackEvent(requestId: String, forContact: String, channel: Channel.Value): Try[List[CallbackEvent]]
 

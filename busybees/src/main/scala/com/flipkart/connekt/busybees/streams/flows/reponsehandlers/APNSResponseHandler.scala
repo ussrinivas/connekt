@@ -46,7 +46,7 @@ class APNSResponseHandler(implicit m: Materializer, ec: ExecutionContext) extend
 
         pushNotificationResponse.isAccepted match {
           case true =>
-            ConnektLogger(LogFile.PROCESSORS).trace(s"APNSResponseHandler notification accepted by the apns gateway for: ${requestTracker.messageId}")
+            ConnektLogger(LogFile.PROCESSORS).info(s"APNSResponseHandler notification accepted by the apns gateway for: ${requestTracker.messageId}")
             events += PNCallbackEvent(requestTracker.messageId, requestTracker.clientId, requestTracker.deviceId, APNSResponseStatus.Received, MobilePlatform.IOS.toString, requestTracker.appName, requestTracker.contextId)
             ServiceFactory.getReportingService.recordPushStatsDelta(requestTracker.clientId, Option(requestTracker.contextId), requestTracker.meta.get("stencilId").map(_.toString), Option(MobilePlatform.IOS), requestTracker.appName, APNSResponseStatus.Received)
           case false =>

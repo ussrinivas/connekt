@@ -31,7 +31,7 @@ object ExclusionService extends Instrumented {
   private final val NO_EXCLUSION = "None"
 
   @Timed("add")
-  def add(exclusionEntity: ExclusionEntity): Try[Unit] = profile(s"add.${exclusionEntity.appName}.${exclusionEntity.channel}") {
+  def add(exclusionEntity: ExclusionEntity): Try[Unit] = profile(s"add.${exclusionEntity.appName}.${exclusionEntity.channel}.${exclusionEntity.exclusionDetails.exclusionType.toString}") {
     dao.add(exclusionEntity).transform[Unit](_ => Try_#(message = "ExclusionService.add Failed") {
       DistributedCacheManager.getCache(DistributedCacheType.ExclusionDetails).put[String](cacheKey(exclusionEntity.channel, exclusionEntity.appName, exclusionEntity.destination), exclusionEntity.exclusionDetails.exclusionType.toString, exclusionEntity.exclusionDetails.ttl)
       BigfootService.ingestEntity(exclusionEntity.destination, exclusionEntity.toPublishFormat, exclusionEntity.namespace).get

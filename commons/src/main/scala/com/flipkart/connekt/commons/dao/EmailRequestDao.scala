@@ -17,6 +17,7 @@ import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.dao.HbaseDao._
 import com.flipkart.connekt.commons.utils.StringUtils.JSONMarshallFunctions
 import com.flipkart.connekt.commons.utils.StringUtils.JSONUnMarshallFunctions
+import com.flipkart.connekt.commons.factories.ServiceFactory
 import scala.reflect.runtime.universe._
 
 
@@ -24,6 +25,9 @@ class EmailRequestDao(tableName: String, hTableFactory: THTableFactory) extends 
 
   val SET_EMAIL_TYPETAG =  typeTag[Set[EmailAddress]]
   val SET_ATTACHMENTS_TYPETAG =  typeTag[List[Attachment]]
+
+  override protected def persistDataProps(appName: String): Boolean =
+    ServiceFactory.getUserProjectConfigService.getProjectConfiguration(appName, "email-store-enabled").get.forall(_.value.toBoolean)
 
   override protected def channelRequestInfoMap(channelRequestInfo: ChannelRequestInfo): Map[String, Array[Byte]] = {
     val requestInfo = channelRequestInfo.asInstanceOf[EmailRequestInfo]

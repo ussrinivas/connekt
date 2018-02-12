@@ -6,7 +6,7 @@
       "process": "connekt",
       "queries": [
         {
-          "obj" : "fk.metrics:name=*",
+          "obj" : "*",
           "saperator" : "."
         }
       ],
