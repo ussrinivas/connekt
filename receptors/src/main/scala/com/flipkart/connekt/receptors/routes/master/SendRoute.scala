@@ -20,7 +20,7 @@ import com.flipkart.connekt.commons.entities.MobilePlatform.MobilePlatform
 import com.flipkart.connekt.commons.entities.{Channel, MobilePlatform}
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
-import com.flipkart.connekt.commons.iomodels.MessageStatus.{InternalStatus}
+import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.services._
 import com.flipkart.connekt.commons.utils.StringUtils._
@@ -30,6 +30,7 @@ import com.flipkart.connekt.receptors.routes.helper.{PhoneNumberHelper, WAContac
 import com.flipkart.connekt.receptors.wire.ResponseUtils._
 import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
+import org.apache.commons.validator.routines.EmailValidator
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
@@ -40,9 +41,6 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
   private lazy implicit val stencilService = ServiceFactory.getStencilService
   private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
   private val smsRegexCheck = ConnektConfig.getString("sms.regex.check").get
-  private val emailRegexCheck = "/^(([^<>()\\[\\]\\\\.,;:\\s@\"]+(\\.[^<>()\\[\\]\\\\.,;:\\s@\"]+)*)|(\".+\"))@((\\[[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\])|(([a-zA-Z\\-0-9]+\\.)+[a-zA-Z]{2,}))$/"
-  //  private val emailRegexCheck = ConnektConfig.getString("email.regex.check").get
-
   val route =
     authenticate {
       user =>
@@ -220,7 +218,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                 // collect all the to, cc and bcc non empty email addresses
                                 val recipients = (emailRequestInfo.to.map(_.address) ++ emailRequestInfo.cc.map(_.address) ++ emailRequestInfo.bcc.map(_.address)).filter(_.isDefined)
 
-                                recipients.foreach(e => require(!e.matches(emailRegexCheck), "Bad Request. Invalid email."))
+                                recipients.foreach(e => require(!EmailValidator.getInstance().isValid(e), "Bad Request. Invalid email."))
 
                                 if (emailRequestInfo.to != null && emailRequestInfo.to.nonEmpty) {
                                   if (isTestRequest) {
