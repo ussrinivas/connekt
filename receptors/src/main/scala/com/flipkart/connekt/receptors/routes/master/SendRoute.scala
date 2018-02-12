@@ -40,6 +40,8 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
   private lazy implicit val stencilService = ServiceFactory.getStencilService
   private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
   private val smsRegexCheck = ConnektConfig.getString("sms.regex.check").get
+  private val emailRegexCheck = "/^(([^<>()\\[\\]\\\\.,;:\\s@\"]+(\\.[^<>()\\[\\]\\\\.,;:\\s@\"]+)*)|(\".+\"))@((\\[[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\])|(([a-zA-Z\\-0-9]+\\.)+[a-zA-Z]{2,}))$/"
+  //  private val emailRegexCheck = ConnektConfig.getString("email.regex.check").get
 
   val route =
     authenticate {
@@ -215,13 +217,17 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
                                 val emailRequestInfo = request.channelInfo.asInstanceOf[EmailRequestInfo].toStrict
 
+                                // collect all the to, cc and bcc non empty email addresses
+                                val recipients = (emailRequestInfo.to.map(_.address) ++ emailRequestInfo.cc.map(_.address) ++ emailRequestInfo.bcc.map(_.address)).filter(_.isDefined)
+
+                                recipients.foreach(e => require(!e.matches(emailRegexCheck), "Bad Request. Invalid email."))
+
                                 if (emailRequestInfo.to != null && emailRequestInfo.to.nonEmpty) {
                                   if (isTestRequest) {
                                     GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse(s"Email Perf Send Request Received. Skipped sending.", Map("fake_message_id" -> r.destinations), List.empty)).respond
                                   } else {
                                     val success = scala.collection.mutable.Map[String, Set[String]]()
                                     val queueName = ServiceFactory.getMessageService(Channel.EMAIL).getRequestBucket(request, user)
-                                    val recipients = (emailRequestInfo.to.map(_.address) ++ emailRequestInfo.cc.map(_.address) ++ emailRequestInfo.bcc.map(_.address)).filter(_.isDefined)
 
                                     //TODO: do an exclusion check
                                     val excludedAddress = recipients.filterNot { address => ExclusionService.lookup(request.channel, appName, address).getOrElse(true) }
@@ -442,7 +448,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
                                           // User Pref Check
                                           val prefCheckedContacts = validNumbers.map(c =>
-                                            GuardrailService.isGuarded[String, Any, Map[_,_]](appName, Channel.WA, c, request.meta) match {
+                                            GuardrailService.isGuarded[String, Any, Map[_, _]](appName, Channel.WA, c, request.meta) match {
                                               case Success(pref) => c -> pref
                                               case Failure(f) => c -> true
                                             }
