@@ -20,8 +20,6 @@ import com.flipkart.connekt.busybees.discovery.DiscoveryManager
 import com.flipkart.connekt.busybees.streams.flows.StageSupervision
 import com.flipkart.connekt.busybees.streams.flows.dispatchers.HttpDispatcher
 import com.flipkart.connekt.busybees.streams.topologies.{EmailTopology, PushTopology, SmsTopology, WATopology}
-import com.flipkart.connekt.busybees.discovery.{DiscoveryManager, PathCacheZookeeper, ServiceHostsDiscovery}
-import com.flipkart.connekt.busybees.streams.topologies.{EmailTopology, PushTopology, SmsTopology}
 import com.flipkart.connekt.commons.connections.ConnectionProvider
 import com.flipkart.connekt.commons.core.BaseApp
 import com.flipkart.connekt.commons.core.Wrappers._
@@ -29,7 +27,7 @@ import com.flipkart.connekt.commons.dao.DaoFactory
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.KafkaProducerHelper
 import com.flipkart.connekt.commons.services._
-import com.flipkart.connekt.commons.sync.{SyncManager, SyncType}
+import com.flipkart.connekt.commons.sync.SyncManager
 import com.flipkart.connekt.commons.utils.ConfigUtils
 import com.typesafe.config.ConfigFactory
 
@@ -119,22 +117,22 @@ object BusyBeesBoot extends BaseApp {
 
       HttpDispatcher.init(ConnektConfig.getConfig("react").get)
 
-      if(Option(System.getProperty("topology.push.enabled")).forall(_.toBoolean)){
+      if (Option(System.getProperty("topology.push.enabled")).forall(_.toBoolean)) {
         pushTopology = new PushTopology(kafkaConnConf)
         pushTopology.run
       }
 
-      if(Option(System.getProperty("topology.email.enabled")).forall(_.toBoolean)) {
+      if (Option(System.getProperty("topology.email.enabled")).forall(_.toBoolean)) {
         emailTopology = new EmailTopology(kafkaConnConf)
         emailTopology.run
       }
 
-      if(Option(System.getProperty("topology.sms.enabled")).forall(_.toBoolean)) {
+      if (Option(System.getProperty("topology.sms.enabled")).forall(_.toBoolean)) {
         smsTopology = new SmsTopology(kafkaConnConf)
         smsTopology.run
       }
 
-      if(Option(System.getProperty("topology.wa.enabled")).forall(_.toBoolean)) {
+      if (Option(System.getProperty("topology.wa.enabled")).forall(_.toBoolean)) {
         waTopology = new WATopology(kafkaConnConf)
         waTopology.run
       }
@@ -148,8 +146,7 @@ object BusyBeesBoot extends BaseApp {
     if (initialized.get()) {
       implicit val ec = system.dispatcher
       DiscoveryManager.instance.shutdown()
-      val shutdownFutures = Option(pushTopology).map(_.shutdownAll()) :: Option(smsTopology).map(_.shutdownAll()) :: Option(emailTopology).map(_.shutdownAll()) :: Nil
-      val shutdownFutures = Option(pushTopology).map( _.shutdown()) :: Option(smsTopology).map( _.shutdown()) :: Option(emailTopology).map( _.shutdown()) :: Nil
+      val shutdownFutures = Option(pushTopology).map(_.shutdownAll()) :: Option(smsTopology).map(_.shutdownAll()) :: Option(emailTopology).map(_.shutdownAll()) :: Option(waTopology).map(_.shutdownAll()) :: Nil
       Try_#(message = "Topology Shutdown Didn't Complete")(Await.ready(Future.sequence(shutdownFutures.flatten), 20.seconds))
       DaoFactory.shutdownHTableDaoFactory()
       ConnektLogger.shutdown()

@@ -38,6 +38,8 @@ import scala.concurrent.ExecutionContextExecutor
 
 class WATopology(kafkaConsumerConfig: Config) extends ConnektTopology[WACallbackEvent] with SyncDelegate {
 
+  override def channelName: String = Channel.WA.toString
+
   override def onUpdate(_type: SyncType, args: List[AnyRef]): Any = {
     _type match {
       case SyncType.CLIENT_QUEUE_CREATE => Try_ {

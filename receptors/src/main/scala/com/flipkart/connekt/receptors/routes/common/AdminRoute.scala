@@ -20,10 +20,6 @@ import com.flipkart.connekt.commons.services.{DeviceDetailsService, WAContactSer
 import com.flipkart.connekt.commons.sync.{SyncManager, SyncMessage, SyncType}
 import com.flipkart.connekt.receptors.routes.BaseJsonHandler
 import org.apache.zookeeper.CreateMode
-import com.flipkart.connekt.commons.iomodels.{GenericResponse, Response}
-import com.flipkart.connekt.commons.services.DeviceDetailsService
-import com.flipkart.connekt.commons.sync.{SyncManager, SyncMessage, SyncType}
-import org.apache.zookeeper.CreateMode
 
 class AdminRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
@@ -43,15 +39,14 @@ class AdminRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                     }
                     complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Registration cache warm-up jobs' status", result)))
                   }
-                } ~
-                  path(Segment) {
-                    (appName: String) =>
-                      get {
-                        ConnektLogger(LogFile.SERVICE).info(s"Registration cache warm-up initiated for $appName by ${user.userId}")
-                        val jobId = DeviceDetailsService.cacheWarmUp(appName)
-                        complete(GenericResponse(StatusCodes.Created.intValue, null, Response(s"Registration cache warm-up started", Map("appName" -> appName, "jobId" -> jobId))))
-                      }
-                  }
+                } ~ path(Segment) {
+                  (appName: String) =>
+                    get {
+                      ConnektLogger(LogFile.SERVICE).info(s"Registration cache warm-up initiated for $appName by ${user.userId}")
+                      val jobId = DeviceDetailsService.cacheWarmUp(appName)
+                      complete(GenericResponse(StatusCodes.Created.intValue, null, Response(s"Registration cache warm-up started", Map("appName" -> appName, "jobId" -> jobId))))
+                    }
+                }
               } ~ pathPrefix("whatsapp" / "warmup") {
                 get {
                   WAContactService.instance.refreshWAContacts(WA_CONTACT_QUEUE)
@@ -87,3 +82,4 @@ class AdminRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
           }
         }
     }
+}

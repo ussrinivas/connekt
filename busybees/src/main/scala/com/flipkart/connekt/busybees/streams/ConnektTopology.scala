@@ -16,28 +16,24 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 
 import akka.event.Logging
-import akka.stream._
 import akka.stream.scaladsl.{Flow, RunnableGraph, Sink, Source}
-import akka.stream.{ActorAttributes, Attributes, KillSwitches, Materializer}
-import com.codahale.metrics.Gauge
+import akka.stream.{ActorAttributes, Attributes, KillSwitches, Materializer, _}
 import akka.{Done, NotUsed}
+import com.codahale.metrics.Gauge
 import com.flipkart.connekt.busybees.BusyBeesBoot
 import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels.{CallbackEvent, ConnektRequest}
-import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.metrics.Instrumented
-
 import com.flipkart.connekt.commons.sync.SyncType.SyncType
 import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
-trait ConnektTopology[E <: CallbackEvent] extends Instrumented {
 case class GroupWiseConfig(topologyEnabled: AtomicBoolean, killSwitch: SharedKillSwitch)
 
-trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate {
+trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate with Instrumented{
 
   type CheckPointGroup = String
 
@@ -127,7 +123,6 @@ trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate {
         Option(shutdownComplete).map(tp => if (tp.isCompleted) 0 else 1).getOrElse(-1)
       }
     })
-    graphs().foreach(_.run())
     graphs.foreach(_.run())
   }
 
