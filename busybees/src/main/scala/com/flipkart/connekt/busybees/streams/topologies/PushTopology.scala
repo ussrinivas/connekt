@@ -157,13 +157,25 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
     val iosFilter = b.add(Flow[ConnektRequest].filter(m => MobilePlatform.IOS.toString.equalsIgnoreCase(m.channelInfo.asInstanceOf[PNRequestInfo].platform.toLowerCase)))
     val notificationQueueParallelism = ConnektConfig.getInt("topology.push.queue.parallelism").get
     val notificationQueueRecorder = b.add(new NotificationQueueRecorder(notificationQueueParallelism)(ioDispatcher).flow)
+    val apnorfcmDiverger = b.add(new APNorFCMDiverger)
     val fmtIOS = b.add(new IOSChannelFormatter(fmtIOSParallelism)(ioDispatcher).flow)
     val apnsPrepare = b.add(new APNSDispatcherPrepare().flow)
     val apnsDispatcher = b.add(new APNSDispatcher(apnsDispatcherParallelism)(ioDispatcher).flow.timedAs("apnsRTT"))
     val apnsResponseHandle = b.add(new APNSResponseHandler().flow)
-    render.out ~> iosFilter ~> notificationQueueRecorder ~> fmtIOS ~> apnsPrepare ~> apnsDispatcher ~> apnsResponseHandle
+    val gcmHttpPrepare = b.add(new GCMHttpDispatcherPrepare().flow)
 
-    FlowShape(render.in, apnsResponseHandle.out)
+    val iosFcmHttpFormatter = b.add(new IOSFCMHttpFormatter(fmtIOSParallelism)(ioDispatcher).flow)
+    val firewallTransformer = b.add(new FirewallRequestTransformer[GCMRequestTracker](firewallStencilId).flow)
+    val gcmHttpPoolFlow = b.add(HttpDispatcher.gcmPoolClientFlow.timedAs("gcmRTT"))
+    val gcmHttpResponseHandle = b.add(new GCMResponseHandler()(ioMat, ioDispatcher).flow)
+
+    val merger = b.add(Merge[PNCallbackEvent](2))
+    render.out ~> iosFilter ~> notificationQueueRecorder ~> apnorfcmDiverger.in
+                                                            apnorfcmDiverger.out0 ~> fmtIOS ~> apnsPrepare ~> apnsDispatcher ~> apnsResponseHandle ~> merger.in(0)
+                                                            apnorfcmDiverger.out1 ~> iosFcmHttpFormatter ~> gcmHttpPrepare ~> firewallTransformer ~> gcmHttpPoolFlow ~> gcmHttpResponseHandle ~> merger.in(1)
+
+
+    FlowShape(render.in, merger.out)
   })
 
   def windowsTransformFlow = Flow.fromGraph(GraphDSL.create() { implicit b =>

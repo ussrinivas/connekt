@@ -28,7 +28,7 @@ import com.flipkart.connekt.commons.utils.StringUtils._
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
 
-abstract class AndroidChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecutor) extends NIOFlow[ConnektRequest, GCMPayloadEnvelope](parallelism)(ec) {
+abstract class FCMChannelFormatter(parallelism: Int)(implicit ec: ExecutionContextExecutor) extends NIOFlow[ConnektRequest, GCMPayloadEnvelope](parallelism)(ec) {
 
   lazy val stencilService = ServiceFactory.getStencilService
 
@@ -43,23 +43,16 @@ abstract class AndroidChannelFormatter(parallelism: Int)(implicit ec: ExecutionC
       val validDeviceIds = devicesInfo.map(_.deviceId)
       val invalidDeviceIds = pnInfo.deviceIds.diff(validDeviceIds.toSet)
 
-      invalidDeviceIds.map(PNCallbackEvent(message.id, message.clientId, _, InternalStatus.MissingDeviceInfo, MobilePlatform.ANDROID, pnInfo.appName, message.contextId.orEmpty)).enqueue
+      invalidDeviceIds.map(PNCallbackEvent(message.id, message.clientId, _, InternalStatus.MissingDeviceInfo, message.platform, pnInfo.appName, message.contextId.orEmpty)).enqueue
       ServiceFactory.getReportingService.recordPushStatsDelta(message.clientId, message.contextId, message.meta.get("stencilId").map(_.toString), Option(message.platform), message.appName, InternalStatus.MissingDeviceInfo, invalidDeviceIds.size)
-
-      val androidStencil = stencilService.getStencilsByName(s"ckt-${pnInfo.appName.toLowerCase}-android").head
-      val appDataWithId = stencilService.materialize(androidStencil, message.channelData.asInstanceOf[PNRequestData].data).asInstanceOf[String].getObj[ObjectNode]
-        .put("messageId", message.id)
-        .put("contextId", message.contextId.orEmpty)
-
-      pnInfo.channelId foreach (chId => appDataWithId.put("channelId", chId))
 
       val ttl = message.expiryTs.map(expiry => (expiry - System.currentTimeMillis) / 1000).getOrElse(6.hour.toSeconds)
 
       if (devicesInfo.nonEmpty && ttl > 0) {
-        createPayload(message, devicesInfo, appDataWithId)
+        createPayload(message, devicesInfo)
       } else if (devicesInfo.nonEmpty) {
         ConnektLogger(LogFile.PROCESSORS).warn(s"AndroidChannelFormatter dropping ttl-expired message: ${message.id}")
-        devicesInfo.map(d => PNCallbackEvent(message.id, message.clientId, d.deviceId, InternalStatus.TTLExpired, MobilePlatform.ANDROID, d.appName, message.contextId.orEmpty)).enqueue
+        devicesInfo.map(d => PNCallbackEvent(message.id, message.clientId, d.deviceId, InternalStatus.TTLExpired, message.platform, d.appName, message.contextId.orEmpty)).enqueue
         ServiceFactory.getReportingService.recordPushStatsDelta(message.clientId, message.contextId, message.meta.get("stencilId").map(_.toString), Option(message.platform), message.appName, InternalStatus.TTLExpired, devicesInfo.size)
         List.empty[GCMPayloadEnvelope]
       } else
@@ -72,6 +65,18 @@ abstract class AndroidChannelFormatter(parallelism: Int)(implicit ec: ExecutionC
   }
 
   def createPayload(message:ConnektRequest,
-                  devices:Seq[DeviceDetails],
-                  appDataWithId:Any):List[GCMPayloadEnvelope]
+                  devices:Seq[DeviceDetails]):List[GCMPayloadEnvelope]
+
+  def getAppDataWithId(pnInfo: PNRequestInfo, message: ConnektRequest):ObjectNode = {
+    val androidStencil = stencilService.getStencilsByName(s"ckt-${pnInfo.appName.toLowerCase}-android").head
+    val appDataWithId = stencilService.materialize(androidStencil, message.channelData.asInstanceOf[PNRequestData].data).asInstanceOf[String].getObj[ObjectNode]
+      .put("messageId", message.id)
+      .put("contextId", message.contextId.orEmpty)
+    pnInfo.channelId foreach (chId => appDataWithId.put("channelId", chId))
+    appDataWithId
+  }
+
+  def getNotificationData(pnInfo: PNRequestInfo, message: ConnektRequest):ObjectNode = {
+    Map.empty.asInstanceOf[ObjectNode]
+  }
 }

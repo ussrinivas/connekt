@@ -14,6 +14,7 @@ package com.flipkart.connekt.commons.services
 
 import com.flipkart.connekt.commons.cache.{LocalCacheManager, LocalCacheType}
 import com.flipkart.connekt.commons.entities.MobilePlatform.MobilePlatform
+import com.flipkart.connekt.commons.entities.PNMessagingCarrier.PNMessagingCarrier
 import com.flipkart.connekt.commons.entities._
 import com.flipkart.connekt.commons.factories.ServiceFactory
 import com.flipkart.connekt.commons.serializers.KryoSerializer
@@ -22,7 +23,13 @@ object KeyChainManager {
 
   private val storage = ServiceFactory.getKeyChainService
 
-  private def getNameSpacedKey(platform: MobilePlatform, appName: String) = s"$platform.${appName.toLowerCase}"
+  private def getNameSpacedKey(platform: MobilePlatform, appName: String,
+                               messagingCarrier: PNMessagingCarrier = null) = {
+    messagingCarrier match {
+      case null => s"$platform.${appName.toLowerCase}"
+      case _ => s"$platform.${appName.toLowerCase}.$messagingCarrier"
+    }
+  }
 
   def addSimpleCredential(name: String, credential: SimpleCredential) = {
     val bytes = KryoSerializer.serialize(credential)
@@ -86,14 +93,22 @@ object KeyChainManager {
     }
   }
 
-  def addGoogleCredential(name: String, credential: GoogleCredential) = {
+  def addGoogleCredential(name: String, credential: GoogleCredential,
+                          platform: MobilePlatform = MobilePlatform.ANDROID) = {
     val bytes = KryoSerializer.serialize(credential)
-    storage.put(getNameSpacedKey(MobilePlatform.ANDROID, name), bytes)
+    val key = platform match {
+      case MobilePlatform.IOS => getNameSpacedKey(platform, name, PNMessagingCarrier.FCM)
+      case _ => getNameSpacedKey(platform, name)
+    }
+    storage.put(key, bytes)
   }
 
   @throws[Exception]
-  def getGoogleCredential(name: String): Option[GoogleCredential] = {
-    val key = getNameSpacedKey(MobilePlatform.ANDROID, name)
+  def getGoogleCredential(name: String, platform: MobilePlatform = MobilePlatform.ANDROID): Option[GoogleCredential] = {
+    val key = platform match {
+      case MobilePlatform.IOS => getNameSpacedKey(platform, name, PNMessagingCarrier.FCM)
+      case _ => getNameSpacedKey(platform, name)
+    }
 
     LocalCacheManager.getCache(LocalCacheType.AppCredential).get[GoogleCredential](key).orElse{
       val credential = storage.get(key).get.map(KryoSerializer.deserialize[GoogleCredential])

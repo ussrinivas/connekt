@@ -63,7 +63,8 @@ class DeviceDetailsDao(tableName: String, hTableFactory: THTableFactory) extends
         "osName" -> deviceDetails.osName.getUtf8Bytes,
         "osVersion" -> deviceDetails.osVersion.getUtf8BytesNullWrapped,
         "appName" -> deviceDetails.appName.getUtf8Bytes,
-        "appVersion" -> deviceDetails.appVersion.getUtf8Bytes
+        "appVersion" -> deviceDetails.appVersion.getUtf8Bytes,
+        "fcmToken" -> deviceDetails.fcmToken.getUtf8BytesNullWrapped
       )
 
       if(deviceDetails.keys != null && deviceDetails.keys.nonEmpty)
@@ -251,6 +252,7 @@ class DeviceDetailsDao(tableName: String, hTableFactory: THTableFactory) extends
         deviceId = get("deviceId"),
         userId = getNullableString("userId"),
         token = get("token"),
+        fcmToken = getNullableString("fmcToken"),
         osName = get("osName"),
         osVersion = getNullableString("osVersion"),
         appName = get("appName"),

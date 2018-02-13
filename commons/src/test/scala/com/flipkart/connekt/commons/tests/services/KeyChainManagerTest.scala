@@ -12,9 +12,9 @@
  */
 package com.flipkart.connekt.commons.tests.services
 
-import java.io.{PrintWriter, File}
+import java.io.{File, PrintWriter}
 
-import com.flipkart.connekt.commons.entities.{AppleCredential, SimpleCredential}
+import com.flipkart.connekt.commons.entities.{AppleCredential, GoogleCredential, MobilePlatform, SimpleCredential}
 import com.flipkart.connekt.commons.services.KeyChainManager
 import com.flipkart.connekt.commons.tests.CommonsBaseTest
 import com.flipkart.connekt.commons.utils.StringUtils
@@ -32,6 +32,8 @@ class KeyChainManagerTest extends CommonsBaseTest {
   file.write(StringUtils.generateRandomStr(100))
 
   val appleCreds = AppleCredential(new File("/tmp/" + fileName), "passkey")
+
+  val googleCredentials = GoogleCredential("449956124703","AAAAaMN5mB8:APA91bEOs_7pPVsrcxfR")
 
   "CredentialManagerTest" should "add/get simple " in {
 
@@ -61,4 +63,15 @@ class KeyChainManagerTest extends CommonsBaseTest {
 
   }
 
+  "CredentialManagerTest" should "get GoogleCredential for android" in {
+    noException shouldBe thrownBy {
+      KeyChainManager.addGoogleCredential("retailapp",googleCredentials)
+    }
+
+    KeyChainManager.getGoogleCredential("retailapp",MobilePlatform.ANDROID)
+    println(KeyChainManager.getGoogleCredential("retailapp",MobilePlatform.ANDROID).get)
+
+    KeyChainManager.getGoogleCredential("retailapp",MobilePlatform.ANDROID).get.projectId shouldEqual "449956124703"
+    KeyChainManager.getGoogleCredential("retailapp",MobilePlatform.ANDROID).get.apiKey shouldEqual "AAAAaMN5mB8:APA91bEOs_7pPVsrcxfR"
+  }
 }

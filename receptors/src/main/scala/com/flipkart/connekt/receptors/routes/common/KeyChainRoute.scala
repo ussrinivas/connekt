@@ -44,37 +44,60 @@ class KeyChainRoute(implicit am: ActorMaterializer) extends BaseHandler with Fil
       user =>
         pathPrefix("v1" / "keychain") {
           authorize(user, "ADMIN_KEYCHAIN") {
-            path(Segment / MPlatformSegment) {
+            pathPrefix(Segment / MPlatformSegment) {
               (appName: String, platform: MobilePlatform) =>
                 platform match {
                   case IOS =>
-                    post {
-                      extractFormData { postMap =>
+                    path(Segment) {
+                      case "apns" =>
+                        post {
+                          extractFormData { postMap =>
 
-                        val fileInfo = postMap("file").right.get
-                        val password = postMap("password").left.get
+                            val fileInfo = postMap("file").right.get
+                            val password = postMap("password").left.get
 
-                        fileInfo.status match {
+                            fileInfo.status match {
 
-                          case Success(x) =>
-                            val credential = AppleCredential(new File(fileInfo.tmpFilePath), password)
-                            KeyChainManager.addAppleCredentials(appName, credential)
-                            complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Succesfully stored $platform / $appName", credential)))
+                              case Success(x) =>
+                                val credential = AppleCredential(new File(fileInfo.tmpFilePath), password)
+                                KeyChainManager.addAppleCredentials(appName, credential)
+                                complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Succesfully stored $platform / $appName", credential)))
 
-                          case Failure(e) =>
-                            //There was some isse processing the fileupload.
-                            ConnektLogger(LogFile.SERVICE).error("Credentials Upload File Error", e)
-                            complete(GenericResponse(StatusCodes.InternalServerError.intValue, null, Response("There was some error processing your request", Map("debug" -> e.getMessage))))
+                              case Failure(e) =>
+                                //There was some isse processing the fileupload.
+                                ConnektLogger(LogFile.SERVICE).error("Credentials Upload File Error", e)
+                                complete(GenericResponse(StatusCodes.InternalServerError.intValue, null, Response("There was some error processing your request", Map("debug" -> e.getMessage))))
+                            }
+                          }
+                        } ~ get {
+                          KeyChainManager.getAppleCredentials(appName) match {
+                            case Some(x) =>
+                              //TODO : Serve the file here.
+                              complete(GenericResponse(StatusCodes.OK.intValue, null, Response("Credentials Found.", x)))
+                            case None =>
+                              complete(GenericResponse(StatusCodes.NotFound.intValue, null, Response("Not Found.", null)))
+                          }
                         }
-                      }
-                    } ~ get {
-                      KeyChainManager.getAppleCredentials(appName) match {
-                        case Some(x) =>
-                          //TODO : Serve the file here.
-                          complete(GenericResponse(StatusCodes.OK.intValue, null, Response("Credentials Found.", x)))
-                        case None =>
-                          complete(GenericResponse(StatusCodes.NotFound.intValue, null, Response("Not Found.", null)))
-                      }
+                      case "fcm" =>
+                        post {
+                          //TODO : Fix when the issue is resolved.
+                          //formFields('appId, 'appKey) { (appId, appKey) =>
+                          extractFormData { postMap =>
+                            val appId: String = postMap("appId").left.get
+                            val appKey: String = postMap("appKey").left.get
+
+                            val credential = GoogleCredential(appId, appKey)
+                            KeyChainManager.addGoogleCredential(appName, credential, platform)
+                            complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Succesfully stored $platform / $appName", credential)))
+                          }
+                        } ~ get {
+                          KeyChainManager.getGoogleCredential(appName, platform) match {
+                            case Some(x) =>
+                              complete(GenericResponse(StatusCodes.OK.intValue, null, Response("Credentials Found.", x)))
+                            case None =>
+                              complete(GenericResponse(StatusCodes.NotFound.intValue, null, Response("Not Found.", null)))
+                          }
+                        }
                     }
                   case ANDROID =>
                     post {

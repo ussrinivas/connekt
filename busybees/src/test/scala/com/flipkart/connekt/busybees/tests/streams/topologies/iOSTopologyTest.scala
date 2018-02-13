@@ -12,9 +12,11 @@
  */
 package com.flipkart.connekt.busybees.tests.streams.topologies
 
-import akka.stream.scaladsl.{Sink, Source}
+import akka.NotUsed
+import akka.stream.ClosedShape
+import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, RunnableGraph, Sink, Source}
 import com.flipkart.connekt.busybees.streams.flows.RenderFlow
-import com.flipkart.connekt.busybees.streams.flows.dispatchers.{APNSDispatcherPrepare, APNSDispatcher}
+import com.flipkart.connekt.busybees.streams.flows.dispatchers.{APNSDispatcher, APNSDispatcherPrepare, APNorFCMDiverger}
 import com.flipkart.connekt.busybees.streams.flows.formaters.IOSChannelFormatter
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers.APNSResponseHandler
 import com.flipkart.connekt.busybees.tests.streams.TopologyUTSpec
@@ -84,6 +86,64 @@ class iOSTopologyTest extends TopologyUTSpec {
     assert(null != response)
 
 
+  }
+
+  "IOSPushTopology Test " should "test APNORFCMDiverger" in {
+    val deviceId = "TEST-123-IOS"
+
+    DeviceDetailsService.add(
+      DeviceDetails(
+        deviceId = deviceId,
+        userId = "",
+        token = "6b1e059bb2a51d03d37384d1493aaffbba4edc58f8e21eb2f80ad4851875ee25",
+        fcmToken = "fcmToken",
+        osName = "ios", osVersion = "UT", appName = "RetailApp", appVersion = "UT", brand = "UT", model = "UT"
+      )
+    )
+
+    val cRequest = s"""
+                      |{
+                      |	"channel": "PN",
+                      |	"sla": "H",
+                      |	"channelData": {
+                      |		"type": "PN",
+                      |		"data": {
+                      |      "title" : "Hello" ,
+                      |      "message" : "Message ${deviceId.substring(0,4)} from Kinshuk "
+                      |		}
+                      |	},
+                      |	"channelInfo" : {
+                      |	    "type" : "PN",
+                      |	    "ackRequired": true,
+                      |    	"delayWhileIdle": true,
+                      |      "platform" :  "ios",
+                      |      "appName" : "RetailApp",
+                      |      "deviceIds" : ["$deviceId"]
+                      |	},
+                      |	"meta": {},
+                      |  "clientId" : "random",
+                      |  "id" : "12345678980"
+                      |}
+                   """.stripMargin.getObj[ConnektRequest]
+
+
+    val g = RunnableGraph.fromGraph(GraphDSL.create() { implicit builder: GraphDSL.Builder[NotUsed] =>
+      import GraphDSL.Implicits._
+      val in: Source[ConnektRequest, NotUsed] =
+        Source(List(cRequest, cRequest))
+      val sink1 = Sink.foreach[ConnektRequest](c => println("APNS SENDING" + c))
+      val sink2 = Sink.foreach[ConnektRequest](c => println("FCM SENDING" + c))
+      val apnorfcmDiverger = builder.add(new APNorFCMDiverger)
+      in ~> apnorfcmDiverger.in
+            apnorfcmDiverger.out0 ~> sink1
+            apnorfcmDiverger.out1 ~> sink2
+      ClosedShape
+    })
+
+
+    val materialized2 = RunnableGraph.fromGraph(g).run()
+
+    assert(null != g)
   }
 
 }

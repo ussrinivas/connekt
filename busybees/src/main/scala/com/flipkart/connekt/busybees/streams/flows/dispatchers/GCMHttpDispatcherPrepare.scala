@@ -34,7 +34,7 @@ class GCMHttpDispatcherPrepare extends MapFlowStage[GCMPayloadEnvelope, (HttpReq
       ConnektLogger(LogFile.PROCESSORS).trace("GCMDispatcherPrepare received message: {}", supplier(message))
 
       val requestEntity = HttpEntity(ContentTypes.`application/json`, message.gcmPayload.getJson)
-      val requestHeaders = scala.collection.immutable.Seq[HttpHeader](RawHeader("Authorization", "key=" + KeyChainManager.getGoogleCredential(message.appName).get.apiKey))
+      val requestHeaders = scala.collection.immutable.Seq[HttpHeader](RawHeader("Authorization", "key=" + KeyChainManager.getGoogleCredential(message.appName, MobilePlatform.withName(message.platform)).get.apiKey))
       val httpRequest = HttpRequest(HttpMethods.POST, sendUri, requestHeaders, requestEntity)
       val requestTrace = GCMRequestTracker(message.messageId, message.clientId, message.deviceId, message.appName, message.contextId, message.meta)
 

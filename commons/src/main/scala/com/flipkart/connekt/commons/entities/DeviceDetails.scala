@@ -32,7 +32,8 @@ case class DeviceDetails(deviceId: String,
                          model: String,
                          state: String = "",
                          @JsonProperty(required = false) keys: Map[String, String] = Map.empty,
-                         active: Boolean = true) extends PublishSupport {
+                         active: Boolean = true,
+                         @JsonProperty(required = false) fcmToken: String = "") extends PublishSupport {
 
   override def toPublishFormat: fkint.mp.connekt.DeviceDetails = {
     fkint.mp.connekt.DeviceDetails(
