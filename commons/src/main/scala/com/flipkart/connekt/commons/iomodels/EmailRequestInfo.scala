@@ -36,12 +36,10 @@ case class EmailRequestInfo(@JsonProperty(required = false) appName: String,
 
   def validate(): Unit = {
     val emailAddresses = (to ++ cc ++ bcc).+(from).+(replyTo).filter(e => null != e.address && e.address.nonEmpty)
-    val invalidCharacters = ConnektConfig.getList[String]("invalid.email.name.characters").toSet
+    val invalidCharacters = ConnektConfig.getList[String]("email.name.invalid.characters").toSet
     emailAddresses.foreach(e => {
       require(!EmailValidator.getInstance().isValid(e.address), s"Bad Request. Invalid email address - ${e.address}")
-    })
-    invalidCharacters.foreach(i => {
-      emailAddresses.foreach(e => {
+      invalidCharacters.foreach(i => {
         require(e.name.contains(i), s"Bad Request. Invalid email name - ${e.name}")
       })
     })

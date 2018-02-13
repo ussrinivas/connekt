@@ -213,42 +213,48 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
                                 ConnektLogger(LogFile.SERVICE).debug(s"Received EMAIL request sent for user : $user with payload: {}", supplier(request))
 
-                                val emailRequestInfo = request.channelInfo.asInstanceOf[EmailRequestInfo].toStrict
+                                request.validateStencilVariables match {
+                                  case Failure(f) =>
+                                    ConnektLogger(LogFile.SERVICE).error(s"Request Stencil Validation Failed, for stencilId : ${request.stencilId.get} and ChannelDataMode : ${request.channelDataModel}")
+                                    GenericResponse(StatusCodes.BadRequest.intValue, null, SendResponse(s"Request Stencil Validation Failed, for stencilId : ${request.stencilId.get} and ChannelDataMode : ${request.channelDataModel} with ERROR : ${f.getCause}", Map.empty, List.empty)).respond
+                                  case Success(_) =>
+                                    val emailRequestInfo = request.channelInfo.asInstanceOf[EmailRequestInfo].toStrict
 
-                                emailRequestInfo.validate()
+                                    emailRequestInfo.validate()
 
-                                if (emailRequestInfo.to != null && emailRequestInfo.to.nonEmpty) {
-                                  if (isTestRequest) {
-                                    GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse(s"Email Perf Send Request Received. Skipped sending.", Map("fake_message_id" -> r.destinations), List.empty)).respond
-                                  } else {
-                                    val success = scala.collection.mutable.Map[String, Set[String]]()
-                                    val queueName = ServiceFactory.getMessageService(Channel.EMAIL).getRequestBucket(request, user)
-                                    val recipients = (emailRequestInfo.to.map(_.address) ++ emailRequestInfo.cc.map(_.address) ++ emailRequestInfo.bcc.map(_.address)).filter(_.isDefined)
+                                    if (emailRequestInfo.to != null && emailRequestInfo.to.nonEmpty) {
+                                      if (isTestRequest) {
+                                        GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse(s"Email Perf Send Request Received. Skipped sending.", Map("fake_message_id" -> r.destinations), List.empty)).respond
+                                      } else {
+                                        val success = scala.collection.mutable.Map[String, Set[String]]()
+                                        val queueName = ServiceFactory.getMessageService(Channel.EMAIL).getRequestBucket(request, user)
+                                        val recipients = (emailRequestInfo.to.map(_.address) ++ emailRequestInfo.cc.map(_.address) ++ emailRequestInfo.bcc.map(_.address)).filter(_.isDefined)
 
-                                    //TODO: do an exclusion check
-                                    val excludedAddress = recipients.filterNot { address => ExclusionService.lookup(request.channel, appName, address).getOrElse(true) }
-                                    val failure = ListBuffer[String](excludedAddress.toSeq: _*)
-                                    val validRecipients = recipients.diff(excludedAddress)
-                                    if (validRecipients.nonEmpty) {
-                                      /* enqueue multiple requests into kafka */
+                                        //TODO: do an exclusion check
+                                        val excludedAddress = recipients.filterNot { address => ExclusionService.lookup(request.channel, appName, address).getOrElse(true) }
+                                        val failure = ListBuffer[String](excludedAddress.toSeq: _*)
+                                        val validRecipients = recipients.diff(excludedAddress)
+                                        if (validRecipients.nonEmpty) {
+                                          /* enqueue multiple requests into kafka */
 
-                                      ServiceFactory.getMessageService(Channel.EMAIL).saveRequest(request.copy(channelInfo = emailRequestInfo), queueName) match {
-                                        case Success(id) =>
-                                          success += id -> validRecipients
-                                          ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, request.contextId, request.stencilId, Channel.EMAIL, appName, InternalStatus.Received, recipients.size)
-                                        case Failure(t) =>
-                                          failure ++= validRecipients
-                                          ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, request.contextId, request.stencilId, Channel.EMAIL, appName, InternalStatus.Rejected, recipients.size)
+                                          ServiceFactory.getMessageService(Channel.EMAIL).saveRequest(request.copy(channelInfo = emailRequestInfo), queueName) match {
+                                            case Success(id) =>
+                                              success += id -> validRecipients
+                                              ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, request.contextId, request.stencilId, Channel.EMAIL, appName, InternalStatus.Received, recipients.size)
+                                            case Failure(t) =>
+                                              failure ++= validRecipients
+                                              ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, request.contextId, request.stencilId, Channel.EMAIL, appName, InternalStatus.Rejected, recipients.size)
+                                          }
+                                          val (responseCode, message) = if (success.nonEmpty) Tuple2(StatusCodes.Accepted, "Email Send Request Received") else Tuple2(StatusCodes.InternalServerError, "Email Send Request Failed")
+                                          GenericResponse(responseCode.intValue, null, SendResponse(message, success.toMap, failure.toList)).respond
+                                        } else {
+                                          GenericResponse(StatusCodes.BadRequest.intValue, null, SendResponse(s"No valid destinations found", success.toMap, failure.toList)).respond
+                                        }
                                       }
-                                      val (responseCode, message) = if (success.nonEmpty) Tuple2(StatusCodes.Accepted, "Email Send Request Received") else Tuple2(StatusCodes.InternalServerError, "Email Send Request Failed")
-                                      GenericResponse(responseCode.intValue, null, SendResponse(message, success.toMap, failure.toList)).respond
                                     } else {
-                                      GenericResponse(StatusCodes.BadRequest.intValue, null, SendResponse(s"No valid destinations found", success.toMap, failure.toList)).respond
+                                      ConnektLogger(LogFile.SERVICE).error(s"Request Validation Failed, $request ")
+                                      GenericResponse(StatusCodes.BadRequest.intValue, null, Response("Request Validation Failed, Please ensure mandatory field values.", null)).respond
                                     }
-                                  }
-                                } else {
-                                  ConnektLogger(LogFile.SERVICE).error(s"Request Validation Failed, $request ")
-                                  GenericResponse(StatusCodes.BadRequest.intValue, null, Response("Request Validation Failed, Please ensure mandatory field values.", null)).respond
                                 }
                               }
                             }(ioDispatcher)
