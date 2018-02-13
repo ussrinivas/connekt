@@ -215,7 +215,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
                                 val emailRequestInfo = request.channelInfo.asInstanceOf[EmailRequestInfo].toStrict
 
-                                emailRequestInfo.validateEmailRequestInfo(emailRequestInfo)
+                                emailRequestInfo.validateEmailRequestInfo
 
                                 if (emailRequestInfo.to != null && emailRequestInfo.to.nonEmpty) {
                                   if (isTestRequest) {
