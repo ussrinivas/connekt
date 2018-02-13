@@ -34,7 +34,7 @@ case class EmailRequestInfo(@JsonProperty(required = false) appName: String,
     )
   }
 
-  def validateEmailRequestInfo(): Unit = {
+  def validate(): Unit = {
     val emailAddresses = (to ++ cc ++ bcc).+(from).+(replyTo).filter(e => null != e.address && e.address.nonEmpty)
     val invalidCharacters = ConnektConfig.getList[String]("invalid.email.name.characters").toSet
     emailAddresses.foreach(e => {
