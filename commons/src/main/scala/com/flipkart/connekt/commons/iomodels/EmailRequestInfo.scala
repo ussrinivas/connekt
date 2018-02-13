@@ -36,7 +36,7 @@ case class EmailRequestInfo(@JsonProperty(required = false) appName: String,
 
   def validateEmailRequestInfo(): Unit = {
     val recepients = (to ++ cc ++ bcc).+(from).+(replyTo).filter(e => null != e.address && e.address.nonEmpty)
-    val invalidCharacters = ConnektConfig.getList[String]("invalid.email.name.character").toSet
+    val invalidCharacters = ConnektConfig.getList[String]("invalid.email.name.characters").toSet
     recepients.foreach(e => {
       require(!EmailValidator.getInstance().isValid(e.address), s"Bad Request. Invalid email address - ${e.address}")
     })
