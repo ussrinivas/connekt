@@ -15,6 +15,7 @@ package com.flipkart.connekt.commons.iomodels
 import javax.mail.internet.InternetAddress
 
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.services.ConnektConfig
 import org.apache.commons.validator.routines.EmailValidator
 
@@ -35,20 +36,27 @@ case class EmailRequestInfo(@JsonProperty(required = false) appName: String,
   }
 
   def validate(): Unit = {
-    val emailAddresses = (to ++ cc ++ bcc).+(from).+(replyTo).filter(e => null != e.address && e.address.nonEmpty)
-    val invalidCharacters = ConnektConfig.getList[String]("email.name.invalid.characters").toSet
-    emailAddresses.foreach(e => {
-      require(!EmailValidator.getInstance().isValid(e.address), s"Bad Request. Invalid email address - ${e.address}")
-      invalidCharacters.foreach(i => {
-        require(e.name.contains(i), s"Bad Request. Invalid email name - ${e.name}")
-      })
-    })
+    if (to == null && to.isEmpty) {
+      ConnektLogger(LogFile.SERVICE).error(s"Request Validation Failed, $this ")
+      require(requirement = true, "Request Validation Failed. Please ensure mandatory field values.")
+    }
   }
 }
 
 case class EmailAddress(name: String, address: String) {
 
-  def toStrict = EmailAddress(name, address.toLowerCase)
+  def toStrict = {
+    validate()
+    EmailAddress(name, address.toLowerCase)
+  }
+
+  def validate(): Unit = {
+    require(!EmailValidator.getInstance().isValid(address), s"Bad Request. Invalid email address - $address")
+    val invalidCharacters = ConnektConfig.getList[String]("email.name.invalid.characters").toSet //fetched by config
+    invalidCharacters.foreach(i => {
+      require(name.contains(i), s"Bad Request. Invalid email name - $name")
+    })
+  }
 
   def toInternetAddress: InternetAddress = {
     new InternetAddress(address, name)
