@@ -15,6 +15,7 @@ package com.flipkart.connekt.commons.iomodels
 import javax.mail.internet.InternetAddress
 
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.flipkart.connekt.commons.services.ConnektConfig
 import org.apache.commons.validator.routines.EmailValidator
 
 case class EmailRequestInfo(@JsonProperty(required = false) appName: String,
@@ -33,9 +34,17 @@ case class EmailRequestInfo(@JsonProperty(required = false) appName: String,
     )
   }
 
-  def validateEmailRequestInfo(emailRequestInfo: EmailRequestInfo): Unit = {
-    val recepients = (emailRequestInfo.to ++ emailRequestInfo.bcc ++ emailRequestInfo.bcc).filter(e => null != e.address && e.address.nonEmpty)
-    recepients.foreach(e => require(!EmailValidator.getInstance().isValid(e.address), s"Bad Request. Invalid email address - $e"))
+  def validateEmailRequestInfo(): Unit = {
+    val recepients = (to ++ cc ++ bcc).+(from).+(replyTo).filter(e => null != e.address && e.address.nonEmpty)
+    val invalidCharacters = ConnektConfig.getList[String]("invalid.email.name.character").toSet
+    recepients.foreach(e => {
+      require(!EmailValidator.getInstance().isValid(e.address), s"Bad Request. Invalid email address - ${e.address}")
+    })
+    invalidCharacters.foreach(i => {
+      recepients.foreach(r => {
+        require(r.name.contains(i), s"Bad Request. Invalid email name - ${r.name}")
+      })
+    })
   }
 }
 
