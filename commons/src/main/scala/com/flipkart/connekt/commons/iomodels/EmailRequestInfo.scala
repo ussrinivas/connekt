@@ -51,10 +51,10 @@ case class EmailAddress(name: String, address: String) {
   }
 
   def validate(): Unit = {
-    require(!EmailValidator.getInstance().isValid(address), s"Bad Request. Invalid email address - $address")
+    require(EmailValidator.getInstance().isValid(address), s"Bad Request. Invalid email address - $address")
     val invalidCharacters = ConnektConfig.getList[String]("email.name.invalid.characters").toSet //fetched by config
     invalidCharacters.foreach(i => {
-      require(name.contains(i), s"Bad Request. Invalid email name - $name")
+      require(!name.contains(i), s"Bad Request. Invalid email name - $name")
     })
   }
 
