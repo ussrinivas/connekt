@@ -215,10 +215,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
                                 val emailRequestInfo = request.channelInfo.asInstanceOf[EmailRequestInfo].toStrict
 
-                                // collect all the to, cc and bcc non empty email addresses
-                                val recipients = (emailRequestInfo.to.map(_.address) ++ emailRequestInfo.cc.map(_.address) ++ emailRequestInfo.bcc.map(_.address)).filter(_.isDefined)
-
-                                recipients.foreach(e => require(!EmailValidator.getInstance().isValid(e), s"Bad Request. Invalid email address - ${e}"))
+                                emailRequestInfo.validateEmailRequestInfo(emailRequestInfo)
 
                                 if (emailRequestInfo.to != null && emailRequestInfo.to.nonEmpty) {
                                   if (isTestRequest) {
@@ -226,6 +223,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                   } else {
                                     val success = scala.collection.mutable.Map[String, Set[String]]()
                                     val queueName = ServiceFactory.getMessageService(Channel.EMAIL).getRequestBucket(request, user)
+                                    val recipients = (emailRequestInfo.to.map(_.address) ++ emailRequestInfo.cc.map(_.address) ++ emailRequestInfo.bcc.map(_.address)).filter(_.isDefined)
 
                                     //TODO: do an exclusion check
                                     val excludedAddress = recipients.filterNot { address => ExclusionService.lookup(request.channel, appName, address).getOrElse(true) }
