@@ -218,7 +218,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                 // collect all the to, cc and bcc non empty email addresses
                                 val recipients = (emailRequestInfo.to.map(_.address) ++ emailRequestInfo.cc.map(_.address) ++ emailRequestInfo.bcc.map(_.address)).filter(_.isDefined)
 
-                                recipients.foreach(e => require(!EmailValidator.getInstance().isValid(e), "Bad Request. Invalid email."))
+                                recipients.foreach(e => require(!EmailValidator.getInstance().isValid(e), s"Bad Request. Invalid email address - ${e}"))
 
                                 if (emailRequestInfo.to != null && emailRequestInfo.to.nonEmpty) {
                                   if (isTestRequest) {
