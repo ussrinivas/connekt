@@ -32,18 +32,19 @@ class WAMediaDispatcher extends MapFlowStage[ConnektRequest, (HttpRequest, WAMed
   private val baseUrl = ConnektConfig.getString("wa.base.uri").get
   private val mediaUploadUri = baseUrl + "/api/upload_outgoing_media.php"
 
-  override val map: (ConnektRequest) => (List[(HttpRequest, WAMediaRequestTracker)]) = connektRequest => profile("map"){
+  override val map: (ConnektRequest) => (List[(HttpRequest, WAMediaRequestTracker)]) = connektRequest => profile("map") {
     try {
-    connektRequest.channelData.asInstanceOf[WARequestData].attachment match {
-      case Some(attachment: Attachment) =>
-        val waRequestTracker = WAMediaRequestTracker(connektRequest.id, connektRequest)
-        val httpRequest = HttpRequest(HttpMethods.POST, mediaUploadUri, entity = createEntity(attachment))
-        List(httpRequest -> waRequestTracker)
-      case _ => List()
-    }} catch {
+      connektRequest.channelData.asInstanceOf[WARequestData].attachment match {
+        case Some(attachment: Attachment) =>
+          val waRequestTracker = WAMediaRequestTracker(connektRequest.id, connektRequest)
+          val httpRequest = HttpRequest(HttpMethods.POST, mediaUploadUri, entity = createEntity(attachment))
+          List(httpRequest -> waRequestTracker)
+        case _ => List()
+      }
+    } catch {
       case e: Exception =>
         ConnektLogger(LogFile.PROCESSORS).error(s"WAMediaDispatcher error for ${connektRequest.id}", e)
-        throw ConnektStageException(connektRequest.id, connektRequest.clientId, connektRequest.destinations, InternalStatus.StageError, connektRequest.appName, Channel.WA, connektRequest.contextId.orEmpty, connektRequest.meta, "WAMediaDispatcher::".concat(e.getMessage), e)
+        throw ConnektStageException(connektRequest.id, connektRequest.clientId, connektRequest.destinations, InternalStatus.StageError, connektRequest.appName, Channel.WA, connektRequest.contextId.orEmpty, connektRequest.meta, "WAMediaDispatcher::".concat(e.toString), e)
     }
   }
 

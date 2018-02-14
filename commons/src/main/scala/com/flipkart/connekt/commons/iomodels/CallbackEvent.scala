@@ -33,6 +33,8 @@ import com.flipkart.connekt.commons.entities.DeviceCallbackEvent
 abstract class CallbackEvent extends TopologyInputDatatype {
   def contactId: String
 
+  def destination: String
+
   def messageId: String
 
   def eventId: String
@@ -44,5 +46,7 @@ abstract class CallbackEvent extends TopologyInputDatatype {
   def appName: String
 
   def clientId: String
+
+  def timestamp: Long
 }
 

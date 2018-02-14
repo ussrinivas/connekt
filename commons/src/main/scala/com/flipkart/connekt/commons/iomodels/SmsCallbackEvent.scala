@@ -45,6 +45,8 @@ case class SmsCallbackEvent(
 
   override def contactId: String = s"${appName.toLowerCase}$receiver"
 
+  override def destination: String = receiver
+
   override def toPublishFormat: fkint.mp.connekt.SmsCallbackEvent = {
     fkint.mp.connekt.SmsCallbackEvent(messageId = messageId, appName = appName, contextId = contextId, eventType = eventType,
       cargo = cargo, receiver = receiver.getJson, timestamp = DateTimeUtils.getStandardFormatted(timestamp))

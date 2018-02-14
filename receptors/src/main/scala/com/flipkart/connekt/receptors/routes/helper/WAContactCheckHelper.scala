@@ -15,13 +15,14 @@ package com.flipkart.connekt.receptors.routes.helper
 import akka.http.scaladsl.model._
 import akka.stream.ActorMaterializer
 import com.flipkart.connekt.commons.entities.{Channel, WAContactEntity}
-import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
+import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels.MessageStatus.WAResponseStatus
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.commons.services.{BigfootService, ConnektConfig, WAContactService}
 import com.flipkart.connekt.commons.utils.StringUtils.{HttpEntity2String, JSONMarshallFunctions, JSONUnMarshallFunctions}
 import com.flipkart.connekt.receptors.service.WebClient
+import com.flipkart.metrics.Timed
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Await
@@ -33,22 +34,36 @@ object WAContactCheckHelper extends Instrumented {
   private val baseUrl = ConnektConfig.getString("wa.base.uri").get
   private val timeout = ConnektConfig.getInt("wa.contact.api.timeout.sec").get.seconds
   private val checkContactInterval = ConnektConfig.getInt("wa.hbase.check.contact.interval.days").get
-  private val checkContactEnabled = ConnektConfig.getBoolean("wa.hbase.check.contact.enable").get
+  private val checkContactHbaseEnabled = ConnektConfig.getBoolean("wa.hbase.check.contact.enable").get
+  private val checkContactViaWaApiEnabled = ConnektConfig.getBoolean("wa.api.check.contact.enable").get
+  private val WA_NEW_REGISTRATION_TOPIC = ConnektConfig.getString("wa.contact.new.registration.topic.name").get
+  private val contactService = ServiceFactory.getContactService
 
   //returns tuple of valid numbers list and invalid numbers list
+  @Timed("checkContact")
   def checkContact(appName: String, destinations: Set[String])(implicit am: ActorMaterializer): (List[WAContactEntity], List[WAContactEntity]) = {
     val withinTTLWAList = WAContactService.instance.gets(appName, destinations) match {
       case Success(waList) =>
-        if (checkContactEnabled)
+        if (checkContactHbaseEnabled)
           waList.filter(System.currentTimeMillis() - _.lastCheckContactTS < checkContactInterval.days.toMillis)
         else
           waList
       case _ => Nil
     }
-    (checkContactViaWAApi(destinations.toList.diff(withinTTLWAList.map(_.destination)), appName) ++ withinTTLWAList).partition(_.exists.toLowerCase.contains("true"))
+    if (checkContactViaWaApiEnabled)
+      (checkContactViaWAApi(destinations.toList.diff(withinTTLWAList.map(_.destination)), appName) ++ withinTTLWAList).partition(_.exists.toLowerCase.contains("true"))
+    else {
+      val contactNotInHbase = destinations.toList.diff(withinTTLWAList.map(_.destination))
+      contactNotInHbase.foreach(contact => contactService.enqueueContactEvents(ContactPayload(contact, appName), WA_NEW_REGISTRATION_TOPIC))
+      val waAbsentUsers = contactNotInHbase.map(c => {
+        WAContactEntity(c, c, appName, "false", None)
+      })
+      (waAbsentUsers ++ withinTTLWAList).partition(_.exists.toLowerCase.contains("true"))
+    }
   }
 
-  def checkContactViaWAApi(destinations: List[String], appName: String)(implicit am: ActorMaterializer): List[WAContactEntity] = {
+  @Timed("checkContactViaWAApi")
+  private def checkContactViaWAApi(destinations: List[String], appName: String)(implicit am: ActorMaterializer): List[WAContactEntity] = {
     if (destinations.nonEmpty) {
       val requestEntity = HttpEntity(ContentTypes.`application/json`, WAContactRequest(Payload(users = destinations.toSet)).getJson)
       val httpRequest = HttpRequest(HttpMethods.POST, s"$baseUrl${Constants.WAConstants.WHATSAPP_CHECK_CONTACT_URI}", Nil, requestEntity)
@@ -82,7 +97,7 @@ object WAContactCheckHelper extends Instrumented {
       }
       contactWAStatus.toList
     } else {
-      ConnektLogger(LogFile.PROCESSORS).error(s"WAContactCheckHelper no destination to check")
+      ConnektLogger(LogFile.PROCESSORS).info(s"WAContactCheckHelper no destination to check")
       List.empty
     }
   }

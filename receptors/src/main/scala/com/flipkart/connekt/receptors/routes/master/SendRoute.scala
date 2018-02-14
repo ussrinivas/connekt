@@ -433,7 +433,7 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                         } else {
                                           // Phone number validity check.
                                           waRequestInfo.destinations.foreach(r => {
-                                            PhoneNumberHelper.validateNFormatNumber(appName, r) match {
+                                            PhoneNumberHelper.validateNFormatNumber(appName, r)("sendroute.wa") match {
                                               case Some(n) => validNumbers += n
                                               case None =>
                                                 ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatsapp invalid numbers: $r")

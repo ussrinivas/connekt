@@ -12,6 +12,8 @@
  */
 package com.flipkart.connekt.commons.iomodels
 
+import com.flipkart.connekt.commons.services.ConnektConfig
+
 object Constants {
 
   object WAConstants extends Enumeration {
@@ -19,6 +21,7 @@ object Constants {
 
     val WHATSAPP = Value("whatsapp")
     val WHATSAPP_CHECK_CONTACT_URI = Value("/api/check_contacts.php")
+    val WA_CONTACT_QUEUE = ConnektConfig.getString("wa.contact.topic.name").get
   }
 
 }

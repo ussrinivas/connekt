@@ -156,7 +156,7 @@ class WATrackingFlow(parallelism: Int)(implicit ec: ExecutionContextExecutor) ex
         caption = attachment.caption.map(caption => {
           TrackingService.trackText(caption, trackerOptions, transformer)
         }),
-        name = s"${input.id}_${attachment.name}"
+        name = s"${java.time.LocalDate.now}_${input.id}_${attachment.name}"
       )
     })
     waData.copy(

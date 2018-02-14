@@ -2,25 +2,70 @@ package com.flipkart.connekt.callback.topologies
 
 import akka.stream.scaladsl.{Sink, Source}
 import com.flipkart.connekt.busybees.tests.streams.TopologyUTSpec
-import com.flipkart.connekt.commons.iomodels.SmsCallbackEvent
+import com.flipkart.connekt.commons.iomodels.{SmsCallbackEvent, WACallbackEvent}
 import com.flipkart.connekt.commons.metrics.Instrumented
 import com.flipkart.connekt.firefly.flows.metrics.LatencyMetrics
 
 class LatencyMetricsTopologyTest extends TopologyUTSpec with Instrumented {
   val latency = new LatencyMetrics().flow
-  "HbaseLookupTopology Test" should "run" in {
-    val smsCallback = SmsCallbackEvent(messageId = "c37d3855-c349-48c9-b3af-724eade554f0",
-      eventType = "sms_delivered",
-      receiver = "+911234567843",
+    "HbaseLookupTopology Test" should "run" in {
+      val smsCallback = SmsCallbackEvent(messageId = "c37d3855-c349-48c9-b3af-724eade554f0",
+        eventType = "sms_delivered",
+        receiver = "+91123123123",
+        clientId = "affordability",
+        appName = "flipkart",
+        contextId = "",
+        cargo = "{\"deliveredTS\":\"1515060997000\",\"cause\":\"SUCCESS\",\"externalId\":\"3440781747693252725-262142534416137710\",\"provider\":\"gupshup\",\"errCode\":\"000\"}",
+        timestamp = 1515060997000L,
+        eventId = "iaUAuOefuD")
+
+      Source.single(smsCallback).via(latency).runWith(Sink.ignore)
+      Thread.sleep(20000)
+    }
+  "WALookupTopology Test" should "run" in {
+    val waCallback = WACallbackEvent(messageId = "e830e145-a763-4f0c-9e6a-8a56f5f4bd3e",
+      providerMessageId=Option("A33341C9515965027D"),
+      eventType = "wa_delivered",
+      destination = "91123123123",
       clientId = "affordability",
       appName = "flipkart",
       contextId = "",
-      cargo = "{\"deliveredTS\":\"1515060997000\",\"cause\":\"SUCCESS\",\"externalId\":\"3440781747693252725-262142534416137710\",\"provider\":\"gupshup\",\"errCode\":\"000\"}",
-      timestamp = 1515060997000L,
+      cargo = "{\"meta\":{},\"provider\":\"whatsapp\",\"deliveredTS\":\"1516184238000\",\"payload\":{\"message_id\":\"A33341C9515965027D\",\"message_status\":\"delivered\",\"timestamp\":\"1516184238\",\"to\":\"91123456789\"}}",
+      timestamp = 1516184238000L,
       eventId = "iaUAuOefuD")
 
-    Source.single(smsCallback).via(latency).runWith(Sink.ignore)
-    Thread.sleep(15000)
+    Source.single(waCallback).via(latency).runWith(Sink.ignore)
+    Thread.sleep(20000)
+  }
+  "WALookupTopology Read" should "run" in {
+    val waCallback = WACallbackEvent(messageId = "e830e145-a763-4f0c-9e6a-8a56f5f4bd3e",
+      providerMessageId=Option("A33341C9515965027D"),
+      eventType = "read",
+      destination = "91123123123",
+      clientId = "affordability",
+      appName = "flipkart",
+      contextId = "",
+      cargo = "{\"meta\":{},\"provider\":\"whatsapp\",\"deliveredTS\":\"1516184238000\",\"payload\":{\"message_id\":\"A33341C9515965027D\",\"message_status\":\"delivered\",\"timestamp\":\"1516184238\",\"to\":\"91123456789\"}}",
+      timestamp = 1516184238000L,
+      eventId = "iaUAuOefuD")
+
+    Source.single(waCallback).via(latency).runWith(Sink.ignore)
+    Thread.sleep(20000)
+  }
+  "WALookupTopologyRead Test" should "run" in {
+    val waCallback = WACallbackEvent(messageId = "9e8dd914-e103-4cb4-8eec-7d79190826e1",
+      providerMessageId=Option("A33341C9515965027D"),
+      eventType = "read",
+      destination = "911234567843",
+      clientId = "affordability",
+      appName = "flipkart",
+      contextId = "",
+      cargo = "{\"meta\":{},\"provider\":\"whatsapp\",\"deliveredTS\":\"1515597805000\",\"payload\":{\"message_id\":\"A33341C9515965027D\",\"message_status\":\"read\",\"timestamp\":\"1514540485\",\"to\":\"91123456789\"}}",
+      timestamp = 1514540485000L,
+      eventId = "iaUAuOefuD")
+
+    Source.single(waCallback).via(latency).runWith(Sink.ignore)
+    Thread.sleep(6000)
   }
   "HbaseLookupTopology Test" should "cargo blank" in {
     val smsCallback = SmsCallbackEvent(messageId = "62b7d6a1-cdb8-414d-8954-972bae4aec2c",
