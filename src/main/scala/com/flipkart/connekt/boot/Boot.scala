@@ -52,7 +52,7 @@ object Boot extends App {
 
       case "barklice" =>
         sys.addShutdownHook(BarkLiceBoot.terminate())
-        BarkLiceBoot.start
+        BarkLiceBoot.start()
 
       case _ =>
         println(usage)

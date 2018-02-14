@@ -20,7 +20,7 @@ import com.flipkart.connekt.commons.entities.MobilePlatform.MobilePlatform
 import com.flipkart.connekt.commons.entities.{Channel, MobilePlatform}
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
-import com.flipkart.connekt.commons.iomodels.MessageStatus.{InternalStatus}
+import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.services._
 import com.flipkart.connekt.commons.utils.StringUtils._
@@ -30,6 +30,7 @@ import com.flipkart.connekt.receptors.routes.helper.{PhoneNumberHelper, WAContac
 import com.flipkart.connekt.receptors.wire.ResponseUtils._
 import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
+import org.apache.commons.validator.routines.EmailValidator
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
@@ -40,7 +41,6 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
   private lazy implicit val stencilService = ServiceFactory.getStencilService
   private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
   private val smsRegexCheck = ConnektConfig.getString("sms.regex.check").get
-
   val route =
     authenticate {
       user =>
@@ -214,6 +214,8 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                                 ConnektLogger(LogFile.SERVICE).debug(s"Received EMAIL request sent for user : $user with payload: {}", supplier(request))
 
                                 val emailRequestInfo = request.channelInfo.asInstanceOf[EmailRequestInfo].toStrict
+
+                                emailRequestInfo.validateEmailRequestInfo(emailRequestInfo)
 
                                 if (emailRequestInfo.to != null && emailRequestInfo.to.nonEmpty) {
                                   if (isTestRequest) {

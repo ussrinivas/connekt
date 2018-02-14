@@ -15,6 +15,7 @@ package com.flipkart.connekt.commons.iomodels
 import javax.mail.internet.InternetAddress
 
 import com.fasterxml.jackson.annotation.JsonProperty
+import org.apache.commons.validator.routines.EmailValidator
 
 case class EmailRequestInfo(@JsonProperty(required = false) appName: String,
                             @JsonProperty(required = false) to: Set[EmailAddress] = Set.empty[EmailAddress],
@@ -30,6 +31,11 @@ case class EmailRequestInfo(@JsonProperty(required = false) appName: String,
       cc = Option(cc).map(_.map(_.toStrict)).getOrElse(Set.empty),
       bcc = Option(bcc).map(_.map(_.toStrict)).getOrElse(Set.empty)
     )
+  }
+
+  def validateEmailRequestInfo(emailRequestInfo: EmailRequestInfo): Unit = {
+    val recepients = (emailRequestInfo.to ++ emailRequestInfo.bcc ++ emailRequestInfo.bcc).filter(e => null != e.address && e.address.nonEmpty)
+    recepients.foreach(e => require(!EmailValidator.getInstance().isValid(e.address), s"Bad Request. Invalid email address - $e"))
   }
 }
 
