@@ -14,7 +14,12 @@ package com.flipkart.connekt.commons.iomodels
 
 import javax.mail.internet.InternetAddress
 
+import akka.http.javadsl.model.StatusCodes
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.flipkart.connekt.commons.entities.exception.{ExceptionType, ServiceException}
+import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
+import com.flipkart.connekt.commons.services.ConnektConfig
+import org.apache.commons.validator.routines.EmailValidator
 
 case class EmailRequestInfo(@JsonProperty(required = false) appName: String,
                             @JsonProperty(required = false) to: Set[EmailAddress] = Set.empty[EmailAddress],
@@ -31,11 +36,33 @@ case class EmailRequestInfo(@JsonProperty(required = false) appName: String,
       bcc = Option(bcc).map(_.map(_.toStrict)).getOrElse(Set.empty)
     )
   }
+
+  def validate(): Unit = {
+    if (to == null && to.isEmpty) {
+      ConnektLogger(LogFile.SERVICE).error(s"Request Validation Failed, $this ")
+      require(requirement = true, "Request Validation Failed. Please ensure mandatory field values.")
+    }
+  }
 }
 
 case class EmailAddress(name: String, address: String) {
 
-  def toStrict = EmailAddress(name, address.toLowerCase)
+  def toStrict = {
+    validate()
+    EmailAddress(name, address.toLowerCase)
+  }
+
+  def validate(): Unit = {
+    if (!EmailValidator.getInstance().isValid(address)) {
+      throw ServiceException(StatusCodes.BAD_REQUEST, ExceptionType.BAD_REQUEST_INVALID_EMAIL, s"Bad Request. Invalid email address - $address")
+    }
+    val invalidCharacters = ConnektConfig.getList[String]("email.name.invalid.characters").toSet //fetched by config
+    invalidCharacters.foreach(i => {
+      if (name.contains(i)) {
+        throw ServiceException(StatusCodes.BAD_REQUEST, ExceptionType.BAD_REQUEST_INVALID_NAME, s"Bad Request. Invalid email name - $name")
+      }
+    })
+  }
 
   def toInternetAddress: InternetAddress = {
     new InternetAddress(address, name)

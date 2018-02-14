@@ -12,18 +12,16 @@
  */
 package com.flipkart.connekt.receptors.service
 
-import java.security.{KeyStore, SecureRandom}
 import java.util.UUID
-import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.headers.{HttpChallenge, `WWW-Authenticate`}
 import akka.http.scaladsl.server._
-import akka.http.scaladsl.util.FastFuture
-import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.stream.ActorMaterializer
+import com.flipkart.connekt.commons.entities.exception.ServiceException
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels.{GenericResponse, Response}
 import com.flipkart.connekt.commons.services.ConnektConfig
@@ -32,7 +30,6 @@ import com.flipkart.connekt.receptors.routes.{BaseJsonHandler, RouteRegistry}
 import com.flipkart.connekt.receptors.wire.ResponseUtils._
 import com.typesafe.config.{Config, ConfigFactory}
 
-import scala.collection.immutable
 import scala.concurrent.{ExecutionContextExecutor, Future}
 
 
@@ -82,6 +79,9 @@ object ReceptorsServer extends BaseJsonHandler with AccessLogDirective with CORS
   implicit def exceptionHandler: ExceptionHandler = ExceptionHandler {
     case rejection: IllegalArgumentException => logTimedRequestResult {
       complete(GenericResponse(StatusCodes.BadRequest.intValue, null, Response("Malformed Content, Unable to Process Request", Map("debug" -> rejection.getMessage))))
+    }
+    case se: ServiceException => logTimedRequestResult {
+      complete(GenericResponse(se.statusCode.intValue(), null, Response(se.exceptionType.toString, Map("debug" -> se.getMessage))))
     }
     case e: Throwable =>
       val errorUID: String = UUID.randomUUID.getLeastSignificantBits.abs.toString

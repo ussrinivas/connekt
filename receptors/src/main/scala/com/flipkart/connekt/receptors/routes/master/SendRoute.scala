@@ -20,7 +20,7 @@ import com.flipkart.connekt.commons.entities.MobilePlatform.MobilePlatform
 import com.flipkart.connekt.commons.entities.{Channel, MobilePlatform}
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.helpers.ConnektRequestHelper._
-import com.flipkart.connekt.commons.iomodels.MessageStatus.{InternalStatus}
+import com.flipkart.connekt.commons.iomodels.MessageStatus.InternalStatus
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.services._
 import com.flipkart.connekt.commons.utils.StringUtils._
@@ -30,6 +30,7 @@ import com.flipkart.connekt.receptors.routes.helper.{PhoneNumberHelper, WAContac
 import com.flipkart.connekt.receptors.wire.ResponseUtils._
 import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
+import org.apache.commons.validator.routines.EmailValidator
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
@@ -40,7 +41,6 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
   private lazy implicit val stencilService = ServiceFactory.getStencilService
   private implicit val ioDispatcher = am.getSystem.dispatchers.lookup("akka.actor.route-blocking-dispatcher")
   private val smsRegexCheck = ConnektConfig.getString("sms.regex.check").get
-
   val route =
     authenticate {
       user =>
@@ -213,40 +213,42 @@ class SendRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
                                 ConnektLogger(LogFile.SERVICE).debug(s"Received EMAIL request sent for user : $user with payload: {}", supplier(request))
 
-                                val emailRequestInfo = request.channelInfo.asInstanceOf[EmailRequestInfo].toStrict
+                                request.validateStencilVariables match {
+                                  case Failure(f) =>
+                                    ConnektLogger(LogFile.SERVICE).error(s"Request Stencil Validation Failed, for stencilId : ${request.stencilId.get} and ChannelDataMode : ${request.channelDataModel}")
+                                    GenericResponse(StatusCodes.BadRequest.intValue, null, SendResponse(s"Request Stencil Validation Failed, for stencilId : ${request.stencilId.get} and ChannelDataMode : ${request.channelDataModel} with ERROR : ${f.getCause}", Map.empty, List.empty)).respond
+                                  case Success(_) =>
+                                    val emailRequestInfo = request.channelInfo.asInstanceOf[EmailRequestInfo].toStrict
+                                    emailRequestInfo.validate()
 
-                                if (emailRequestInfo.to != null && emailRequestInfo.to.nonEmpty) {
-                                  if (isTestRequest) {
-                                    GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse(s"Email Perf Send Request Received. Skipped sending.", Map("fake_message_id" -> r.destinations), List.empty)).respond
-                                  } else {
-                                    val success = scala.collection.mutable.Map[String, Set[String]]()
-                                    val queueName = ServiceFactory.getMessageService(Channel.EMAIL).getRequestBucket(request, user)
-                                    val recipients = (emailRequestInfo.to.map(_.address) ++ emailRequestInfo.cc.map(_.address) ++ emailRequestInfo.bcc.map(_.address)).filter(_.isDefined)
-
-                                    //TODO: do an exclusion check
-                                    val excludedAddress = recipients.filterNot { address => ExclusionService.lookup(request.channel, appName, address).getOrElse(true) }
-                                    val failure = ListBuffer[String](excludedAddress.toSeq: _*)
-                                    val validRecipients = recipients.diff(excludedAddress)
-                                    if (validRecipients.nonEmpty) {
-                                      /* enqueue multiple requests into kafka */
-
-                                      ServiceFactory.getMessageService(Channel.EMAIL).saveRequest(request.copy(channelInfo = emailRequestInfo), queueName) match {
-                                        case Success(id) =>
-                                          success += id -> validRecipients
-                                          ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, request.contextId, request.stencilId, Channel.EMAIL, appName, InternalStatus.Received, recipients.size)
-                                        case Failure(t) =>
-                                          failure ++= validRecipients
-                                          ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, request.contextId, request.stencilId, Channel.EMAIL, appName, InternalStatus.Rejected, recipients.size)
-                                      }
-                                      val (responseCode, message) = if (success.nonEmpty) Tuple2(StatusCodes.Accepted, "Email Send Request Received") else Tuple2(StatusCodes.InternalServerError, "Email Send Request Failed")
-                                      GenericResponse(responseCode.intValue, null, SendResponse(message, success.toMap, failure.toList)).respond
+                                    if (isTestRequest) {
+                                      GenericResponse(StatusCodes.Accepted.intValue, null, SendResponse(s"Email Perf Send Request Received. Skipped sending.", Map("fake_message_id" -> r.destinations), List.empty)).respond
                                     } else {
-                                      GenericResponse(StatusCodes.BadRequest.intValue, null, SendResponse(s"No valid destinations found", success.toMap, failure.toList)).respond
+                                      val success = scala.collection.mutable.Map[String, Set[String]]()
+                                      val queueName = ServiceFactory.getMessageService(Channel.EMAIL).getRequestBucket(request, user)
+                                      val recipients = (emailRequestInfo.to.map(_.address) ++ emailRequestInfo.cc.map(_.address) ++ emailRequestInfo.bcc.map(_.address)).filter(_.isDefined)
+
+                                      //TODO: do an exclusion check
+                                      val excludedAddress = recipients.filterNot { address => ExclusionService.lookup(request.channel, appName, address).getOrElse(true) }
+                                      val failure = ListBuffer[String](excludedAddress.toSeq: _*)
+                                      val validRecipients = recipients.diff(excludedAddress)
+                                      if (validRecipients.nonEmpty) {
+                                        /* enqueue multiple requests into kafka */
+
+                                        ServiceFactory.getMessageService(Channel.EMAIL).saveRequest(request.copy(channelInfo = emailRequestInfo), queueName) match {
+                                          case Success(id) =>
+                                            success += id -> validRecipients
+                                            ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, request.contextId, request.stencilId, Channel.EMAIL, appName, InternalStatus.Received, recipients.size)
+                                          case Failure(t) =>
+                                            failure ++= validRecipients
+                                            ServiceFactory.getReportingService.recordChannelStatsDelta(user.userId, request.contextId, request.stencilId, Channel.EMAIL, appName, InternalStatus.Rejected, recipients.size)
+                                        }
+                                        val (responseCode, message) = if (success.nonEmpty) Tuple2(StatusCodes.Accepted, "Email Send Request Received") else Tuple2(StatusCodes.InternalServerError, "Email Send Request Failed")
+                                        GenericResponse(responseCode.intValue, null, SendResponse(message, success.toMap, failure.toList)).respond
+                                      } else {
+                                        GenericResponse(StatusCodes.BadRequest.intValue, null, SendResponse(s"No valid destinations found", success.toMap, failure.toList)).respond
+                                      }
                                     }
-                                  }
-                                } else {
-                                  ConnektLogger(LogFile.SERVICE).error(s"Request Validation Failed, $request ")
-                                  GenericResponse(StatusCodes.BadRequest.intValue, null, Response("Request Validation Failed, Please ensure mandatory field values.", null)).respond
                                 }
                               }
                             }(ioDispatcher)
