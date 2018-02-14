@@ -98,10 +98,10 @@ object FireflyBoot extends BaseApp {
       ClientTopologyManager(kafkaConsumerConnConf, ConnektConfig.getInt("firefly.retry.limit").get)
 
       latencyMeteringTopology = new LatencyMeteringTopology(kafkaConsumerConnConf)
-      latencyMeteringTopology.run
+      latencyMeteringTopology.run()
 
       wAContactTopology = new WAContactTopology(kafkaConsumerConnConf)
-      wAContactTopology.run
+      wAContactTopology.run()
 
       ConnektLogger(LogFile.SERVICE).info("Started `Firefly` app")
     }
@@ -112,7 +112,7 @@ object FireflyBoot extends BaseApp {
     if (initialized.get()) {
       DaoFactory.shutdownHTableDaoFactory()
       Option(ClientTopologyManager.instance).foreach(_.stopAllTopologies())
-      val shutdownFutures = Option(wAContactTopology).map(_.shutdown()) :: Option(latencyMeteringTopology).map(_.shutdown()) :: Nil
+      val shutdownFutures = Option(wAContactTopology).map(_.shutdownAll()) :: Option(latencyMeteringTopology).map(_.shutdownAll()) :: Nil
       Try_#(message = "Topology Shutdown Didn't Complete")(Await.ready(Future.sequence(shutdownFutures.flatten), 20.seconds))
       ConnektLogger.shutdown()
     }

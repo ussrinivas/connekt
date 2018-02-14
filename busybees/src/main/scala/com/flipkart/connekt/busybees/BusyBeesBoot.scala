@@ -119,22 +119,22 @@ object BusyBeesBoot extends BaseApp {
 
       if (Option(System.getProperty("topology.push.enabled")).forall(_.toBoolean)) {
         pushTopology = new PushTopology(kafkaConnConf)
-        pushTopology.run
+        pushTopology.run()
       }
 
       if (Option(System.getProperty("topology.email.enabled")).forall(_.toBoolean)) {
         emailTopology = new EmailTopology(kafkaConnConf)
-        emailTopology.run
+        emailTopology.run()
       }
 
       if (Option(System.getProperty("topology.sms.enabled")).forall(_.toBoolean)) {
         smsTopology = new SmsTopology(kafkaConnConf)
-        smsTopology.run
+        smsTopology.run()
       }
 
       if (Option(System.getProperty("topology.wa.enabled")).forall(_.toBoolean)) {
         waTopology = new WATopology(kafkaConnConf)
-        waTopology.run
+        waTopology.run()
       }
 
       ConnektLogger(LogFile.SERVICE).info("Started `Busybees` app")

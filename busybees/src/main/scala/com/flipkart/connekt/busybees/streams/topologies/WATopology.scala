@@ -13,46 +13,41 @@
 package com.flipkart.connekt.busybees.streams.topologies
 
 import akka.NotUsed
-import akka.stream.{SourceShape, _}
 import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl.{GraphDSL, Merge, Source, _}
+import akka.stream.{SourceShape, _}
 import com.flipkart.connekt.busybees.streams.ConnektTopology
-import com.flipkart.connekt.busybees.streams.flows.{FlowMetrics, WATrackingFlow}
 import com.flipkart.connekt.busybees.streams.flows.dispatchers.{HttpDispatcher, WAMediaDispatcher}
 import com.flipkart.connekt.busybees.streams.flows.profilers.TimedFlowOps._
 import com.flipkart.connekt.busybees.streams.flows.reponsehandlers.{WAMediaResponseHandler, WAResponseHandler}
 import com.flipkart.connekt.busybees.streams.flows.transformers.WAProviderPrepare
+import com.flipkart.connekt.busybees.streams.flows.{FlowMetrics, WATrackingFlow}
 import com.flipkart.connekt.busybees.streams.sources.KafkaSource
 import com.flipkart.connekt.busybees.streams.topologies.WATopology._
-import com.flipkart.connekt.commons.core.Wrappers.Try_
 import com.flipkart.connekt.commons.entities.Channel
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile, ServiceFactory}
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.services.ConnektConfig
-import com.flipkart.connekt.commons.sync.SyncType.SyncType
-import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncType}
+import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
 import com.flipkart.connekt.commons.utils.StringUtils._
 import com.typesafe.config.Config
 
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContextExecutor
 
 class WATopology(kafkaConsumerConfig: Config) extends ConnektTopology[WACallbackEvent] with SyncDelegate {
 
   override def channelName: String = Channel.WA.toString
 
-  override def onUpdate(_type: SyncType, args: List[AnyRef]): Any = {
-    _type match {
-      case SyncType.CLIENT_QUEUE_CREATE => Try_ {
-        ConnektLogger(LogFile.SERVICE).info(s"Busybees Restart for CLIENT_QUEUE_CREATE Client: ${args.head}, New Topic: ${args.last} ")
-        restart
-      }
-      case _ =>
-    }
-  }
-
-
   override def sources: Map[CheckPointGroup, Source[ConnektRequest, NotUsed]] = {
-    List(Channel.WA).flatMap {value =>
+    val enabledTopology = ListBuffer[Channel.Channel]()
+    SyncManager.getNodeData(SyncManager.getBucketNodePath + "/" + SyncType.WA_TOPOLOGY_UPDATE).map(_.message.head) match {
+      case Some("stop") =>
+        ConnektLogger(LogFile.SERVICE).info(s"WA Topology stopped by admin.")
+      case _ =>
+        enabledTopology += Channel.WA
+    }
+    enabledTopology.flatMap {value =>
       ServiceFactory.getMessageService(Channel.WA).getTopicNames(Channel.WA, None).get match {
         case platformTopics if platformTopics.nonEmpty => Option(value.toString -> createMergedSource(value, platformTopics))
         case _ => None

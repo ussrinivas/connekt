@@ -63,25 +63,29 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
 
     val enabledTopology = ListBuffer[MobilePlatform.MobilePlatform]()
     SyncManager.getNodeData(SyncManager.getBucketNodePath + "/" + SyncType.ANDROID_TOPOLOGY_UPDATE).map(_.message.head) match {
-      case Some("stop") => ConnektLogger(LogFile.SERVICE).info(s"ANDROID Push Topology stopped by admin.")
+      case Some("stop") =>
+        ConnektLogger(LogFile.SERVICE).info(s"ANDROID Push Topology stopped by admin.")
       case _ =>
         enabledTopology += MobilePlatform.ANDROID
     }
     SyncManager.getNodeData(SyncManager.getBucketNodePath + "/" + SyncType.IOS_TOPOLOGY_UPDATE).map(_.message.head) match {
-      case Some("stop") => ConnektLogger(LogFile.SERVICE).info(s"IOS Push Topology stopped by admin.")
+      case Some("stop") =>
+        ConnektLogger(LogFile.SERVICE).info(s"IOS Push Topology stopped by admin.")
       case _ =>
         enabledTopology += MobilePlatform.IOS
     }
     SyncManager.getNodeData(SyncManager.getBucketNodePath + "/" + SyncType.OPENWEB_TOPOLOGY_UPDATE).map(_.message.head) match {
-      case Some("stop") => ConnektLogger(LogFile.SERVICE).info(s"OPENWEB Push Topology stopped by admin.")
+      case Some("stop") =>
+        ConnektLogger(LogFile.SERVICE).info(s"OPENWEB Push Topology stopped by admin.")
       case _ =>
         enabledTopology += MobilePlatform.OPENWEB
     }
 
     SyncManager.getNodeData(SyncManager.getBucketNodePath + "/" + SyncType.WINDOW_TOPOLOGY_UPDATE).map(_.message.head) match {
-      case Some("stop") => ConnektLogger(LogFile.SERVICE).info(s"WINDOW Push Topology stopped by admin.")
+      case Some("stop") =>
+        ConnektLogger(LogFile.SERVICE).info(s"WINDOW Push Topology stopped by admin.")
       case _ =>
-        enabledTopology += MobilePlatform.OPENWEB
+        enabledTopology += MobilePlatform.WINDOWS
     }
 
     enabledTopology.flatMap {platform =>
@@ -280,5 +284,5 @@ class PushTopology(kafkaConsumerConfig: Config) extends ConnektTopology[PNCallba
     )
   }
 
-  override def channelName: String = Channel.PUSH.toString
+  override def channelName: String = MobilePlatform.IOS.toString + "_" + MobilePlatform.ANDROID.toString + "_" + MobilePlatform.WINDOWS.toString + "_" + MobilePlatform.OPENWEB.toString
 }

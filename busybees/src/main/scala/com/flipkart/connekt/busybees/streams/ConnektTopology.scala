@@ -33,7 +33,7 @@ import scala.concurrent.{Await, Future}
 
 case class GroupWiseConfig(topologyEnabled: AtomicBoolean, killSwitch: SharedKillSwitch)
 
-trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate with Instrumented{
+trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate with Instrumented {
 
   type CheckPointGroup = String
 
@@ -53,6 +53,7 @@ trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate with Instrumented
 
   SyncManager.get().addObserver(this, List(SyncType.CLIENT_QUEUE_CREATE))
   SyncManager.get().addObserver(this, List(SyncType.EMAIL_TOPOLOGY_UPDATE))
+  SyncManager.get().addObserver(this, List(SyncType.WA_TOPOLOGY_UPDATE))
   SyncManager.get().addObserver(this, List(SyncType.ANDROID_TOPOLOGY_UPDATE))
   SyncManager.get().addObserver(this, List(SyncType.IOS_TOPOLOGY_UPDATE))
   SyncManager.get().addObserver(this, List(SyncType.OPENWEB_TOPOLOGY_UPDATE))
@@ -71,18 +72,22 @@ trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate with Instrumented
         }
       }
       case SyncType.ANDROID_TOPOLOGY_UPDATE | SyncType.IOS_TOPOLOGY_UPDATE | SyncType.OPENWEB_TOPOLOGY_UPDATE |
-           SyncType.SMS_TOPOLOGY_UPDATE | SyncType.EMAIL_TOPOLOGY_UPDATE | SyncType.WINDOW_TOPOLOGY_UPDATE => Try_ {
+           SyncType.SMS_TOPOLOGY_UPDATE | SyncType.EMAIL_TOPOLOGY_UPDATE | SyncType.WA_TOPOLOGY_UPDATE | SyncType.WINDOW_TOPOLOGY_UPDATE => Try_ {
         val topologyName = args.last.toString
         args.head.toString match {
-          case "start" if killSwitches.get(topologyName).isDefined || killSwitches.isEmpty =>
+          case "start" if killSwitches.get(topologyName).isDefined =>
             if (killSwitches.nonEmpty && killSwitches(topologyName).topologyEnabled.get()) {
               ConnektLogger(LogFile.SERVICE).info(s"${topologyName.toUpperCase} channel topology is already up.")
             } else {
               ConnektLogger(LogFile.SERVICE).info(s"${topologyName.toUpperCase} channel topology restarting.")
-              run(mat)
+              run()(mat)
               killSwitches(topologyName).topologyEnabled.set(true)
             }
-          case "stop" if killSwitches.get(topologyName).isDefined || killSwitches.isEmpty =>
+          case "start" if channelName.contains(topologyName) =>
+            ConnektLogger(LogFile.SERVICE).info(s"${topologyName.toUpperCase} channel topology restarting.")
+            run(Some(topologyName))(mat)
+            killSwitches(topologyName).topologyEnabled.set(true)
+          case "stop" if killSwitches.get(topologyName).isDefined =>
             if (killSwitches.nonEmpty && killSwitches(topologyName).topologyEnabled.get()) {
               ConnektLogger(LogFile.SERVICE).info(s"${topologyName.toUpperCase} channel topology shutting down.")
               killSwitches(topologyName).killSwitch.shutdown
@@ -97,9 +102,14 @@ trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate with Instrumented
     }
   }
 
-  def graphs: List[RunnableGraph[NotUsed]] = {
+  def graphs(topologyName: Option[String] = None): List[RunnableGraph[NotUsed]] = {
     val sourcesMap = sources
-    transformers.filterKeys(sourcesMap.contains).map { case (group, flow) =>
+    val transformersModified = if (topologyName.isDefined) {
+      Map(topologyName.get -> transformers(topologyName.get))
+    } else {
+      transformers
+    }
+    transformersModified.filterKeys(sourcesMap.contains).map { case (group, flow) =>
       val killSwitch = KillSwitches.shared(UUID.randomUUID().toString)
       killSwitches += (group -> GroupWiseConfig(new AtomicBoolean(true), killSwitch))
       sourcesMap(group)
@@ -116,21 +126,9 @@ trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate with Instrumented
     }.toList
   }
 
-  def run(implicit dmat: Materializer): Unit = {
+  def run(topologyName: Option[String] = None)(implicit dmat: Materializer): Unit = {
     ConnektLogger(LogFile.PROCESSORS).info(s"Starting Topology " + this.getClass.getSimpleName)
-    registry.register(getMetricName("topology.status"), new Gauge[Int] {
-      override def getValue: Int =  {
-        Option(shutdownComplete).map(tp => if (tp.isCompleted) 0 else 1).getOrElse(-1)
-      }
-    })
-    graphs.foreach(_.run())
-  }
-
-  def shutdown(topology: String): Future[Done] = {
-    ConnektLogger(LogFile.PROCESSORS).info(s"Shutting Down " + topology.toUpperCase)
-    killSwitches(topology).killSwitch.shutdown()
-    shutdownComplete.onSuccess { case _ => ConnektLogger(LogFile.PROCESSORS).info(s"Shutdown Complete" + this.getClass.getSimpleName) }
-    Option(shutdownComplete).getOrElse(Future.successful(Done))
+    graphs(topologyName).foreach(_.run())
   }
 
   def shutdownAll(): Future[Done] = {
@@ -147,6 +145,7 @@ trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate with Instrumented
     Thread.sleep(rand.nextInt(120) * 1000)
     val shutdownComplete = shutdownAll()
     Try_(Await.ready(shutdownComplete, 30.seconds))
-    run(mat)
+    run()(mat)
   }
+
 }

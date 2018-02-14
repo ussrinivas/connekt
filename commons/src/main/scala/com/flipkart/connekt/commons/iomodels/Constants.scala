@@ -20,8 +20,18 @@ object Constants {
     type WAConstants = Value
 
     val WHATSAPP = Value("whatsapp")
+    val WHATSAPP_CONTACTS = Value("wacontact")
     val WHATSAPP_CHECK_CONTACT_URI = Value("/api/check_contacts.php")
-    val WA_CONTACT_QUEUE = ConnektConfig.getString("wa.contact.topic.name").get
+    val WA_CONTACT_QUEUE = Value(ConnektConfig.getString("wa.contact.topic.name").get)
   }
+
+  object LatencyMeterConstants extends Enumeration {
+    type LatencyMeterConstants = Value
+
+    val LATENCY_METER = Value("latencymeter")
+    val SMS_LATENCY_METER = Value("smslatencymeter")
+    val WA_LATENCY_METER = Value("walatencymeter")
+  }
+
 
 }

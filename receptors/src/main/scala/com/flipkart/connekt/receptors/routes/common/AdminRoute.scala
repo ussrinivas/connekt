@@ -23,7 +23,10 @@ import org.apache.zookeeper.CreateMode
 
 class AdminRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
 
-  private final val WA_CONTACT_QUEUE = Constants.WAConstants.WA_CONTACT_QUEUE
+  private final val WA_CONTACT_QUEUE = Constants.WAConstants.WA_CONTACT_QUEUE.toString
+  private final val whatsappContactsTopology = Constants.WAConstants.WHATSAPP_CONTACTS.toString
+  private final val smsLatencyMeterTopology = Constants.LatencyMeterConstants.SMS_LATENCY_METER.toString
+  private final val waLatencyMeterTopology = Constants.LatencyMeterConstants.WA_LATENCY_METER.toString
 
   val route =
     authenticate {
@@ -61,16 +64,40 @@ class AdminRoute(implicit am: ActorMaterializer) extends BaseJsonHandler {
                       get {
                         action match {
                           case ("start" | "stop") =>
-                            topology.toLowerCase match {
-                              case "email" => SyncManager.get().publish(SyncMessage(topic = SyncType.EMAIL_TOPOLOGY_UPDATE, List(action, topology)), CreateMode.PERSISTENT)
-                              case "sms" => SyncManager.get().publish(SyncMessage(topic = SyncType.SMS_TOPOLOGY_UPDATE, List(action, topology)), CreateMode.PERSISTENT)
-                              case "android" => SyncManager.get().publish(SyncMessage(topic = SyncType.ANDROID_TOPOLOGY_UPDATE, List(action, topology)), CreateMode.PERSISTENT)
-                              case "ios" => SyncManager.get().publish(SyncMessage(topic = SyncType.IOS_TOPOLOGY_UPDATE, List(action, topology)), CreateMode.PERSISTENT)
-                              case "openweb" => SyncManager.get().publish(SyncMessage(topic = SyncType.OPENWEB_TOPOLOGY_UPDATE, List(action, topology)), CreateMode.PERSISTENT)
-                              case "window" => SyncManager.get().publish(SyncMessage(topic = SyncType.WINDOW_TOPOLOGY_UPDATE, List(action, topology)), CreateMode.PERSISTENT)
+                            val tp = topology.toLowerCase
+                            tp match {
+                              case "email" =>
+                                SyncManager.get().publish(SyncMessage(topic = SyncType.EMAIL_TOPOLOGY_UPDATE, List(action, tp)), CreateMode.PERSISTENT)
+                                complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Topology for channel $topology action $action successful", null)))
+                              case "wa" =>
+                                SyncManager.get().publish(SyncMessage(topic = SyncType.WA_TOPOLOGY_UPDATE, List(action, tp)), CreateMode.PERSISTENT)
+                                complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Topology for channel $topology action $action successful", null)))
+                              case `whatsappContactsTopology` =>
+                                SyncManager.get().publish(SyncMessage(topic = SyncType.WA_CONTACT_TOPOLOGY_UPDATE, List(action, tp)), CreateMode.PERSISTENT)
+                                complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Topology for channel $topology action $action successful", null)))
+                              case `waLatencyMeterTopology` =>
+                                SyncManager.get().publish(SyncMessage(topic = SyncType.WA_LATENCY_METER_TOPOLOGY_UPDATE, List(action, tp)), CreateMode.PERSISTENT)
+                                complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Topology for channel $topology action $action successful", null)))
+                              case `smsLatencyMeterTopology` =>
+                                SyncManager.get().publish(SyncMessage(topic = SyncType.SMS_LATENCY_METER_TOPOLOGY_UPDATE, List(action, tp)), CreateMode.PERSISTENT)
+                                complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Topology for channel $topology action $action successful", null)))
+                              case "sms" =>
+                                SyncManager.get().publish(SyncMessage(topic = SyncType.SMS_TOPOLOGY_UPDATE, List(action, tp)), CreateMode.PERSISTENT)
+                                complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Topology for channel $topology action $action successful", null)))
+                              case "android" =>
+                                SyncManager.get().publish(SyncMessage(topic = SyncType.ANDROID_TOPOLOGY_UPDATE, List(action, tp)), CreateMode.PERSISTENT)
+                                complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Topology for channel $topology action $action successful", null)))
+                              case "ios" =>
+                                SyncManager.get().publish(SyncMessage(topic = SyncType.IOS_TOPOLOGY_UPDATE, List(action, tp)), CreateMode.PERSISTENT)
+                                complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Topology for channel $topology action $action successful", null)))
+                              case "openweb" =>
+                                SyncManager.get().publish(SyncMessage(topic = SyncType.OPENWEB_TOPOLOGY_UPDATE, List(action, tp)), CreateMode.PERSISTENT)
+                                complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Topology for channel $topology action $action successful", null)))
+                              case "window" =>
+                                SyncManager.get().publish(SyncMessage(topic = SyncType.WINDOW_TOPOLOGY_UPDATE, List(action, tp)), CreateMode.PERSISTENT)
+                                complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Topology for channel $topology action $action successful", null)))
                               case _ => complete(GenericResponse(StatusCodes.NotFound.intValue, null, Response("Topology not defined.", null)))
                             }
-                            complete(GenericResponse(StatusCodes.OK.intValue, null, Response(s"Topology for channel $topology action $action successful", null)))
                           case _ =>
                             complete(GenericResponse(StatusCodes.NotFound.intValue, null, Response("Invalid request", null)))
                         }

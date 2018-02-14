@@ -13,6 +13,7 @@
 package com.flipkart.connekt.firefly.topology
 
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
 
 import akka.{Done, NotUsed}
 import akka.event.Logging
@@ -20,11 +21,14 @@ import akka.stream._
 import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl.{Flow, GraphDSL, Merge, RunnableGraph, Sink, Source}
 import com.codahale.metrics.Gauge
+import com.flipkart.connekt.busybees.streams.GroupWiseConfig
 import com.flipkart.connekt.busybees.streams.sources.KafkaSource
 import com.flipkart.connekt.commons.core.Wrappers._
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.iomodels.{TopologyInputDatatype, TopologyOutputDatatype}
 import com.flipkart.connekt.commons.metrics.Instrumented
+import com.flipkart.connekt.commons.sync.SyncType.SyncType
+import com.flipkart.connekt.commons.sync.{SyncDelegate, SyncManager, SyncType}
 import com.flipkart.connekt.firefly.FireflyBoot
 import com.typesafe.config.Config
 
@@ -32,7 +36,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.reflect.ClassTag
 
-trait CustomTopology[I <: TopologyInputDatatype, E <: TopologyOutputDatatype] extends Instrumented {
+trait CustomTopology[I <: TopologyInputDatatype, E <: TopologyOutputDatatype] extends Instrumented with SyncDelegate {
 
   type CheckPointGroup = String
 
@@ -42,19 +46,66 @@ trait CustomTopology[I <: TopologyInputDatatype, E <: TopologyOutputDatatype] ex
 
   def sink: Sink[E, NotUsed]
 
+  def topologyName: String
+
   implicit val system = FireflyBoot.system
   implicit val ec = FireflyBoot.system.dispatcher
   implicit val mat = FireflyBoot.mat
   val ioDispatcher = system.dispatchers.lookup("akka.actor.io-dispatcher")
   val ioMat = FireflyBoot.ioMat
 
-  private val killSwitch = KillSwitches.shared(UUID.randomUUID().toString)
+  private var killSwitches: Map[String, GroupWiseConfig] = Map.empty
   private var shutdownComplete: Future[Done] = _
 
-  def graphs(): List[RunnableGraph[NotUsed]] = {
+  SyncManager.get().addObserver(this, List(SyncType.WA_CONTACT_TOPOLOGY_UPDATE))
+  SyncManager.get().addObserver(this, List(SyncType.WA_LATENCY_METER_TOPOLOGY_UPDATE))
+  SyncManager.get().addObserver(this, List(SyncType.SMS_LATENCY_METER_TOPOLOGY_UPDATE))
+
+  override def onUpdate(_type: SyncType, args: List[AnyRef]): Any = {
+    _type match {
+      case SyncType.WA_CONTACT_TOPOLOGY_UPDATE | SyncType.WA_LATENCY_METER_TOPOLOGY_UPDATE | SyncType.SMS_LATENCY_METER_TOPOLOGY_UPDATE => Try_ {
+        val tName = args.last.toString
+        args.head.toString match {
+          case "start" if killSwitches.get(tName).isDefined =>
+            if (killSwitches.nonEmpty && killSwitches(tName).topologyEnabled.get()) {
+              ConnektLogger(LogFile.SERVICE).info(s"${tName.toUpperCase} channel topology is already up.")
+            } else {
+              ConnektLogger(LogFile.SERVICE).info(s"${tName.toUpperCase} channel topology restarting.")
+              run()(mat)
+              killSwitches(tName).topologyEnabled.set(true)
+            }
+          case "start" if topologyName.contains(tName) =>
+            ConnektLogger(LogFile.SERVICE).info(s"${tName.toUpperCase} channel topology restarting.")
+            run(Some(tName))(mat)
+            killSwitches(tName).topologyEnabled.set(true)
+          case "stop" if killSwitches.get(tName).isDefined =>
+            if (killSwitches.nonEmpty && killSwitches(tName).topologyEnabled.get()) {
+              ConnektLogger(LogFile.SERVICE).info(s"${tName.toUpperCase} channel topology shutting down.")
+              killSwitches(tName).killSwitch.shutdown
+              killSwitches(tName).topologyEnabled.set(false)
+            } else {
+              ConnektLogger(LogFile.SERVICE).info(s"${tName.toUpperCase} channel topology is already stopped.")
+            }
+          case _ => None
+        }
+      }
+      case _ =>
+    }
+  }
+
+  def graphs(topologyName: Option[String] = None): List[RunnableGraph[NotUsed]] = {
     val sourcesMap = sources
-    transformers.filterKeys(sourcesMap.contains).map { case (group, flow) =>
-      sourcesMap(group).via(killSwitch.flow).withAttributes(ActorAttributes.dispatcher("akka.actor.default-pinned-dispatcher"))
+    val transformersModified = if (topologyName.isDefined) {
+      Map(topologyName.get -> transformers(topologyName.get))
+    } else {
+      transformers
+    }
+    transformersModified.filterKeys(sourcesMap.contains).map { case (group, flow) =>
+      val killSwitch = KillSwitches.shared(UUID.randomUUID().toString)
+      killSwitches += (group -> GroupWiseConfig(new AtomicBoolean(true), killSwitch))
+      sourcesMap(group)
+        .via(killSwitch.flow)
+        .withAttributes(ActorAttributes.dispatcher("akka.actor.default-pinned-dispatcher"))
         .via(flow)
         .watchTermination() {
           case (materializedValue, completed) =>
@@ -77,19 +128,24 @@ trait CustomTopology[I <: TopologyInputDatatype, E <: TopologyOutputDatatype] ex
     SourceShape(merge.out)
   })
 
-  def run(implicit mat: Materializer): Unit = {
+  def run(topologyName: Option[String] = None)(implicit dmat: Materializer): Unit = {
     ConnektLogger(LogFile.PROCESSORS).info(s"Starting Topology " + this.getClass.getSimpleName)
-    registry.register(getMetricName("topology.status"), new Gauge[Int] {
-      override def getValue: Int = {
-        Option(shutdownComplete).map(tp => if (tp.isCompleted) 0 else 1).getOrElse(-1)
-      }
-    })
-    graphs().foreach(_.run())
+    try {
+      registry.register(getMetricName("topology.status"), new Gauge[Int] {
+        override def getValue: Int = {
+          Option(shutdownComplete).map(tp => if (tp.isCompleted) 0 else 1).getOrElse(-1)
+        }
+      })
+    } catch {
+      case _: Exception =>
+        ConnektLogger(LogFile.PROCESSORS).info(s"Registry: ${getMetricName("topology.status")} already exists.")
+    }
+    graphs(topologyName).foreach(_.run())
   }
 
-  def shutdown(): Future[Done] = {
+  def shutdownAll(): Future[Done] = {
     ConnektLogger(LogFile.PROCESSORS).info(s"Shutting Down " + this.getClass.getSimpleName)
-    killSwitch.shutdown()
+    killSwitches.foreach(_._2.killSwitch.shutdown())
     shutdownComplete.onSuccess { case _ => ConnektLogger(LogFile.PROCESSORS).info(s"Shutdown Complete" + this.getClass.getSimpleName) }
     Option(shutdownComplete).getOrElse(Future.successful(Done))
   }
@@ -99,8 +155,9 @@ trait CustomTopology[I <: TopologyInputDatatype, E <: TopologyOutputDatatype] ex
   def restart(implicit mat: Materializer): Unit = {
     //wait for a random time btwn 0 and 2 minutes.
     Thread.sleep(rand.nextInt(120) * 1000)
-    val shutdownComplete = shutdown()
+    val shutdownComplete = shutdownAll()
     Try_(Await.ready(shutdownComplete, 30.seconds))
-    run(mat)
+    run()(mat)
   }
+
 }

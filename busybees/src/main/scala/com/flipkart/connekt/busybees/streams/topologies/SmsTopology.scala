@@ -59,7 +59,8 @@ class SmsTopology(kafkaConsumerConfig: Config) extends ConnektTopology[SmsCallba
 
     val enabledTopology = ListBuffer[Channel.Channel]()
     SyncManager.getNodeData(SyncManager.getBucketNodePath + "/" + SyncType.SMS_TOPOLOGY_UPDATE).map(_.message.head) match {
-      case Some("stop") => ConnektLogger(LogFile.SERVICE).info(s"SMS Topology stopped by admin.")
+      case Some("stop") =>
+        ConnektLogger(LogFile.SERVICE).info(s"SMS Topology stopped by admin.")
       case _ =>
         enabledTopology += Channel.SMS
     }

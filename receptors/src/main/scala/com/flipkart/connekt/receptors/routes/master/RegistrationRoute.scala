@@ -42,7 +42,7 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
   private val WA_NEW_REGISTRATION_TOPIC = ConnektConfig.getString("wa.contact.new.registration.topic.name").get
   private val userServiceNewAccountTopic = ConnektConfig.getString("wa.varadhi.user.svc.topic").get
   private val contactService = ServiceFactory.getContactService
-  private final val WA_CONTACT_QUEUE = Constants.WAConstants.WA_CONTACT_QUEUE
+  private final val waContactQueue = Constants.WAConstants.WA_CONTACT_QUEUE.toString
 
   val route = {
     authenticate {
@@ -190,7 +190,7 @@ class RegistrationRoute(implicit am: ActorMaterializer) extends BaseJsonHandler 
                               PhoneNumberHelper.validateNFormatNumber(appName, contact.user_identifier)("registrationroute.wa") match {
                                 case Some(n) =>
                                   val updatedContact = contact.copy(user_identifier = n, appName = appName)
-                                  contactService.enqueueContactEvents(updatedContact, WA_CONTACT_QUEUE)
+                                  contactService.enqueueContactEvents(updatedContact, waContactQueue)
                                   complete(GenericResponse(StatusCodes.Accepted.intValue, null, Response(s"Contact registration request received for destination : ${contact.user_identifier}", null)))
                                 case None =>
                                   ConnektLogger(LogFile.PROCESSORS).error(s"Dropping whatsapp invalid numbers: ${contact.user_identifier}")

@@ -61,7 +61,8 @@ class EmailTopology(kafkaConsumerConfig: Config) extends ConnektTopology[EmailCa
 
     val enabledTopology = ListBuffer[Channel.Channel]()
     SyncManager.getNodeData(SyncManager.getBucketNodePath + "/" + SyncType.EMAIL_TOPOLOGY_UPDATE).map(_.message.head) match {
-      case Some("stop") => ConnektLogger(LogFile.SERVICE).info(s"EMAIL Topology stopped by admin.")
+      case Some("stop") =>
+        ConnektLogger(LogFile.SERVICE).info(s"EMAIL Topology stopped by admin.")
       case _ =>
         enabledTopology += Channel.EMAIL
     }
