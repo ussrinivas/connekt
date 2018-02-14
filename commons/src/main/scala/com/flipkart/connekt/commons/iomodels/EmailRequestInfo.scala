@@ -14,7 +14,9 @@ package com.flipkart.connekt.commons.iomodels
 
 import javax.mail.internet.InternetAddress
 
+import akka.http.javadsl.model.StatusCodes
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.flipkart.connekt.commons.entities.exception.{ExceptionType, ServiceException}
 import com.flipkart.connekt.commons.factories.{ConnektLogger, LogFile}
 import com.flipkart.connekt.commons.services.ConnektConfig
 import org.apache.commons.validator.routines.EmailValidator
@@ -51,10 +53,14 @@ case class EmailAddress(name: String, address: String) {
   }
 
   def validate(): Unit = {
-    require(EmailValidator.getInstance().isValid(address), s"Bad Request. Invalid email address - $address")
+    if (!EmailValidator.getInstance().isValid(address)) {
+      throw ServiceException(StatusCodes.BAD_REQUEST, ExceptionType.BAD_REQUEST_INVALID_EMAIL, s"Bad Request. Invalid email address - $address")
+    }
     val invalidCharacters = ConnektConfig.getList[String]("email.name.invalid.characters").toSet //fetched by config
     invalidCharacters.foreach(i => {
-      require(!name.contains(i), s"Bad Request. Invalid email name - $name")
+      if (name.contains(i)) {
+        throw ServiceException(StatusCodes.BAD_REQUEST, ExceptionType.BAD_REQUEST_INVALID_NAME, s"Bad Request. Invalid email name - $name")
+      }
     })
   }
 
