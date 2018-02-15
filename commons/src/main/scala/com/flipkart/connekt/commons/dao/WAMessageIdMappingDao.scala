@@ -59,7 +59,7 @@ class WAMessageIdMappingDao(tableName: String, hTableFactory: THTableFactory) ex
       "contextId" -> waMessageIdMappingEntity.contextId.getUtf8Bytes
     )
     val rD = Map[String, Map[String, Array[Byte]]](columnFamily -> entity.toMap)
-    asyncAddRow(rowKey, rD)(hTableMutator)
+    addRow(rowKey, rD)
     ConnektLogger(LogFile.DAO).info(s"WAEntry added for waMessageId ${waMessageIdMappingEntity.providerMessageId} with connektMessageId ${waMessageIdMappingEntity.connektMessageId}")
   }
 
