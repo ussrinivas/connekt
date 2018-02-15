@@ -58,7 +58,7 @@ case class EmailAddress(name: String, address: String) {
     }
     val invalidCharacters = ConnektConfig.getList[String]("email.name.invalid.characters").toSet //fetched by config
     invalidCharacters.foreach(i => {
-      if (name.contains(i)) {
+      if (name != null && name.contains(i)) { // null check to make sure 'null's are passed as current bau
         throw ServiceException(StatusCodes.BAD_REQUEST, ExceptionType.BAD_REQUEST_INVALID_NAME, s"Bad Request. Invalid email name - $name")
       }
     })

@@ -30,8 +30,6 @@ import com.flipkart.connekt.receptors.routes.helper.{PhoneNumberHelper, WAContac
 import com.flipkart.connekt.receptors.wire.ResponseUtils._
 import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
-import org.apache.commons.validator.routines.EmailValidator
-
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
