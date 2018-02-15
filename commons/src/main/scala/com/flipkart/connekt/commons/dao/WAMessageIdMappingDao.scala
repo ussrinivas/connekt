@@ -50,6 +50,7 @@ class WAMessageIdMappingDao(tableName: String, hTableFactory: THTableFactory) ex
 
   @Timed("add")
   def add(waMessageIdMappingEntity: WAMessageIdMappingEntity): Try[Unit] = Try_#(s"Adding waMessageIdMappingEntity failed for ${waMessageIdMappingEntity.providerMessageId} -> ${waMessageIdMappingEntity.connektMessageId}") {
+    implicit val hTableInterface = hTableConnFactory.getTableInterface(hTableName)
     val rowKey = getRowKey(waMessageIdMappingEntity.appName, waMessageIdMappingEntity.providerMessageId)
     val entity = mutable.Map[String, Array[Byte]](
       "providerMessageId" -> waMessageIdMappingEntity.providerMessageId.getUtf8Bytes,
@@ -59,6 +60,7 @@ class WAMessageIdMappingDao(tableName: String, hTableFactory: THTableFactory) ex
       "contextId" -> waMessageIdMappingEntity.contextId.getUtf8Bytes
     )
     val rD = Map[String, Map[String, Array[Byte]]](columnFamily -> entity.toMap)
+    // AddRow is needed as WA can send callback instant for which mapping needs to be present else callback will be rejected.
     addRow(rowKey, rD)
     ConnektLogger(LogFile.DAO).info(s"WAEntry added for waMessageId ${waMessageIdMappingEntity.providerMessageId} with connektMessageId ${waMessageIdMappingEntity.connektMessageId}")
   }
