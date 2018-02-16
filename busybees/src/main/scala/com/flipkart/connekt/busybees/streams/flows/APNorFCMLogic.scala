@@ -2,23 +2,17 @@ package com.flipkart.connekt.busybees.streams.flows
 
 import akka.actor.ActorSystem
 import akka.stream.FanOutShape2
-import akka.stream.stage.GraphStageLogic.StageActor
 import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import com.flipkart.connekt.commons.entities.DeviceDetails
 import com.flipkart.connekt.commons.iomodels.{ConnektRequest, PNRequestInfo}
-import com.flipkart.connekt.commons.services.DeviceDetailsService
+import com.flipkart.connekt.commons.services.{ConnektConfig, DeviceDetailsService}
+import com.flipkart.connekt.commons.utils.StringUtils
 
 class APNorFCMLogic(val shape: FanOutShape2[ConnektRequest, ConnektRequest, ConnektRequest])(implicit actorSystem: ActorSystem) extends GraphStageLogic(shape) {
 
-  var self: StageActor = _
-
-  val apnsRequestQueue: scala.collection.mutable.Queue[ConnektRequest] = collection.mutable.Queue[ConnektRequest]()
-  val fcmRequestQueue: scala.collection.mutable.Queue[ConnektRequest] = collection.mutable.Queue[ConnektRequest]()
-
-  //make this configurable
-  val apnsMaxBufferCount = 10
-  val fcmMaxBufferCount = 10
-  val isFCMEnabled = true
+  val isFCMEnabled:Boolean = ConnektConfig.getBoolean("isFCMEnabledForIOS").getOrElse(false)
+  var apnsDemand = false
+  var fcmDemand = false
 
   override def preStart(): Unit = {
     pull(shape.in)
@@ -28,17 +22,16 @@ class APNorFCMLogic(val shape: FanOutShape2[ConnektRequest, ConnektRequest, Conn
     override def onPush(): Unit = {
       grab(shape.in) match {
         case request =>
-          val pnInfo = request.channelInfo.asInstanceOf[PNRequestInfo]
-          val (fcmRequest, apnsRequest) = partitionConnektRequest(request)
-          if(isAvailable(shape.out0) & apnsRequestQueue.nonEmpty) {
-            push(shape.out0, apnsRequestQueue.dequeue())
-          } else if (apnsMaxBufferCount < apnsRequestQueue.size)
-            apnsRequestQueue.enqueue(apnsRequest)
+          val (apnsRequest, fcmRequest) = partitionConnektRequest(request)
+          if(apnsRequest !=null & isAvailable(shape.out0)) {
+            push(shape.out0, apnsRequest)
+            apnsDemand = false
+          }
 
-          if(isAvailable(shape.out1) & fcmRequestQueue.nonEmpty) {
-            push(shape.out1, fcmRequestQueue.dequeue())
-          } else if (fcmMaxBufferCount < fcmRequestQueue.size)
-            fcmRequestQueue.enqueue(fcmRequest)
+          if(fcmRequest !=null & isAvailable(shape.out1)) {
+            push(shape.out1, fcmRequest)
+            fcmDemand = false
+          }
       }
     }
 
@@ -48,8 +41,9 @@ class APNorFCMLogic(val shape: FanOutShape2[ConnektRequest, ConnektRequest, Conn
 
   setHandler(shape.out0, new OutHandler {
     override def onPull(): Unit = {
-      if (apnsRequestQueue.nonEmpty)
-        push(shape.out0, apnsRequestQueue.dequeue())
+      if (!apnsDemand) {
+        apnsDemand = true
+      }
       if (!hasBeenPulled(shape.in)) {
         pull(shape.in)
       }
@@ -59,8 +53,9 @@ class APNorFCMLogic(val shape: FanOutShape2[ConnektRequest, ConnektRequest, Conn
 
   setHandler(shape.out1, new OutHandler {
     override def onPull(): Unit = {
-      if (fcmRequestQueue.nonEmpty)
-        push(shape.out1, fcmRequestQueue.dequeue())
+      if (!fcmDemand) {
+        fcmDemand = true
+      }
 
       if (!hasBeenPulled(shape.in)) {
         pull(shape.in)
@@ -72,15 +67,23 @@ class APNorFCMLogic(val shape: FanOutShape2[ConnektRequest, ConnektRequest, Conn
   private def partitionConnektRequest(request: ConnektRequest): (ConnektRequest, ConnektRequest) = {
     val pnInfo = request.channelInfo.asInstanceOf[PNRequestInfo]
     val deviceInfo: List[DeviceDetails] = DeviceDetailsService.get(pnInfo.appName, pnInfo.deviceIds).get
-    val (fcm, apns) = deviceInfo.partition(deviceDetail => shouldSendViaAPN(deviceDetail))
+    val (fcm, apns) = deviceInfo.partition(deviceDetail => shouldSendViaFCM(deviceDetail))
+    val apnsRequest: ConnektRequest = if(apns.isEmpty) {
+      null
+    } else {
+      request.copy(channelInfo = pnInfo.copy(deviceIds = apns.map(_.deviceId).toSet))
+    }
 
-    val apnChannelInfo = pnInfo.copy(deviceIds = apns.map(_.deviceId).toSet)
-    val fcmChannelInfo = pnInfo.copy(deviceIds = fcm.map(_.deviceId).toSet)
+    val fcmRequest:ConnektRequest = if (fcm.isEmpty) {
+      null
+    } else {
+      request.copy(channelInfo = pnInfo.copy(deviceIds = fcm.map(_.deviceId).toSet))
+    }
 
-    (request.copy(channelInfo = apnChannelInfo), request.copy(channelInfo = fcmChannelInfo))
+    (apnsRequest, fcmRequest)
   }
 
-  private def shouldSendViaAPN(deviceDetail: DeviceDetails): Boolean = {
-      isFCMEnabled & !deviceDetail.fcmToken.isEmpty
+  private def shouldSendViaFCM(deviceDetail: DeviceDetails): Boolean = {
+      isFCMEnabled & !StringUtils.isNullOrEmpty(deviceDetail.fcmToken)
   }
 }
