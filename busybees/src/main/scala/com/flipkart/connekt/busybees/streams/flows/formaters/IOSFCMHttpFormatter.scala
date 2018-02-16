@@ -21,7 +21,7 @@ class IOSFCMHttpFormatter (parallelism: Int)(implicit ec: ExecutionContextExecut
     val appDataWithId = getAppDataWithId(pnInfo, message)
     val notificationData = getNotificationData(pnInfo, message)
 
-    val iosFcmParams = ServiceFactory.getUserProjectConfigService.getProjectConfiguration(pnInfo.appName, "pn-allowed-channels").get.get.value.getObj[Map[String, Boolean]]
+    val iosFcmParams = ServiceFactory.getUserProjectConfigService.getProjectConfiguration(pnInfo.appName, "fcm-params").get.get.value.getObj[Map[String, Boolean]]
     val contentAvailable = Option(iosFcmParams("content_available")).getOrElse(false)
     val mutableContent = Option(iosFcmParams("mutable_content")).getOrElse(false)
 
