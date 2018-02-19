@@ -36,13 +36,13 @@ class GCMHttpDispatcherPrepare extends MapFlowStage[GCMPayloadEnvelope, (HttpReq
       val requestEntity = HttpEntity(ContentTypes.`application/json`, message.gcmPayload.getJson)
       val requestHeaders = scala.collection.immutable.Seq[HttpHeader](RawHeader("Authorization", "key=" + KeyChainManager.getGoogleCredential(message.appName, MobilePlatform.withName(message.platform)).get.apiKey))
       val httpRequest = HttpRequest(HttpMethods.POST, sendUri, requestHeaders, requestEntity)
-      val requestTrace = GCMRequestTracker(message.messageId, message.clientId, message.deviceId, message.appName, message.contextId, message.meta)
+      val requestTrace = GCMRequestTracker(message.messageId, message.clientId, message.deviceId, message.appName, message.contextId, message.meta, message.platform)
 
       List(httpRequest -> requestTrace)
     } catch {
       case e: Throwable =>
         ConnektLogger(LogFile.PROCESSORS).error(s"GCMDispatcherPrepare failed with ${e.getMessage}", e)
-        throw new ConnektPNStageException(message.messageId, message.clientId, message.deviceId.toSet, InternalStatus.StageError, message.appName, MobilePlatform.ANDROID, message.contextId, message.meta, s"GCMDispatcherPrepare-${e.getMessage}", e)
+        throw new ConnektPNStageException(message.messageId, message.clientId, message.deviceId.toSet, InternalStatus.StageError, message.appName, message.platform, message.contextId, message.meta, s"GCMDispatcherPrepare-${e.getMessage}", e)
     }
   }
 }
