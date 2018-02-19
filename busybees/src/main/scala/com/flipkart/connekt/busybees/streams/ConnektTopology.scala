@@ -80,7 +80,7 @@ trait ConnektTopology[E <: CallbackEvent] extends SyncDelegate with Instrumented
               ConnektLogger(LogFile.SERVICE).info(s"${topologyName.toUpperCase} channel topology is already up.")
             } else {
               ConnektLogger(LogFile.SERVICE).info(s"${topologyName.toUpperCase} channel topology restarting.")
-              run()(mat)
+              run(Some(topologyName))(mat)
               killSwitches(topologyName).topologyEnabled.set(true)
             }
           case "start" if channelName.contains(topologyName) =>
