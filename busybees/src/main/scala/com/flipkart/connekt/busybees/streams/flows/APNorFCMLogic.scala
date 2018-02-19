@@ -34,8 +34,6 @@ class APNorFCMLogic(val shape: FanOutShape2[ConnektRequest, ConnektRequest, Conn
           }
       }
     }
-
-    override def onUpstreamFinish(): Unit = completeStage()
   })
 
 
