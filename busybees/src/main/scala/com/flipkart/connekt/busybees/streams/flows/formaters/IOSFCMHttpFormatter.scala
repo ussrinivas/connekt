@@ -1,7 +1,7 @@
 package com.flipkart.connekt.busybees.streams.flows.formaters
 
 import com.fasterxml.jackson.databind.node.ObjectNode
-import com.flipkart.connekt.commons.entities.DeviceDetails
+import com.flipkart.connekt.commons.entities.{DeviceDetails, MobilePlatform, PNMessagingCarrier}
 import com.flipkart.connekt.commons.iomodels._
 import com.flipkart.connekt.commons.services.ConnektConfig
 
@@ -15,6 +15,7 @@ class IOSFCMHttpFormatter (parallelism: Int)(implicit ec: ExecutionContextExecut
   override def createPayload(message: ConnektRequest, devicesInfo: Seq[DeviceDetails]): List[GCMPayloadEnvelope] = {
 
     val pnInfo = message.channelInfo.asInstanceOf[PNRequestInfo]
+    meter(s"${MobilePlatform.IOS}.${PNMessagingCarrier.FCM}").mark()
     val timeToLive = message.expiryTs.map(expiry => (expiry - System.currentTimeMillis) / 1000).getOrElse(6.hour.toSeconds)
     val tokens = devicesInfo.map(_.fcmToken)
     val validDeviceIds = devicesInfo.map(_.deviceId)
